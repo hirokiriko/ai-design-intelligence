@@ -406,7 +406,7 @@ export function SettingsPanel({
                 <Badge tone="warning">準備中</Badge>
               </div>
               <p className="mb-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-caution">
-                企業公開情報との連携は、出典明示・利用条件・著作権を確認したうえで対応予定です。本文転載ではなく、公開情報への参照・要約・出典表示を前提に検討します。
+                企業公開情報との連携は、出典明示・利用条件・著作権を確認したうえで対応予定です。本文転載ではなく、企業IR・プレスリリース等の一般公開情報への参照・要約・出典表示を前提に検討します。
               </p>
               <div className="grid gap-2">
                 {FUTURE_SOURCES.map((source) => (

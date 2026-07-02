@@ -45,7 +45,8 @@ describe('SettingsPanel external information wording', () => {
     expect(html).toContain('株主総会情報・事業方針');
     expect(html).toContain('準備中');
     expect(html).toContain('企業公開情報との連携は、出典明示・利用条件・著作権を確認したうえで対応予定です。');
-    expect(html).toContain('本文転載ではなく、公開情報への参照・要約・出典表示を前提に検討します。');
+    expect(html).toContain('本文転載ではなく、企業IR・プレスリリース等の一般公開情報への参照・要約・出典表示を前提に検討します。');
+    expect(html).not.toContain('本文転載ではなく、公開情報への参照・要約・出典表示を前提に検討します。');
     expect(html).not.toContain('将来' + '拡張');
     expect(html).not.toContain('C:\\KIRIKO_Data');
     expect(html).not.toContain(['design-records-', 'monthly-preview'].join(''));

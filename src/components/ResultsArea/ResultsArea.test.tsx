@@ -267,10 +267,13 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('デモシナリオ導線');
     expect(html).toContain('今どこを説明しているか');
     expect(html).toContain('次に見る場所');
-    expect(html).toContain('公開意匠情報から、他社の商品化傾向、デザイン変化、出願活動の兆候を読み取り');
+    expect(html).toContain('公開意匠情報から、企業各社や特定他社がどの領域に着目しているか、商品開発傾向・デザイン変化・出願活動の兆候を読み取り');
     expect(html).toContain('デモで見るポイント');
     expect(html).toContain('このアプリの強み');
-    expect(html).toContain('公開意匠情報から、他社の商品化・デザイン・知財活動の兆候を読む');
+    expect(html).toContain('公開意匠情報から、企業各社や特定他社がどの領域に着目しているか、商品開発傾向・デザイン変化・出願活動の兆候を読む');
+    expect(html).toContain('公開意匠情報を主対象に分析できます');
+    expect(html).toContain('特許出願公開、企業IR、プレスリリース等の一般公開情報との照合も検討できます');
+    expect(html).not.toContain('公開情報を中心に分析できます');
     expect(html).toContain('実データ検証版の到達点');
     expect(html).toContain('現在の未接続・改善予定');
     expect(html).toContain('セキュリティ・共有前提');

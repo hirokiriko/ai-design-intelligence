@@ -51,7 +51,7 @@ const DEMO_SCENARIOS: Record<DemoScenarioKind, { label: string; steps: DemoScena
   ten_min: {
     label: '10分デモ',
     steps: [
-      { label: 'アプリの目的', href: '#demo-strengths', description: '公開意匠情報から他社の商品化傾向、デザイン変化、出願活動の兆候を読むための検討材料である点を説明します。' },
+      { label: 'アプリの目的', href: '#demo-strengths', description: '公開意匠情報から、企業各社や特定他社がどの領域に着目しているか、商品開発傾向・デザイン変化・出願活動の兆候を読むための検討材料である点を説明します。' },
       { label: 'データ範囲', href: '#overview', description: '公開サンプル版とローカル検証版の違い、また実データ利用時のsourceUpdateDateとgazetteDateの違いを確認します。' },
       { label: 'ランキング', href: '#rankings', description: '企業別、分類別、物品名別の相対的な分布を確認します。' },
       { label: 'Insight', href: '#ai-analysis', description: '参考傾向として確認できる示唆と、根拠件数を説明します。' },
@@ -461,7 +461,7 @@ function ExternalDemoGuide({
         <div>
           <h2 className="text-base font-bold text-ink">外部デモモード</h2>
           <p className="mt-1 text-sm leading-6 text-muted">
-            公開意匠情報から、他社の商品化傾向、デザイン変化、出願活動の兆候を読み取り、商品企画・知財戦略の検討材料として活用する分析デモです。企業別・分類別・物品名別の集計、ルールベースの参考分析、根拠意匠の確認を行います。
+            公開意匠情報から、企業各社や特定他社がどの領域に着目しているか、商品開発傾向・デザイン変化・出願活動の兆候を読み取り、商品企画・知財戦略の検討材料として活用する分析デモです。企業別・分類別・物品名別の集計、ルールベースの参考分析、根拠意匠の確認を行います。
           </p>
         </div>
         <Badge tone="accent">画面共有用</Badge>
@@ -501,11 +501,11 @@ function ExternalDemoGuide({
           <h3 className="text-sm font-bold text-ink">このアプリの強み</h3>
           <p className="mt-2 text-sm leading-6 text-muted">このデモで伝えたいことを、外部向けの検討材料として整理しています。</p>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-ink">
-            <li>公開意匠情報から、他社の商品化・デザイン・知財活動の兆候を読むための参考情報にします。</li>
+            <li>公開意匠情報から、企業各社や特定他社がどの領域に着目しているか、商品開発傾向・デザイン変化・出願活動の兆候を読むための参考情報にします。</li>
             <li>企業別、分類別、物品名別に公開意匠情報を俯瞰し、検討材料として確認できます。</li>
             <li>AI分析結果だけでなく、根拠となる意匠IDに戻れる点が特徴です。</li>
             <li>一部の意匠では、図面名・画像ファイル名などの公報メタデータまで確認できます。</li>
-            <li>社外秘情報を入力せず、公開情報を中心に分析できます。</li>
+            <li>社外秘情報を入力せず、公開意匠情報を主対象に分析できます。必要に応じて、特許出願公開、企業IR、プレスリリース等の一般公開情報との照合も検討できます。</li>
           </ul>
         </div>
         <div id="open-improvements" className="scroll-mt-24 rounded-md border border-line bg-panel p-4">

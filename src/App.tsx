@@ -55,7 +55,7 @@ export default function App() {
   const [records, setRecords] = useState<DesignRecord[]>([]);
   const [localJpoState, setLocalJpoState] = useState<LocalJpoState>({ status: 'sample', warnings: [], errors: [] });
   const [demoShowcaseState, setDemoShowcaseState] = useState<DemoShowcaseState>({ status: 'empty', warnings: [], errors: [] });
-  const [externalDemoMode, setExternalDemoMode] = useState(false);
+  const [externalDemoMode, setExternalDemoMode] = useState(true);
   const [analysisWarnings, setAnalysisWarnings] = useState<string[]>([]);
 
   const dataSource = localJpoState.status === 'loaded' ? localJpoState.load.dataSource : sampleDataSource;
@@ -186,6 +186,19 @@ export default function App() {
             ))}
           </div>
         </div>
+        {localJpoState.status === 'loaded' ? (
+          <div className="border-t border-line bg-teal-50">
+            <div className="mx-auto max-w-7xl px-4 py-3 text-sm leading-6 text-accent">
+              ローカル検証版です。実データはブラウザのメモリ上だけで読み込み、公開ビルドには含めていません。
+            </div>
+          </div>
+        ) : (
+          <div className="border-t border-amber-200 bg-amber-50">
+            <div className="mx-auto max-w-7xl px-4 py-3 text-sm leading-6 text-caution">
+              この公開デモはサンプルデータ版です。サンプルはすべて架空データで、実在企業・実在公報ではありません。特許庁実データを用いた検証版は画面共有でご説明します。
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="mx-auto grid max-w-7xl gap-5 px-4 py-6 lg:grid-cols-[390px_minmax(0,1fr)]">

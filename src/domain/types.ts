@@ -33,26 +33,85 @@ export interface AnalysisRequest {
   designKinds: DesignKind[];
   purposes: AnalysisPurpose[];
   departments: Department[];
+  includeUnresolvedApplicants?: boolean;
 }
 
 export interface DesignRecord {
   id: string;
+  sourceUpdateDate?: string;
+  gazetteDrawingKeys?: GazetteDrawingKeys | null;
   registrationNumber?: string;
   applicationNumber?: string;
+  applicationDate?: string;
+  registrationDate?: string;
   gazetteNumber?: string;
   gazetteDate: string;
   applicant: string;
+  applicants?: string[];
+  applicantsDisplay?: string;
+  applicantsNormalized?: string[];
+  unresolvedApplicants?: string[];
+  rightHolders?: string[];
+  unresolvedRightHolders?: string[];
+  creators?: string[];
+  agents?: string[];
+  priorityClaims?: string[];
+  rawKeys?: string[];
+  sourceFiles?: string[];
   businessDomain: string;
   designKind: DesignKind;
+  designKindInferred?: boolean;
   articleName: string;
   designClass: string;
   classLabel?: string;
   keywords: string[];
   designFeatures: string[];
+  designDescription?: string;
+  articleDescription?: string;
   summary?: string;
   imageRef?: string;
   sourceLabel: string;
-  isSample: true;
+  sourceDataset?: string;
+  isSample: boolean;
+}
+
+export interface GazetteDrawingKeys {
+  source: string;
+  issueDate?: string | null;
+  issueNumber?: string | null;
+  matchedBy?: string | null;
+  gazetteDateFromXml?: string | null;
+  gazetteDateMismatch?: boolean;
+  gazetteNumber?: string | null;
+  publicationDocumentId?: string | null;
+  hasDrawingRefs?: boolean;
+  drawingRefCount?: number;
+  drawingRefs?: GazetteDrawingRef[];
+  sourceXmlFile?: string | null;
+  note?: string;
+}
+
+export interface GazetteDrawingRef {
+  label?: string | null;
+  fileName?: string | null;
+  fileType?: string | null;
+  order?: number | null;
+  isRepresentativeCandidate?: boolean;
+  sourceXmlFile?: string | null;
+}
+
+export interface DemoShowcaseRecord {
+  id: string;
+  articleName: string;
+  partyLabel?: string;
+  registrationNumber?: string;
+  applicationNumber?: string;
+  gazetteDate?: string;
+  designClass?: string;
+  drawingRefCount: number;
+  drawingLabels: string[];
+  sourceXmlFile?: string | null;
+  whyDemoFriendly?: string;
 }
 
 export interface InsightMetric {
@@ -63,6 +122,7 @@ export interface InsightMetric {
 }
 
 export interface AnalysisInsight {
+  title: string;
   text: string;
   evidenceIds: string[];
   metric: InsightMetric;

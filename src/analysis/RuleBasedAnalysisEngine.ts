@@ -21,7 +21,7 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
     const companies =
       req.scope.mode === 'companies'
         ? req.scope.companies
-        : topEntries(countBy(records, (record) => record.applicant), 3).map(([company]) => company);
+        : topCompanyLabels(records, 3);
 
     const result: AnalysisResult = {
       request: req,
@@ -40,8 +40,9 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
 
   private createMarketAnalysis(records: DesignRecord[], dataAsOf: string): MarketAnalysis {
     const domains = topLabels(countBy(records, (record) => record.businessDomain), 3);
-    const companies = topLabels(countBy(records, (record) => record.applicant), 3);
-    const imageCount = records.filter((record) => record.designKind === 'image').length;
+    const companies = topCompanyLabels(records, 3);
+    const imageRecords = records.filter((record) => record.designKind === 'image');
+    const imageCount = imageRecords.length;
 
     return {
       trends: makeInsight({
@@ -49,16 +50,15 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
         text:
           records.length === 0
             ? '対象条件に合う市場全体のサンプル意匠はありません。'
-            : `${domains.join('、')}を中心に、画像意匠を含むデジタル接点の意匠が目立ちます。`,
+            : `${domains.join('、')}を中心に、画像意匠を含むデジタル接点の意匠に参考傾向が見られます。継続観察が必要です。`,
         metric: metric('対象意匠件数', records.length, '件', `${dataAsOf}基準`),
       }),
       emergingDomains: makeInsight({
-        records: findRecordsByTerms(records, DIGITAL_TERMS),
-        fallbackRecords: records,
+        records: imageRecords,
         text:
           imageCount === 0
             ? '画像意匠の該当は少なく、物品・空間意匠中心の傾向です。'
-            : `画像意匠が${imageCount}件あり、AI・IoTや遠隔操作に関わる画面意匠の探索余地があります。`,
+            : `画像意匠が${imageCount}件あり、AI・IoTや遠隔操作に関わる画面意匠の探索余地がある可能性があります。`,
         metric: metric('画像意匠件数', imageCount, '件', `${dataAsOf}基準`),
       }),
       companyMoves: makeInsight({
@@ -66,7 +66,7 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
         text:
           companies.length === 0
             ? '企業別の動きは確認できません。'
-            : `${companies.join('、')}がサンプル内で相対的に多く、複数領域へ意匠展開しています。`,
+            : `${companies.join('、')}がサンプル内で相対的に多く、複数領域へ意匠展開している可能性があります。`,
         metric: metric('対象企業数', new Set(records.map((record) => record.applicant)).size, '社'),
       }),
     };
@@ -87,6 +87,10 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
     const digitalRecords = findRecordsByTerms(records, DIGITAL_TERMS);
     const purposeLabels = req.purposes.map((purpose) => PURPOSE_LABELS[purpose]).join('、');
     const departmentLabels = req.departments.map((department) => DEPARTMENT_LABELS[department]).join('、');
+    const designDirectionKeywords = topKeywords(records, 4);
+    const meaningfulKeywordCount = uniqueKeywords(records).length;
+    const designDirectionRecords =
+      meaningfulKeywordCount >= 3 ? records.filter((record) => recordHasAnyKeyword(record, designDirectionKeywords)) : [];
 
     return {
       company,
@@ -96,7 +100,7 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
           text:
             records.length === 0
               ? `${company}の該当サンプル意匠はありません。`
-              : `${company}は${topDomains.join('、')}で意匠展開が多く、${topClasses.join('、')}が確認できます。`,
+              : `${company}は${topDomains.join('、')}で意匠展開が相対的に多い傾向が見られ、${topClasses.join('、')}が確認できます。`,
           metric: metric('企業別対象件数', records.length, '件'),
         }),
         shapeChange: makeInsight({
@@ -105,16 +109,16 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
           text:
             shapeRecords.length === 0
               ? '形状変化を示す特徴語は限定的です。'
-              : `${topTerms(shapeRecords, SHAPE_TERMS).join('、')}などの形状特徴が集中的に見られます。`,
+              : `${topTerms(shapeRecords, SHAPE_TERMS).join('、')}などの形状特徴が参考傾向として見られます。`,
           metric: metric('形状特徴の該当件数', shapeRecords.length, '件'),
         }),
         designDirection: makeInsight({
-          records,
+          records: designDirectionRecords,
           text:
-            records.length === 0
-              ? 'デザイン方向は判断できません。'
-              : `${topKeywords(records, 4).join('、')}を軸に、利用シーンに寄せたデザイン方向が見られます。`,
-          metric: metric('抽出キーワード数', uniqueKeywords(records).length, '語'),
+            designDirectionRecords.length === 0
+              ? '有効な特徴語が少ないため、デザイン方向は参考表示を控えています。'
+              : `${designDirectionKeywords.join('、')}を軸に、利用シーンに寄せたデザイン方向の可能性があります。追加期間での確認が必要です。`,
+          metric: metric('抽出キーワード数', designDirectionRecords.length > 0 ? meaningfulKeywordCount : 0, '語'),
         }),
       },
       dxDevTrend: {
@@ -130,7 +134,7 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
           text:
             digitalRecords.length === 0
               ? 'デジタルサービス接点を示すサンプルは限定的です。'
-              : `遠隔・クラウド・操作画面などの接点が${digitalRecords.length}件あり、サービス化の兆候があります。`,
+              : `遠隔・クラウド・操作画面などの接点が${digitalRecords.length}件あり、サービス化の兆候が見られます。`,
           metric: metric('デジタル接点の該当件数', digitalRecords.length, '件'),
         }),
         aiIotTrend: makeInsight({
@@ -139,7 +143,7 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
           text:
             findRecordsByTerms(records, ['AI', 'IoT', 'センサー', '予兆']).length === 0
               ? 'AI・IoT関連の明示的な示唆は限定的です。'
-              : 'AI・IoT、センサー、予兆検知に関する意匠があり、機能価値を外観・画面で伝える方向です。',
+              : 'AI・IoT、センサー、予兆検知に関する意匠があり、機能価値を外観・画面で伝える方向の可能性があります。',
           metric: metric('AI・IoT関連件数', findRecordsByTerms(records, ['AI', 'IoT', 'センサー', '予兆']).length, '件'),
         }),
       },
@@ -178,7 +182,7 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
           text:
             topDomains.length === 0
               ? '集中領域は確認できません。'
-              : `集中領域は${topDomains.join('、')}です。${departmentLabels}向けには、この領域の継続監視が有効です。`,
+              : `集中領域の参考候補は${topDomains.join('、')}です。${departmentLabels}向けには、この領域の継続監視が有効です。`,
           metric: metric('集中領域数', topDomains.length, '領域'),
         }),
         strengthening: makeInsight({
@@ -188,9 +192,9 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
           metric: metric('直近1年の件数', recentRecords.length, '件'),
         }),
         whitespace: makeInsight({
-          records,
+          records: [],
           text: describeWhitespace(records),
-          metric: metric('未出現領域数', whitespaceDomains(records).length, '領域'),
+          metric: metric('未出現領域数', 0, '領域'),
         }),
       },
       ipStrategy: {
@@ -205,7 +209,7 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
         designFilingDirection: makeInsight({
           records: recentRecords,
           fallbackRecords: records,
-          text: `${purposeLabels}の目的では、直近の増加領域を優先して、物品・画像・空間の組み合わせ出願を検討する構成が考えられます。`,
+          text: `${purposeLabels}の目的では、このデータ範囲で相対的に多い領域を参考に、物品・画像・空間の組み合わせ出願を検討する構成が考えられます。追加期間での確認が必要です。`,
           metric: metric('直近1年の出願検討材料', recentRecords.length, '件'),
         }),
         patentReference: makeInsight({
@@ -241,14 +245,15 @@ function makeInsight({
   text: string;
   metric: InsightMetric;
 }): AnalysisInsight {
-  const evidenceSource = records.length > 0 ? records : fallbackRecords;
+  const evidenceSource = records.length > 0 ? records : metric.value > 0 ? fallbackRecords : [];
   const evidenceIds = evidenceSource.slice(0, 5).map((record) => record.id);
 
   return {
+    title: metric.label,
     text,
     evidenceIds,
     metric,
-    confidence: confidenceFor(evidenceSource.length),
+    confidence: confidenceFor(evidenceSource.length, metric.value, evidenceIds.length),
   };
 }
 
@@ -256,9 +261,10 @@ function metric(label: string, value: number, unit?: string, comparison?: string
   return { label, value, unit, comparison };
 }
 
-function confidenceFor(count: number): AnalysisInsight['confidence'] {
-  if (count >= 6) return 'high';
-  if (count >= 3) return 'medium';
+function confidenceFor(count: number, metricValue: number, evidenceIdCount: number): AnalysisInsight['confidence'] {
+  if (metricValue === 0 || count === 0 || evidenceIdCount === 0) return 'low';
+  if (count >= 20 && metricValue >= 5 && evidenceIdCount >= 5) return 'high';
+  if (count >= 5 && evidenceIdCount >= 3) return 'medium';
   return 'low';
 }
 
@@ -278,12 +284,29 @@ function topLabels(map: Map<string, number>, limit: number): string[] {
   return topEntries(map, limit).map(([label]) => label);
 }
 
+function topCompanyLabels(records: DesignRecord[], limit: number): string[] {
+  const namedCompanies = topLabels(countBy(records.filter((record) => !isUnresolvedParty(record.applicant)), (record) => record.applicant), limit);
+  if (namedCompanies.length >= limit) return namedCompanies;
+
+  const unresolvedCompanies = topLabels(countBy(records.filter((record) => isUnresolvedParty(record.applicant)), (record) => record.applicant), limit);
+  return [...namedCompanies, ...unresolvedCompanies].slice(0, limit);
+}
+
+function isUnresolvedParty(value: string): boolean {
+  return /^未解決コード:\s*\d{5,}$/i.test(value.trim()) || /^(code:)?\d{5,}$/i.test(value.trim());
+}
+
 function topKeywords(records: DesignRecord[], limit: number): string[] {
-  return topLabels(countBy(records.flatMap((record) => [...record.keywords, ...record.designFeatures]), (value) => value), limit);
+  return topLabels(countBy(records.flatMap((record) => [...record.keywords, ...record.designFeatures]).filter((value) => !isStopWord(value)), (value) => value), limit);
 }
 
 function uniqueKeywords(records: DesignRecord[]): string[] {
-  return [...new Set(records.flatMap((record) => [...record.keywords, ...record.designFeatures]))];
+  return [...new Set(records.flatMap((record) => [...record.keywords, ...record.designFeatures]).filter((value) => !isStopWord(value)))];
+}
+
+function recordHasAnyKeyword(record: DesignRecord, keywords: string[]): boolean {
+  const terms = [...record.keywords, ...record.designFeatures].filter((value) => !isStopWord(value));
+  return keywords.some((keyword) => terms.includes(keyword));
 }
 
 function findRecordsByTerms(records: DesignRecord[], terms: string[]): DesignRecord[] {
@@ -328,8 +351,8 @@ function describeImageTrend(
   if (totalCount === 0) return '画像意匠の傾向は判断できません。';
   const recentImage = recentRecords.filter((record) => record.designKind === 'image').length;
   const olderImage = olderRecords.filter((record) => record.designKind === 'image').length;
-  const direction = recentImage >= olderImage ? '直近側で維持または増加' : '過去側の比重が高い';
-  return `画像意匠は${imageCount}件（${ratio(imageCount, totalCount)}%）で、${direction}しています。`;
+  const direction = recentImage >= olderImage ? '直近側でも確認できます' : '過去側の比重が高く見えます';
+  return `画像意匠は${imageCount}件（${ratio(imageCount, totalCount)}%）で、${direction}。追加期間での確認が必要です。`;
 }
 
 function describeTermDirection(records: DesignRecord[], terms: string[], label: string): string {
@@ -339,14 +362,14 @@ function describeTermDirection(records: DesignRecord[], terms: string[], label: 
 }
 
 function describeStrengthening(recentRecords: DesignRecord[], olderRecords: DesignRecord[]): string {
-  if (recentRecords.length === 0) return '直近1年で強化された領域は確認できません。';
+  if (recentRecords.length === 0) return '直近1年で相対的に多い領域は確認できません。';
   const recentTop = topLabels(countBy(recentRecords, (record) => record.businessDomain), 2);
   const olderTop = topLabels(countBy(olderRecords, (record) => record.businessDomain), 2);
   const shifted = recentTop.filter((domain) => !olderTop.includes(domain));
   if (shifted.length > 0) {
-    return `直近1年では${shifted.join('、')}が相対的に強化されています。`;
+    return `このデータ範囲では${shifted.join('、')}が相対的に多く確認できます。追加期間での確認が必要です。`;
   }
-  return `直近1年でも${recentTop.join('、')}の継続出願が目立ちます。`;
+  return `直近1年でも${recentTop.join('、')}が参考傾向として確認できます。継続観察が必要です。`;
 }
 
 function whitespaceDomains(records: DesignRecord[]): string[] {
@@ -356,9 +379,70 @@ function whitespaceDomains(records: DesignRecord[]): string[] {
 
 function describeWhitespace(records: DesignRecord[]): string {
   const whitespace = whitespaceDomains(records);
-  if (records.length === 0) return '対象データがないため、未開拓領域は判断できません。';
-  if (whitespace.length === 0) return '主要サンプル領域を広くカバーしており、明確な空白領域は限定的です。';
-  return `${whitespace.join('、')}はサンプル上の出現がなく、未開拓領域として監視できます。`;
+  if (records.length === 0) return '対象データがないため、確認できない領域の参考候補は判断できません。';
+  if (whitespace.length === 0) return 'このデータ範囲では主要候補領域を広く確認できます。確認できない領域の参考表示は控えています。';
+  return `${whitespace.join('、')}はこのデータ範囲では確認できませんでしたが、出願がないこと自体を既存record.idで裏付けられないため参考表示を控えています。`;
+}
+
+const STOP_WORDS = new Set([
+  '部分',
+  '意匠登録',
+  '本物品',
+  '実線',
+  '参考図',
+  '正面図',
+  '背面図',
+  '左側面図',
+  '右側面図',
+  '平面図',
+  '底面図',
+  '状態',
+  '使用状態',
+  '図',
+  '画像図',
+  '変化',
+  '形状',
+  '特定',
+  'in',
+  'on',
+  'of',
+  'for',
+  'to',
+  'and',
+  'or',
+  'the',
+  'a',
+  'an',
+  'as',
+  'by',
+  'with',
+  'from',
+  'show',
+  'design',
+  'characteristic',
+  'portion',
+  'thereof',
+  'outermost',
+  'view',
+  'front',
+  'back',
+  'left',
+  'right',
+  'top',
+  'bottom',
+  'figure',
+  'fig',
+  'perspective',
+  'shown',
+  'solid',
+  'broken',
+  'line',
+  'lines',
+]);
+
+function isStopWord(value: string): boolean {
+  const normalized = value.trim().toLocaleLowerCase('en-US');
+  return STOP_WORDS.has(normalized) || /^\d+$/.test(normalized);
 }
 
 export function countByDesignKind(records: DesignRecord[]): Record<DesignKind, number> {

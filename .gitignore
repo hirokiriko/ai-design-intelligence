@@ -9,7 +9,13 @@ tunnel*.err.log
 .tools/
 .env
 .env.*
+!.env.example
+.env.local
 *.local
+local-data/
+*.local.json
+*.real.json
+design-records-*.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

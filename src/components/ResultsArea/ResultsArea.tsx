@@ -1,6 +1,14 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { DEPARTMENT_LABELS, DESIGN_KIND_LABELS, PERIOD_LABELS, PURPOSE_LABELS } from '../../domain/labels';
-import type { AnalysisInsight, AnalysisRequest, AnalysisResult, CompanyAnalysis, DemoShowcaseRecord, DesignRecord } from '../../domain/types';
+import type {
+  AnalysisInsight,
+  AnalysisPurpose,
+  AnalysisRequest,
+  AnalysisResult,
+  CompanyAnalysis,
+  DemoShowcaseRecord,
+  DesignRecord,
+} from '../../domain/types';
 import { designKindSummary } from '../../analysis/RuleBasedAnalysisEngine';
 import { displayPartyLabel, type LocalJpoDatasetSummary, type RankedItem } from '../../data/LocalJpoJsonDataSource';
 import { Badge } from '../common/Badge';
@@ -16,6 +24,7 @@ interface ResultsAreaProps {
   analysisWarnings: string[];
   externalDemoMode: boolean;
   demoShowcaseRecords: DemoShowcaseRecord[];
+  localAnalysisPackPanel: ReactNode | null;
 }
 
 type DemoScenarioKind = 'three_min' | 'ten_min';
@@ -36,6 +45,8 @@ interface PublicSampleSummary {
   topParties: RankedItem[];
   designKindCounts: RankedItem[];
 }
+
+const INITIAL_EVIDENCE_LIMIT = 8;
 
 const DEMO_SCENARIOS: Record<DemoScenarioKind, { label: string; steps: DemoScenarioStep[] }> = {
   three_min: {
@@ -74,11 +85,13 @@ export function ResultsArea({
   analysisWarnings,
   externalDemoMode,
   demoShowcaseRecords,
+  localAnalysisPackPanel,
 }: ResultsAreaProps) {
   const [presenterMode, setPresenterMode] = useState(true);
   const [demoScenario, setDemoScenario] = useState<DemoScenarioKind>('three_min');
   const [presenterStepIndex, setPresenterStepIndex] = useState(0);
   const [highlightedEvidenceId, setHighlightedEvidenceId] = useState<string | null>(null);
+  const [expandedEvidenceResult, setExpandedEvidenceResult] = useState<AnalysisResult | null>(null);
   const activeScenario = DEMO_SCENARIOS[demoScenario];
   const activeStepIndex = Math.min(presenterStepIndex, activeScenario.steps.length - 1);
   const isPresenterMode = externalDemoMode && presenterMode;
@@ -87,60 +100,64 @@ export function ResultsArea({
     externalDemoMode && demoShowcaseRecords.length === 0 && publicSampleSummary ? buildSampleDemoShowcaseRecords(allRecords) : [];
   const effectiveDemoShowcaseRecords = demoShowcaseRecords.length > 0 ? demoShowcaseRecords : derivedSampleShowcaseRecords;
   const demoMatches = externalDemoMode ? resolveDemoShowcaseMatches(effectiveDemoShowcaseRecords, allRecords) : [];
-  const demoRecordIds = demoMatches.map((match) => match.record?.id).filter((id): id is string => Boolean(id));
-  const evidenceRecords = result || demoRecordIds.length > 0 ? collectEvidenceRecords(result, allRecords, demoRecordIds) : [];
+  const evidenceRecords = result ? collectEvidenceRecords(result, allRecords) : [];
+  const showAllEvidence = Boolean(result && expandedEvidenceResult === result);
+  const visibleEvidenceRecords = showAllEvidence ? evidenceRecords : evidenceRecords.slice(0, INITIAL_EVIDENCE_LIMIT);
   const warnings = [...localJpoWarnings, ...analysisWarnings];
 
   return (
     <main className="space-y-5">
-      {externalDemoMode ? <DemoNavigation /> : null}
-      {externalDemoMode ? (
-        <DemoReadinessPanel
-          summary={localJpoSummary}
-          sampleSummary={publicSampleSummary}
-          demoShowcaseCount={effectiveDemoShowcaseRecords.length}
-          result={result}
-        />
-      ) : null}
-      {externalDemoMode ? (
-        <PresenterModePanel
-          presenterMode={presenterMode}
-          onPresenterModeChange={setPresenterMode}
-          demoScenario={demoScenario}
-          onDemoScenarioChange={(nextScenario) => {
-            setDemoScenario(nextScenario);
-            setPresenterStepIndex(0);
-          }}
-          activeScenario={activeScenario}
-          activeStepIndex={activeStepIndex}
-        />
-      ) : null}
-      {isPresenterMode ? (
-        <DemoScenarioPanel scenario={activeScenario} activeStepIndex={activeStepIndex} onStepSelect={setPresenterStepIndex} />
-      ) : null}
-      {externalDemoMode ? (
-        <ExternalDemoGuide summary={localJpoSummary} sampleSummary={publicSampleSummary} demoShowcaseCount={effectiveDemoShowcaseRecords.length} />
-      ) : null}
-      {externalDemoMode && effectiveDemoShowcaseRecords.length > 0 ? (
-        <DemoShowcasePanel
-          records={effectiveDemoShowcaseRecords}
-          matches={demoMatches}
-          presenterMode={isPresenterMode}
-          sampleMode={!localJpoSummary && demoShowcaseRecords.length === 0}
-          onOpenEvidence={setHighlightedEvidenceId}
-        />
-      ) : null}
-
-      <section id="overview" className="scroll-mt-24 rounded-lg border border-line bg-white p-5 shadow-soft">
+      <section
+        id="ai-analysis"
+        className="scroll-mt-6 rounded-lg border-2 border-teal-200 bg-white p-5 shadow-soft focus:outline-none sm:p-6"
+        tabIndex={-1}
+      >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-bold text-ink">入力条件</h2>
-            <p className="mt-1 text-sm text-muted">現在の画面入力をそのまま分析条件として使用します。</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-accent">分析アウトプット</p>
+            <h2 className="mt-1 text-xl font-bold text-ink">{result ? '今回わかったこと' : '分析すると得られること'}</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              {result ? `データ基準日 ${result.dataAsOf} / 対象 ${records.length}件 / ${designKindSummary(records)}` : '重要な示唆を先に読み、必要なときだけ詳細と根拠意匠を開けます。'}
+            </p>
+            {localJpoSummary ? (
+              <p className="mt-1 text-sm text-caution">
+                ローカル実データでは意匠種別を designClass・articleName・description から暫定推定しています。
+              </p>
+            ) : null}
           </div>
-          <Badge tone={localJpoSummary ? 'warning' : 'accent'}>
-            {localJpoSummary ? 'ローカル実データ（開発用）' : '公開サンプルデータ版'}
-          </Badge>
+          <Badge tone="accent">ルールベース分析</Badge>
         </div>
+
+        {isRunning ? <p className="mt-6 rounded-md bg-slate-50 p-4 font-semibold text-muted">分析中...</p> : null}
+        {!isRunning && !result ? <AnalysisStartGuide /> : null}
+        {result ? <ExecutiveSummary result={result} recordCount={records.length} /> : null}
+
+        {result ? (
+          <details className="mt-6 rounded-lg border border-line bg-panel p-4">
+            <summary className="cursor-pointer font-bold text-ink">選択した目的別の詳細分析を見る</summary>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              {result.request.purposes.map((purpose) => PURPOSE_LABELS[purpose]).join('、')}
+            </p>
+            {result.market ? (
+              <MarketView market={result.market} allRecords={allRecords} externalDemoMode={externalDemoMode} />
+            ) : null}
+            {result.companies.map((company) => (
+              <CompanyView
+                key={company.company}
+                analysis={company}
+                allRecords={allRecords}
+                externalDemoMode={externalDemoMode}
+                purposes={result.request.purposes}
+              />
+            ))}
+          </details>
+        ) : null}
+
+        {result ? <p className="mt-5 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-caution">{result.disclaimer}</p> : null}
+      </section>
+
+      <details id="overview" className="scroll-mt-6 rounded-lg border border-line bg-white p-4 shadow-soft">
+        <summary className="cursor-pointer font-bold text-ink">現在の分析条件を確認</summary>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <SummaryItem label="分析範囲" value={request.scope.mode === 'all_classes' ? '全意匠分類' : request.scope.companies.join('、') || '未指定'} />
           <SummaryItem label="商品・事業領域" value={request.productDomain?.trim() || '指定なし'} />
@@ -150,53 +167,21 @@ export function ResultsArea({
           <SummaryItem label="出力部門" value={request.departments.map((department) => DEPARTMENT_LABELS[department]).join('、') || '未選択'} />
           <SummaryItem label="未解決コード" value={request.includeUnresolvedApplicants ?? true ? '含める' : '除外'} />
         </dl>
-      </section>
+      </details>
 
-      {localJpoSummary ? (
-        <LocalJpoSummaryPanel summary={localJpoSummary} externalDemoMode={externalDemoMode} demoShowcaseCount={effectiveDemoShowcaseRecords.length} />
-      ) : publicSampleSummary ? (
-        <PublicSampleSummaryPanel summary={publicSampleSummary} />
-      ) : null}
       {warnings.length > 0 ? <WarningPanel warnings={warnings} /> : null}
 
-      <section id="ai-analysis" className="scroll-mt-24 rounded-lg border border-line bg-white p-5 shadow-soft">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-bold text-ink">分析結果</h2>
-            <p className="mt-1 text-sm text-muted">
-              {result
-                ? `dataAsOf ${result.dataAsOf} 基準 / 対象 ${records.length}件 / ${designKindSummary(records)}`
-                : '分析を開始すると、ここにルールベースの示唆が表示されます。'}
-            </p>
-            {localJpoSummary ? (
-              <p className="mt-1 text-sm text-caution">
-                ローカル実データでは意匠種別を designClass・articleName・description から暫定推定しています。
-              </p>
-            ) : null}
+      {result && evidenceRecords.length > 0 ? (
+        <section id="evidence-details" className="scroll-mt-6 rounded-lg border border-line bg-white p-5 shadow-soft">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-ink">根拠意匠を確認</h2>
+              <p className="mt-1 text-sm text-muted">示唆の根拠となった意匠を、必要なものだけ展開して確認できます。</p>
+            </div>
+            <Badge tone="accent">{evidenceRecords.length}件</Badge>
           </div>
-          {result ? <Badge tone="accent">generatedBy: {result.generatedBy}</Badge> : null}
-        </div>
-
-        {isRunning ? <p className="mt-6 rounded-md bg-slate-50 p-4 font-semibold text-muted">分析中...</p> : null}
-        {!isRunning && !result ? <EmptyState /> : null}
-        {result?.market ? <MarketView market={result.market} allRecords={allRecords} externalDemoMode={externalDemoMode} /> : null}
-        {result?.companies.map((company) => (
-          <CompanyView key={company.company} analysis={company} allRecords={allRecords} externalDemoMode={externalDemoMode} />
-        ))}
-
-        {result ? (
-          <p className="mt-5 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-caution">{result.disclaimer}</p>
-        ) : null}
-      </section>
-
-      <section id="evidence-details" className="scroll-mt-24 rounded-lg border border-line bg-white p-5 shadow-soft">
-        <h2 className="text-base font-bold text-ink">根拠意匠の詳細</h2>
-        <p className="mt-1 text-sm text-muted">各示唆の evidenceIds に含まれる意匠をクリックまたは展開して確認できます。</p>
-        {evidenceRecords.length === 0 ? (
-          <p className="mt-4 rounded-md bg-slate-50 p-4 text-sm text-muted">分析後に根拠意匠が表示されます。</p>
-        ) : (
           <div className="mt-4 grid gap-3">
-            {evidenceRecords.map((record) => (
+            {visibleEvidenceRecords.map((record) => (
               <EvidenceRecord
                 key={record.id}
                 record={record}
@@ -206,10 +191,75 @@ export function ResultsArea({
               />
             ))}
           </div>
-        )}
-      </section>
-      {externalDemoMode ? <DemoClosingSummaryPanel summary={localJpoSummary} sampleSummary={publicSampleSummary} /> : null}
-      {externalDemoMode ? <DemoNoticePanel /> : null}
+          {evidenceRecords.length > INITIAL_EVIDENCE_LIMIT ? (
+            <button
+              type="button"
+              className="mt-4 w-full rounded-md border border-line bg-panel px-4 py-2 text-sm font-bold text-ink"
+              onClick={() => setExpandedEvidenceResult(showAllEvidence ? null : result)}
+            >
+              {showAllEvidence
+                ? `最初の${INITIAL_EVIDENCE_LIMIT}件だけ表示`
+                : `残り${evidenceRecords.length - INITIAL_EVIDENCE_LIMIT}件の根拠意匠を表示`}
+            </button>
+          ) : null}
+        </section>
+      ) : null}
+
+      <details className="rounded-lg border border-line bg-white p-4 shadow-soft">
+        <summary className="cursor-pointer rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          <div>
+            <div className="text-sm font-bold text-ink">任意：データ・デモ・技術情報</div>
+            <p className="mt-1 text-xs leading-5 text-muted">データ範囲、画面共有用の案内、未接続事項を確認するときだけ開いてください。</p>
+          </div>
+        </summary>
+        <div className="mt-4 space-y-5 border-t border-line pt-4">
+          {localJpoSummary ? (
+            <LocalJpoSummaryPanel summary={localJpoSummary} externalDemoMode={externalDemoMode} demoShowcaseCount={effectiveDemoShowcaseRecords.length} />
+          ) : publicSampleSummary ? (
+            <PublicSampleSummaryPanel summary={publicSampleSummary} />
+          ) : null}
+          {localAnalysisPackPanel}
+          {externalDemoMode ? <DemoNavigation /> : null}
+          {externalDemoMode ? (
+            <DemoReadinessPanel
+              summary={localJpoSummary}
+              sampleSummary={publicSampleSummary}
+              demoShowcaseCount={effectiveDemoShowcaseRecords.length}
+              result={result}
+            />
+          ) : null}
+          {externalDemoMode ? (
+            <PresenterModePanel
+              presenterMode={presenterMode}
+              onPresenterModeChange={setPresenterMode}
+              demoScenario={demoScenario}
+              onDemoScenarioChange={(nextScenario) => {
+                setDemoScenario(nextScenario);
+                setPresenterStepIndex(0);
+              }}
+              activeScenario={activeScenario}
+              activeStepIndex={activeStepIndex}
+            />
+          ) : null}
+          {isPresenterMode ? (
+            <DemoScenarioPanel scenario={activeScenario} activeStepIndex={activeStepIndex} onStepSelect={setPresenterStepIndex} />
+          ) : null}
+          {externalDemoMode ? (
+            <ExternalDemoGuide summary={localJpoSummary} sampleSummary={publicSampleSummary} demoShowcaseCount={effectiveDemoShowcaseRecords.length} />
+          ) : null}
+          {externalDemoMode && effectiveDemoShowcaseRecords.length > 0 ? (
+            <DemoShowcasePanel
+              records={effectiveDemoShowcaseRecords}
+              matches={demoMatches}
+              presenterMode={isPresenterMode}
+              sampleMode={!localJpoSummary && demoShowcaseRecords.length === 0}
+              onOpenEvidence={setHighlightedEvidenceId}
+            />
+          ) : null}
+          {externalDemoMode ? <DemoClosingSummaryPanel summary={localJpoSummary} sampleSummary={publicSampleSummary} /> : null}
+          {externalDemoMode ? <DemoNoticePanel /> : null}
+        </div>
+      </details>
     </main>
   );
 }
@@ -223,12 +273,169 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyState() {
+function AnalysisStartGuide() {
   return (
-    <div className="mt-6 rounded-md border border-dashed border-line bg-panel p-6 text-sm text-muted">
-      条件を確認して「AI分析開始」を実行してください。
+    <div className="mt-6">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          ['注力領域', 'どの企業・分類・物品に意匠が集まっているか'],
+          ['変化の兆候', '画像意匠、UI、形状やサービス接点がどう変わっているか'],
+          ['戦略の材料', 'ポートフォリオと出願戦略で次に確認すべきこと'],
+        ].map(([title, description]) => (
+          <div key={title} className="rounded-lg border border-line bg-panel p-4">
+            <h3 className="text-sm font-bold text-ink">{title}</h3>
+            <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 rounded-md border border-teal-200 bg-teal-50 p-3 text-sm font-semibold leading-6 text-accent">
+        左の「分析条件を決める」で対象と目的を確認し、「AI分析開始」を押すと意匠動向を分析します。
+      </p>
     </div>
   );
+}
+
+interface PriorityInsight {
+  label: string;
+  insight: AnalysisInsight;
+}
+
+function ExecutiveSummary({ result, recordCount }: { result: AnalysisResult; recordCount: number }) {
+  const priorityInsights = buildPriorityInsights(result);
+  if (priorityInsights.length === 0) {
+    return (
+      <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-caution" role="status">
+        <p className="font-bold">{recordCount === 0 ? 'この条件に一致する意匠はありません。' : '根拠付きの示唆を表示できませんでした。'}</p>
+        <p className="mt-1">企業名、商品・事業領域、期間、意匠種別を見直して、もう一度分析してください。</p>
+      </div>
+    );
+  }
+
+  return (
+    <section className="mt-6" aria-label="重要な分析結果">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h3 className="text-base font-bold text-ink">重要な示唆</h3>
+          <p className="mt-1 text-sm text-muted">選択した分析目的に沿って、最初に確認したい結果を3件まで表示します。</p>
+        </div>
+        <Badge tone="neutral">{priorityInsights.length}件</Badge>
+      </div>
+      <div className="mt-4 grid gap-3 xl:grid-cols-3">
+        {priorityInsights.map(({ label, insight }) => {
+          const firstEvidenceId = insight.evidenceIds[0];
+          return (
+            <article key={label} className="rounded-lg border border-teal-200 bg-teal-50/50 p-4" data-testid="priority-insight">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <h4 className="text-sm font-bold text-ink">{label}</h4>
+                <Badge tone={insight.confidence === 'high' ? 'accent' : insight.confidence === 'medium' ? 'warning' : 'neutral'}>
+                  信頼度：{confidenceLabel(insight.confidence)}
+                </Badge>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-ink">{insight.text}</p>
+              <div className="mt-3 rounded-md border border-line bg-white p-3 text-sm">
+                <span className="block text-xs font-bold text-muted">根拠となる数値</span>
+                <span className="mt-1 block font-semibold text-ink">
+                  {insight.metric.label}: {formatCount(insight.metric.value)}{insight.metric.unit ?? ''}
+                </span>
+              </div>
+              {firstEvidenceId ? (
+                <a className="mt-3 inline-flex text-sm font-bold text-accent underline" href={`#${evidenceDomId(firstEvidenceId)}`}>
+                  根拠意匠を確認する
+                </a>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function buildPriorityInsights(result: AnalysisResult): PriorityInsight[] {
+  const groups = result.request.purposes.map((purpose) => insightsForPurpose(result, purpose).filter(({ insight }) => shouldShowInsight(insight)));
+  const selected: PriorityInsight[] = [];
+  const usedInsights = new Set<AnalysisInsight>();
+
+  for (const group of groups) {
+    const strongest = [...group]
+      .filter(({ insight }) => !usedInsights.has(insight))
+      .sort((left, right) => insightStrength(right.insight) - insightStrength(left.insight))[0];
+    if (!strongest) continue;
+    selected.push(strongest);
+    usedInsights.add(strongest.insight);
+    if (selected.length === 3) return selected;
+  }
+
+  for (const candidate of groups.flat()) {
+    if (usedInsights.has(candidate.insight)) continue;
+    selected.push(candidate);
+    usedInsights.add(candidate.insight);
+    if (selected.length === 3) return selected;
+  }
+
+  return selected;
+}
+
+function insightsForPurpose(result: AnalysisResult, purpose: AnalysisPurpose): PriorityInsight[] {
+  const candidates: PriorityInsight[] = [];
+  const add = (label: string, insight: AnalysisInsight) => candidates.push({ label, insight });
+
+  if (purpose === 'market_trend' && result.market) {
+    add('市場・商品トレンド', result.market.trends);
+    add('新商品領域', result.market.emergingDomains);
+    add('企業動向', result.market.companyMoves);
+  }
+
+  for (const company of result.companies) {
+    if (hasAnyPurpose([purpose], ['market_trend', 'company_trend', 'competitor_design'])) {
+      add(`${company.company}：最近の意匠展開領域`, company.designTrend.domains);
+      add(`${company.company}：形状変化`, company.designTrend.shapeChange);
+      add(`${company.company}：デザイン方向`, company.designTrend.designDirection);
+    }
+    if (purpose === 'dx_dev') {
+      add(`${company.company}：画像意匠の参考領域`, company.dxDevTrend.imageDesignGrowth);
+      add(`${company.company}：デジタルサービス展開`, company.dxDevTrend.digitalService);
+      add(`${company.company}：AI・IoT関連傾向`, company.dxDevTrend.aiIotTrend);
+    }
+    if (purpose === 'design_change') {
+      add(`${company.company}：サイズ・形状変化`, company.designChange.sizeTrend);
+      add(`${company.company}：薄型化`, company.designChange.thinning);
+      add(`${company.company}：操作性変化`, company.designChange.usability);
+      add(`${company.company}：UI変化`, company.designChange.uiChange);
+    }
+    if (purpose === 'ui_design') {
+      add(`${company.company}：UI変化`, company.designChange.uiChange);
+    }
+    if (purpose === 'portfolio') {
+      add(`${company.company}：集中領域`, company.portfolio.focusAreas);
+      add(`${company.company}：相対的に多い領域`, company.portfolio.strengthening);
+      add(`${company.company}：確認できない領域の参考候補`, company.portfolio.whitespace);
+    }
+    if (purpose === 'filing_strategy') {
+      add(`${company.company}：意匠保護領域`, company.ipStrategy.designProtectionAreas);
+      add(`${company.company}：意匠出願戦略`, company.ipStrategy.designFilingDirection);
+      add(`${company.company}：特許出願検討`, company.ipStrategy.patentReference);
+      add(`${company.company}：商標保護検討`, company.ipStrategy.trademarkReference);
+      add(`${company.company}：著作権保護検討`, company.ipStrategy.copyrightReference);
+    }
+  }
+
+  return candidates;
+}
+
+function insightStrength(insight: AnalysisInsight): number {
+  const confidenceScore = insight.confidence === 'high' ? 3 : insight.confidence === 'medium' ? 2 : 1;
+  return confidenceScore * 1000 + insight.evidenceIds.length;
+}
+
+function hasAnyPurpose(selected: AnalysisPurpose[], candidates: AnalysisPurpose[]): boolean {
+  return candidates.some((purpose) => selected.includes(purpose));
+}
+
+function confidenceLabel(confidence: AnalysisInsight['confidence']): string {
+  if (confidence === 'high') return '高';
+  if (confidence === 'medium') return '中';
+  return '低';
 }
 
 function DemoNavigation() {
@@ -241,7 +448,7 @@ function DemoNavigation() {
     ['注意事項', '#notices'],
   ] as const;
   return (
-    <nav className="sticky top-[73px] z-10 rounded-lg border border-line bg-white/95 p-3 shadow-soft backdrop-blur">
+    <nav className="z-10 rounded-lg border border-line bg-white/95 p-3 shadow-soft backdrop-blur lg:sticky lg:top-[73px]">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-bold text-muted">デモナビ</span>
         {items.map(([label, href]) => (
@@ -272,7 +479,7 @@ function DemoReadinessPanel({
   const nextAction = !summary && !sampleSummary
     ? '次に、公開サンプルデータの読み込み状態を確認してください。'
     : !result
-      ? '次に、AI分析開始を押してください。'
+      ? '次に、「AI分析開始」を押してください。'
       : 'デモ準備は整っています。ランキング、AI分析結果、デモ候補、根拠意匠詳細の順で説明できます。';
 
   return (
@@ -963,63 +1170,82 @@ function MarketView({
   );
 }
 
-function CompanyView({ analysis, allRecords, externalDemoMode }: { analysis: CompanyAnalysis; allRecords: DesignRecord[]; externalDemoMode: boolean }) {
+function CompanyView({
+  analysis,
+  allRecords,
+  externalDemoMode,
+  purposes,
+}: {
+  analysis: CompanyAnalysis;
+  allRecords: DesignRecord[];
+  externalDemoMode: boolean;
+  purposes: AnalysisPurpose[];
+}) {
+  const designChangeInsights: [string, AnalysisInsight][] = purposes.includes('design_change')
+    ? [
+        ['大型化／小型化', analysis.designChange.sizeTrend],
+        ['薄型化', analysis.designChange.thinning],
+        ['操作性変化', analysis.designChange.usability],
+        ['UI変化', analysis.designChange.uiChange],
+      ]
+    : [['UI変化', analysis.designChange.uiChange]];
+
   return (
     <article className="mt-6 border-t border-line pt-5">
       <h3 className="text-lg font-bold text-ink">{analysis.company}</h3>
-      <ResultGroup
-        title="意匠動向"
-        allRecords={allRecords}
-        externalDemoMode={externalDemoMode}
-        insights={[
-          ['最近の意匠展開領域', analysis.designTrend.domains],
-          ['形状変化', analysis.designTrend.shapeChange],
-          ['デザイン方向', analysis.designTrend.designDirection],
-        ]}
-      />
-      <ResultGroup
-        title="DX商品開発動向"
-        allRecords={allRecords}
-        externalDemoMode={externalDemoMode}
-        insights={[
-          ['画像意匠の参考領域', analysis.dxDevTrend.imageDesignGrowth],
-          ['デジタルサービス展開', analysis.dxDevTrend.digitalService],
-          ['AI・IoT関連傾向', analysis.dxDevTrend.aiIotTrend],
-        ]}
-      />
-      <ResultGroup
-        title="デザイン変化分析"
-        allRecords={allRecords}
-        externalDemoMode={externalDemoMode}
-        insights={[
-          ['大型化／小型化', analysis.designChange.sizeTrend],
-          ['薄型化', analysis.designChange.thinning],
-          ['操作性変化', analysis.designChange.usability],
-          ['UI変化', analysis.designChange.uiChange],
-        ]}
-      />
-      <ResultGroup
-        title="意匠ポートフォリオ分析"
-        allRecords={allRecords}
-        externalDemoMode={externalDemoMode}
-        insights={[
-          ['集中領域', analysis.portfolio.focusAreas],
-          ['相対的に多い領域', analysis.portfolio.strengthening],
-          ['確認できない領域の参考候補', analysis.portfolio.whitespace],
-        ]}
-      />
-      <ResultGroup
-        title="AI知財戦略コメント"
-        allRecords={allRecords}
-        externalDemoMode={externalDemoMode}
-        insights={[
-          ['意匠保護領域', analysis.ipStrategy.designProtectionAreas],
-          ['意匠出願戦略の方向性', analysis.ipStrategy.designFilingDirection],
-          ['特許出願検討への参考情報', analysis.ipStrategy.patentReference],
-          ['商標保護検討への参考情報', analysis.ipStrategy.trademarkReference],
-          ['著作権保護検討への参考情報', analysis.ipStrategy.copyrightReference],
-        ]}
-      />
+      {hasAnyPurpose(purposes, ['market_trend', 'company_trend', 'competitor_design']) ? (
+        <ResultGroup
+          title="意匠動向"
+          allRecords={allRecords}
+          externalDemoMode={externalDemoMode}
+          insights={[
+            ['最近の意匠展開領域', analysis.designTrend.domains],
+            ['形状変化', analysis.designTrend.shapeChange],
+            ['デザイン方向', analysis.designTrend.designDirection],
+          ]}
+        />
+      ) : null}
+      {purposes.includes('dx_dev') ? (
+        <ResultGroup
+          title="DX商品開発動向"
+          allRecords={allRecords}
+          externalDemoMode={externalDemoMode}
+          insights={[
+            ['画像意匠の参考領域', analysis.dxDevTrend.imageDesignGrowth],
+            ['デジタルサービス展開', analysis.dxDevTrend.digitalService],
+            ['AI・IoT関連傾向', analysis.dxDevTrend.aiIotTrend],
+          ]}
+        />
+      ) : null}
+      {hasAnyPurpose(purposes, ['design_change', 'ui_design']) ? (
+        <ResultGroup title="デザイン変化分析" allRecords={allRecords} externalDemoMode={externalDemoMode} insights={designChangeInsights} />
+      ) : null}
+      {purposes.includes('portfolio') ? (
+        <ResultGroup
+          title="意匠ポートフォリオ分析"
+          allRecords={allRecords}
+          externalDemoMode={externalDemoMode}
+          insights={[
+            ['集中領域', analysis.portfolio.focusAreas],
+            ['相対的に多い領域', analysis.portfolio.strengthening],
+            ['確認できない領域の参考候補', analysis.portfolio.whitespace],
+          ]}
+        />
+      ) : null}
+      {purposes.includes('filing_strategy') ? (
+        <ResultGroup
+          title="AI知財戦略コメント"
+          allRecords={allRecords}
+          externalDemoMode={externalDemoMode}
+          insights={[
+            ['意匠保護領域', analysis.ipStrategy.designProtectionAreas],
+            ['意匠出願戦略の方向性', analysis.ipStrategy.designFilingDirection],
+            ['特許出願検討への参考情報', analysis.ipStrategy.patentReference],
+            ['商標保護検討への参考情報', analysis.ipStrategy.trademarkReference],
+            ['著作権保護検討への参考情報', analysis.ipStrategy.copyrightReference],
+          ]}
+        />
+      ) : null}
     </article>
   );
 }
@@ -1118,7 +1344,7 @@ function InsightView({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <h5 className="text-sm font-bold text-ink">{title}</h5>
         <Badge tone={insight.confidence === 'high' ? 'accent' : insight.confidence === 'medium' ? 'warning' : 'neutral'}>
-          confidence: {insight.confidence}
+          信頼度：{confidenceLabel(insight.confidence)}
         </Badge>
       </div>
       <p className="readable-text mt-3 text-sm leading-6 text-ink">{insight.text}</p>
@@ -1378,7 +1604,9 @@ function GazetteDrawingMetadata({
         <Detail label="sourceXmlFile" value={safeMetadataValue(keys.sourceXmlFile)} />
       </dl>
       {(keys.drawingRefs ?? []).length > 0 ? (
-        <div className="mt-3 overflow-x-auto">
+        <div className="mt-3">
+          <p className="mb-2 text-xs text-muted sm:hidden">表は横にスクロールできます。</p>
+          <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs text-muted">
@@ -1403,6 +1631,7 @@ function GazetteDrawingMetadata({
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       ) : (
         <p className="mt-3 rounded-md bg-slate-50 p-3 text-sm text-muted">図面参照はありません。</p>
@@ -1561,26 +1790,35 @@ function shouldShowInsight(insight: AnalysisInsight): boolean {
   return insight.metric.value > 0 && insight.evidenceIds.length > 0;
 }
 
-function collectEvidenceRecords(result: AnalysisResult | null, allRecords: DesignRecord[], additionalIds: string[] = []): DesignRecord[] {
+function collectEvidenceRecords(result: AnalysisResult, allRecords: DesignRecord[]): DesignRecord[] {
+  const orderedIds: string[] = [];
   const ids = new Set<string>();
-  const collectInsight = (insight: AnalysisInsight) => insight.evidenceIds.forEach((id) => ids.add(id));
-  additionalIds.forEach((id) => ids.add(id));
+  const addId = (id: string) => {
+    if (ids.has(id)) return;
+    ids.add(id);
+    orderedIds.push(id);
+  };
+  const collectInsight = (insight: AnalysisInsight) => insight.evidenceIds.forEach(addId);
 
-  if (result?.market) {
+  buildPriorityInsights(result).forEach(({ insight }) => collectInsight(insight));
+
+  if (result.market) {
     collectInsight(result.market.trends);
     collectInsight(result.market.emergingDomains);
     collectInsight(result.market.companyMoves);
   }
 
-  for (const company of result?.companies ?? []) {
-    Object.values(company.designTrend).forEach(collectInsight);
-    Object.values(company.dxDevTrend).forEach(collectInsight);
-    Object.values(company.designChange).forEach(collectInsight);
-    Object.values(company.portfolio).forEach(collectInsight);
-    Object.values(company.ipStrategy).forEach(collectInsight);
+  const seenInsights = new Set<AnalysisInsight>();
+  for (const purpose of result.request.purposes) {
+    for (const { insight } of insightsForPurpose(result, purpose)) {
+      if (seenInsights.has(insight) || !shouldShowInsight(insight)) continue;
+      seenInsights.add(insight);
+      collectInsight(insight);
+    }
   }
 
-  return allRecords.filter((record) => ids.has(record.id));
+  const recordsById = new Map(allRecords.map((record) => [record.id, record]));
+  return orderedIds.map((id) => recordsById.get(id)).filter((record): record is DesignRecord => Boolean(record));
 }
 
 function resolveDemoShowcaseMatches(showcaseRecords: DemoShowcaseRecord[], allRecords: DesignRecord[]): DemoShowcaseMatch[] {

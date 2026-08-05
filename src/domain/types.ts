@@ -114,6 +114,105 @@ export interface DemoShowcaseRecord {
   whyDemoFriendly?: string;
 }
 
+export interface HosoeAnalysisPack {
+  fileName: string;
+  title: string;
+  version?: string;
+  createdAt?: string;
+  dateFrom?: string;
+  dateFieldPolicy?: string;
+  dataScopeNote?: string;
+  isComprehensive?: boolean;
+  sourceRecordCount?: number;
+  strictPrefixWCount: number;
+  dTermWIncludedCandidateCount: number;
+  companySummaries: HosoeCompanySummary[];
+  yearlyTrend: HosoeYearlyTrendItem[];
+  byDesignClass: HosoeDesignClassItem[];
+  byArticleName: HosoeArticleNameItem[];
+  records: HosoeAnalysisRecord[];
+  audit: HosoeAnalysisAudit;
+  vTermSummary: HosoeVTermSummary;
+  warnings: string[];
+}
+
+export interface HosoeAnalysisAudit {
+  initialAutomaticCount: number;
+  auditedCount: number;
+  excludedCount: number;
+  excludedRecords: HosoeExcludedRecord[];
+}
+
+export interface HosoeExcludedRecord {
+  id: string;
+  originalName?: string;
+  reason: string;
+}
+
+export interface HosoeVTermSummary {
+  confirmedCount: number;
+  unconfirmedCount: number;
+  unconfirmedCompanyGroups: string[];
+  unconfirmedGazetteDates: string[];
+}
+
+export interface HosoeCompanySummary {
+  companyGroup: string;
+  dTermWIncludedCandidateCount: number;
+  strictPrefixWCount: number;
+  applicantHitCount: number;
+  rightHolderHitCount: number;
+  matchedRoleBreakdown: string;
+  representativeDesignClasses: string[];
+  representativeArticleNames: string[];
+  note: string;
+}
+
+export interface HosoeYearlyTrendItem {
+  companyGroup: string;
+  year: string;
+  count: number;
+}
+
+export interface HosoeDesignClassItem {
+  companyGroup: string;
+  designClass: string;
+  count: number;
+}
+
+export interface HosoeArticleNameItem {
+  companyGroup: string;
+  articleName: string;
+  count: number;
+}
+
+export interface HosoeAnalysisRecord {
+  id: string;
+  matchedCompanyGroup: string;
+  applicationNumber?: string;
+  applicationDate?: string;
+  internationalApplicationDate?: string;
+  dateUsedForFilter?: string;
+  dateUsedType?: string;
+  registrationNumber?: string;
+  registrationDate?: string;
+  gazetteDate?: string;
+  designClass?: string;
+  designClassNormalized?: string;
+  articleName?: string;
+  sourceUpdateDate?: string;
+  applicants: string[];
+  rightHolders: string[];
+  matchedRole?: string;
+  matchedName: string[];
+  matchedAlias: string[];
+  wFilterMode?: string;
+  classificationNote?: string;
+  vTerms: string[];
+  vTermReviewStatus?: string;
+  vTermReviewNote?: string;
+}
+
 export interface InsightMetric {
   label: string;
   value: number;

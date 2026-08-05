@@ -295,4 +295,22 @@ describe('check:no-real-data', () => {
 
     expect(() => execFileSync(process.execPath, [scriptPath, '--root', tempRoot], { stdio: 'pipe' })).toThrow();
   });
+
+  it('detects audited local-review terms that must not enter dist', () => {
+    const scriptPath = path.resolve(process.cwd(), 'scripts', 'check-no-real-data.mjs');
+    const prohibitedTerms = [
+      ['Chain', 'alysis'].join(''),
+      ['D-', '2022503085'].join(''),
+      ['V系', 'Dターム'].join(''),
+    ];
+
+    for (const prohibitedTerm of prohibitedTerms) {
+      const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'no-local-review-dist-'));
+      const distDir = path.join(tempRoot, 'dist');
+      fs.mkdirSync(distDir, { recursive: true });
+      fs.writeFileSync(path.join(distDir, 'index.js'), prohibitedTerm);
+
+      expect(() => execFileSync(process.execPath, [scriptPath, '--root', tempRoot], { stdio: 'pipe' })).toThrow();
+    }
+  });
 });

@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { AnalysisRequest, AnalysisResult, DemoShowcaseRecord, DesignRecord } from '../../domain/types';
 import type { LocalJpoDatasetSummary } from '../../data/LocalJpoJsonDataSource';
+import { RuleBasedAnalysisEngine } from '../../analysis/RuleBasedAnalysisEngine';
 import { ResultsArea } from './ResultsArea';
 
 const request: AnalysisRequest = {
@@ -216,9 +217,18 @@ describe('ResultsArea gazette drawing metadata display', () => {
         analysisWarnings: [],
         externalDemoMode: false,
         demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
       }),
     );
 
+    expect(html).toContain('今回わかったこと');
+    expect(html).toContain('重要な示唆');
+    expect(html).toContain('データ基準日 2026-06-23');
+    expect(html).toContain('ルールベース分析');
+    expect(html).toContain('信頼度：低');
+    expect(html).toContain('選択した目的別の詳細分析を見る');
+    expect(html.match(/data-testid="priority-insight"/g)).toHaveLength(3);
+    expect(html).not.toContain('generatedBy:');
     expect(html).toContain('公報・図面メタデータあり');
     expect(html).toContain('図面メタデータあり：2件中1件');
     expect(html).toContain('2026-06-23');
@@ -252,6 +262,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         analysisWarnings: [],
         externalDemoMode: true,
         demoShowcaseRecords,
+        localAnalysisPackPanel: null,
       }),
     );
 
@@ -324,23 +335,165 @@ describe('ResultsArea gazette drawing metadata display', () => {
         analysisWarnings: [],
         externalDemoMode: true,
         demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
       }),
     );
 
+    expect(html).toContain('分析すると得られること');
+    expect(html).toContain('注力領域');
+    expect(html).toContain('変化の兆候');
+    expect(html).toContain('戦略の材料');
+    expect(html).toContain('任意：データ・デモ・技術情報');
     expect(html).toContain('この公開デモはサンプルデータ版です。特許庁実データを用いた検証版は、画面共有でご説明します。');
     expect(html).toContain('公開URL用サンプルデータ概要');
     expect(html).toContain('サンプルデータ件数');
     expect(html).toContain('サンプル企業上位');
     expect(html).toContain('おすすめデモ候補');
     expect(html).toContain('公開サンプルデータから自動抽出した、架空メタデータを説明しやすい意匠です。');
-    expect(html).toContain('架空サンプルメタデータ');
-    expect(html).toContain('これは公開デモ用の架空メタデータです。実在企業・実在公報ではありません。');
     expect(html).toContain('公開URL版のデータは架空データで、実在企業・実在公報ではありません。');
     expect(html).toContain('セキュリティ・共有前提');
+    expect(html).not.toContain('細江');
+    expect(html).not.toContain('6社比較ビュー');
+    expect(html).not.toContain('Soft' + 'Bank');
+    expect(html).not.toContain('Pay' + 'Pay');
+    expect(html).not.toContain('LINE ' + 'Yahoo');
+    expect(html).not.toContain('Apple');
+    expect(html).not.toContain('Google');
+    expect(html).not.toContain('NTT ' + 'DOCOMO');
+    expect(html).not.toContain('日本意匠分類にWを含む画像意匠候補');
+    expect(html).not.toContain('安立');
+    expect(html).not.toContain('画像共通Dターム');
+    expect(html).not.toContain('専門家レビュー');
+    expect(html).not.toContain(['strict', 'PrefixW'].join(''));
+    expect(html).not.toContain(['dTermWIncluded', 'Candidate'].join(''));
     expect(html).not.toContain('類似' + '意匠検索ではなく');
     expect(html).not.toMatch(/https?:\/\//i);
     expect(html).not.toMatch(/[A-Za-z]:\\/);
     expect(html).not.toMatch(new RegExp(['base', '64'].join(''), 'i'));
     expect(html).not.toContain('<img');
+  });
+
+  it('shows only the selected company-purpose details and matching evidence records', async () => {
+    const purposeRequest: AnalysisRequest = {
+      ...request,
+      scope: { mode: 'companies', companies: [records[0].applicant] },
+      purposes: ['dx_dev'],
+    };
+    const purposeResult = await new RuleBasedAnalysisEngine().analyze(purposeRequest, records, '2026-06-23');
+    const company = purposeResult.companies[0];
+    company.designTrend.domains.evidenceIds = ['fixture-without-keys'];
+    company.designTrend.domains.metric.value = 1;
+
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request: purposeRequest,
+        result: purposeResult,
+        records,
+        allRecords: records,
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: false,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+      }),
+    );
+
+    expect(html).toContain('DX商品開発動向');
+    expect(html).not.toContain('意匠ポートフォリオ分析');
+    expect(html).not.toContain('AI知財戦略コメント');
+    expect(html).toContain('id="evidence-fixture-with-keys"');
+    expect(html).not.toContain('id="evidence-fixture-without-keys"');
+  });
+
+  it('keeps the market overview as scope context while emphasizing a non-market purpose', async () => {
+    const purposeRequest: AnalysisRequest = { ...request, purposes: ['dx_dev'] };
+    const purposeResult = await new RuleBasedAnalysisEngine().analyze(purposeRequest, records, '2026-06-23');
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request: purposeRequest,
+        result: purposeResult,
+        records,
+        allRecords: records,
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: false,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+      }),
+    );
+
+    expect(html).toContain('市場全体ビュー');
+    expect(html).toContain('DX商品開発動向');
+  });
+
+  it('shows the first eight evidence records before offering the remaining records', () => {
+    const manyRecords: DesignRecord[] = Array.from({ length: 9 }, (_, index) => ({
+      ...records[0],
+      id: `bulk-evidence-${index + 1}`,
+      gazetteDrawingKeys: null,
+    }));
+    const evidenceIds = manyRecords.map((record) => record.id);
+    const manyResult: AnalysisResult = {
+      ...result,
+      market: {
+        trends: { ...result.market!.trends, evidenceIds, metric: { label: '対象意匠件数', value: 9, unit: '件' } },
+        emergingDomains: { ...result.market!.emergingDomains, evidenceIds: [], metric: { label: '画像意匠件数', value: 0, unit: '件' } },
+        companyMoves: { ...result.market!.companyMoves, evidenceIds: [], metric: { label: '対象企業数', value: 0, unit: '社' } },
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: manyResult,
+        records: manyRecords,
+        allRecords: manyRecords,
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: false,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+      }),
+    );
+
+    expect(html.match(/id="evidence-bulk-evidence-/g)).toHaveLength(8);
+    expect(html).toContain('残り1件の根拠意匠を表示');
+    expect(html).not.toContain('id="evidence-bulk-evidence-9"');
+  });
+
+  it('explains how to recover when no records match the selected conditions', () => {
+    const emptyResult: AnalysisResult = {
+      ...result,
+      market: {
+        trends: { ...result.market!.trends, evidenceIds: [], metric: { label: '対象意匠件数', value: 0, unit: '件' } },
+        emergingDomains: { ...result.market!.emergingDomains, evidenceIds: [], metric: { label: '画像意匠件数', value: 0, unit: '件' } },
+        companyMoves: { ...result.market!.companyMoves, evidenceIds: [], metric: { label: '対象企業数', value: 0, unit: '社' } },
+      },
+    };
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: emptyResult,
+        records: [],
+        allRecords: publicSampleRecords,
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: false,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+      }),
+    );
+
+    expect(html).toContain('この条件に一致する意匠はありません。');
+    expect(html).toContain('企業名、商品・事業領域、期間、意匠種別を見直して');
+    expect(html).toContain('role="status"');
   });
 });

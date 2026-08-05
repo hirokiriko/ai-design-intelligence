@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { RuleBasedAnalysisEngine } from './analysis/RuleBasedAnalysisEngine';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
 import { ResultsArea } from './components/ResultsArea/ResultsArea';
 import { Badge } from './components/common/Badge';
 import { ALL_DESIGN_KINDS, STATUS_BADGES } from './domain/labels';
-import type { AnalysisPurpose, AnalysisRequest, AnalysisResult, DesignRecord, ValidationErrors } from './domain/types';
+import type { AnalysisPurpose, AnalysisRequest, AnalysisResult, DesignRecord, HosoeAnalysisPack, ValidationErrors } from './domain/types';
 import { validateRequest } from './domain/validation';
 import { SampleDesignDataSource } from './data/SampleDesignDataSource';
 import {
@@ -21,6 +21,7 @@ import {
 } from './data/DemoShowcaseDataSource';
 
 const DEFAULT_PURPOSES: AnalysisPurpose[] = ['market_trend', 'dx_dev', 'portfolio', 'filing_strategy'];
+const ENABLE_LOCAL_ANALYSIS_PACK = import.meta.env.DEV || import.meta.env.VITE_ENABLE_LOCAL_ANALYSIS_PACK === 'true';
 
 const initialRequest: AnalysisRequest = {
   scope: { mode: 'all_classes' },
@@ -44,6 +45,17 @@ type DemoShowcaseState =
   | { status: 'loaded'; load: DemoShowcaseLoadSuccess }
   | { status: 'error'; failure: DemoShowcaseLoadFailure };
 
+type HosoeAnalysisPackState =
+  | { status: 'empty'; warnings: string[]; errors: string[] }
+  | { status: 'loading'; fileName: string; warnings: string[]; errors: string[] }
+  | {
+      status: 'loaded';
+      load: { ok: true; fileName: string; pack: HosoeAnalysisPack; summaryText: string; warnings: string[] };
+    }
+  | { status: 'error'; failure: { ok: false; fileName: string; errors: string[]; warnings: string[] } };
+
+type LocalAnalysisPackPanelComponent = ComponentType<{ pack: HosoeAnalysisPack }>;
+
 export default function App() {
   const sampleDataSource = useMemo(() => new SampleDesignDataSource(), []);
   const analysisEngine = useMemo(() => new RuleBasedAnalysisEngine(), []);
@@ -55,18 +67,47 @@ export default function App() {
   const [records, setRecords] = useState<DesignRecord[]>([]);
   const [localJpoState, setLocalJpoState] = useState<LocalJpoState>({ status: 'sample', warnings: [], errors: [] });
   const [demoShowcaseState, setDemoShowcaseState] = useState<DemoShowcaseState>({ status: 'empty', warnings: [], errors: [] });
+  const [hosoeAnalysisPackState, setHosoeAnalysisPackState] = useState<HosoeAnalysisPackState>({ status: 'empty', warnings: [], errors: [] });
+  const [localAnalysisPackPanel, setLocalAnalysisPackPanel] = useState<LocalAnalysisPackPanelComponent | null>(null);
   const [externalDemoMode, setExternalDemoMode] = useState(true);
   const [analysisWarnings, setAnalysisWarnings] = useState<string[]>([]);
 
   const dataSource = localJpoState.status === 'loaded' ? localJpoState.load.dataSource : sampleDataSource;
-  const allRecords = dataSource.getAllRecords();
+  const allRecords = useMemo(() => dataSource.getAllRecords(), [dataSource]);
+  const companyOptions = useMemo(() => buildCompanyOptions(allRecords), [allRecords]);
   const headerBadges =
     localJpoState.status === 'loaded'
       ? ['ローカル実データJSON（開発用）', 'ルールベース分析', 'File API読込']
       : STATUS_BADGES;
 
-  const addCompany = () => {
-    const nextCompany = companyInput.trim();
+  useEffect(() => {
+    if (!ENABLE_LOCAL_ANALYSIS_PACK) return;
+
+    void import('./local-analysis-pack/HosoeAnalysisPackPanel').then((module) => {
+      setLocalAnalysisPackPanel(() => module.HosoeAnalysisPackPanel);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!result) return;
+
+    const resultSection = document.getElementById('ai-analysis');
+    resultSection?.focus({ preventScroll: true });
+    resultSection?.scrollIntoView({ behavior: 'auto', block: 'start' });
+  }, [result]);
+
+  useEffect(() => {
+    focusFirstValidationError(errors);
+  }, [errors]);
+
+  const clearAnalysisResult = () => {
+    setResult(null);
+    setRecords([]);
+    setAnalysisWarnings([]);
+  };
+
+  const addCompany = (suggestedCompany?: string) => {
+    const nextCompany = (suggestedCompany ?? companyInput).trim();
     if (!nextCompany) return;
 
     setRequest((current) => {
@@ -80,6 +121,7 @@ export default function App() {
       };
     });
     setCompanyInput('');
+    clearAnalysisResult();
   };
 
   const removeCompany = (company: string) => {
@@ -93,6 +135,7 @@ export default function App() {
         },
       };
     });
+    clearAnalysisResult();
   };
 
   const analyze = async () => {
@@ -163,16 +206,40 @@ export default function App() {
     }
   };
 
+  const handleHosoeAnalysisPackFile = async (file: File | null) => {
+    if (!file || !ENABLE_LOCAL_ANALYSIS_PACK) return;
+
+    setHosoeAnalysisPackState({ status: 'loading', fileName: file.name, warnings: [], errors: [] });
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text.replace(/^\uFEFF/, '')) as unknown;
+      const { loadHosoeAnalysisPackJson } = await import('./data/HosoeAnalysisPackDataSource');
+      const loadResult = loadHosoeAnalysisPackJson(parsed, file.name);
+      setHosoeAnalysisPackState(loadResult.ok ? { status: 'loaded', load: loadResult } : { status: 'error', failure: loadResult });
+    } catch (error) {
+      setHosoeAnalysisPackState({
+        status: 'error',
+        failure: {
+          ok: false,
+          fileName: file.name,
+          errors: [`JSONを読み込めませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`],
+          warnings: [],
+        },
+      });
+    }
+  };
+
   const resetToSampleData = () => {
     setLocalJpoState({ status: 'sample', warnings: [], errors: [] });
     setResult(null);
     setRecords([]);
     setAnalysisWarnings([]);
   };
+  const LocalAnalysisPackPanel = localAnalysisPackPanel;
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <header className="sticky top-0 z-10 border-b border-line bg-white/95 backdrop-blur">
+      <header className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-normal text-ink">AI Design Intelligence</h1>
@@ -189,33 +256,65 @@ export default function App() {
         {localJpoState.status === 'loaded' ? (
           <div className="border-t border-line bg-teal-50">
             <div className="mx-auto max-w-7xl px-4 py-3 text-sm leading-6 text-accent">
-              ローカル検証版です。実データはブラウザのメモリ上だけで読み込み、公開ビルドには含めていません。
+              ローカル検証データを使用中です。データはブラウザのメモリ上だけで扱い、公開ビルドには含めません。
             </div>
           </div>
         ) : (
           <div className="border-t border-amber-200 bg-amber-50">
             <div className="mx-auto max-w-7xl px-4 py-3 text-sm leading-6 text-caution">
-              この公開デモはサンプルデータ版です。サンプルはすべて架空データで、実在企業・実在公報ではありません。特許庁実データを用いた検証版は画面共有でご説明します。
+              サンプルデータ版です。表示される企業・意匠情報はすべて架空で、実在企業・実在公報ではありません。
             </div>
           </div>
         )}
       </header>
 
-      <div className="mx-auto grid max-w-7xl gap-5 px-4 py-6 lg:grid-cols-[390px_minmax(0,1fr)]">
+      <section className="border-b border-line bg-gradient-to-br from-white via-white to-teal-50">
+        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)] lg:items-center">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Design intelligence workflow</p>
+            <h2 className="mt-3 max-w-3xl text-2xl font-bold leading-tight text-ink sm:text-3xl">
+              競合や市場の意匠から、次に注目すべき商品領域と出願戦略のヒントを見つける
+            </h2>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-muted sm:text-base">
+              対象と知りたいことを選ぶだけで、動向・変化・ポートフォリオを整理し、根拠となる意匠まで確認できます。
+            </p>
+          </div>
+          <ol className="grid gap-3 rounded-xl border border-teal-200 bg-white p-4 shadow-soft sm:grid-cols-3 lg:grid-cols-1">
+            <li className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">1</span>
+              <div><strong className="block text-sm text-ink">対象を決める</strong><span className="text-xs leading-5 text-muted">市場全体または企業を選択</span></div>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">2</span>
+              <div><strong className="block text-sm text-ink">知りたいことを選ぶ</strong><span className="text-xs leading-5 text-muted">期間・意匠種別・分析目的を設定</span></div>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">3</span>
+              <div><strong className="block text-sm text-ink">示唆と根拠を見る</strong><span className="text-xs leading-5 text-muted">重要な結果から根拠意匠へ</span></div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <div className="mx-auto grid max-w-7xl gap-5 px-4 py-6 lg:grid-cols-[410px_minmax(0,1fr)] lg:items-start">
         <SettingsPanel
           request={request}
           companyInput={companyInput}
+          companyOptions={companyOptions}
           errors={errors}
           isRunning={isRunning}
+          hasResult={Boolean(result)}
           onRequestChange={(nextRequest) => {
             setRequest(nextRequest);
             setErrors({});
+            clearAnalysisResult();
           }}
           onCompanyInputChange={setCompanyInput}
           onAddCompany={addCompany}
           onRemoveCompany={removeCompany}
           onAnalyze={analyze}
           localJpoState={localJpoState}
+          enableLocalAnalysisPack={ENABLE_LOCAL_ANALYSIS_PACK}
           onLocalJsonFile={handleLocalJsonFile}
           onResetToSampleData={resetToSampleData}
           externalDemoMode={externalDemoMode}
@@ -223,8 +322,12 @@ export default function App() {
           demoShowcaseState={demoShowcaseState}
           onDemoShowcaseFile={handleDemoShowcaseFile}
           onClearDemoShowcase={() => setDemoShowcaseState({ status: 'empty', warnings: [], errors: [] })}
+          hosoeAnalysisPackState={hosoeAnalysisPackState}
+          onHosoeAnalysisPackFile={handleHosoeAnalysisPackFile}
+          onClearHosoeAnalysisPack={() => setHosoeAnalysisPackState({ status: 'empty', warnings: [], errors: [] })}
         />
-        <ResultsArea
+        <div className="min-w-0">
+          <ResultsArea
           request={request}
           result={result}
           records={records}
@@ -241,7 +344,13 @@ export default function App() {
           analysisWarnings={analysisWarnings}
           externalDemoMode={externalDemoMode}
           demoShowcaseRecords={demoShowcaseState.status === 'loaded' ? demoShowcaseState.load.records : []}
-        />
+          localAnalysisPackPanel={
+            ENABLE_LOCAL_ANALYSIS_PACK && hosoeAnalysisPackState.status === 'loaded' && LocalAnalysisPackPanel ? (
+              <LocalAnalysisPackPanel pack={hosoeAnalysisPackState.load.pack} />
+            ) : null
+          }
+          />
+        </div>
       </div>
 
       <footer className="border-t border-line bg-white">
@@ -259,6 +368,35 @@ function localJpoAnalysisDisclaimer(summary: LocalJpoLoadSuccess['summary']): st
   return `この結果はローカル実データJSONをブラウザのメモリ上で読み込み、ルールベースで集計した参考情報です。${
     periodDate ? `${periodDate}対象の` : ''
   }${localJpoAnalysisPeriodLabel(summary.dataPeriodKind)}のため、傾向判断には追加データが必要です。分析期間はgazetteDate基準です。法的助言ではありません。`;
+}
+
+function buildCompanyOptions(records: DesignRecord[], limit = 20): string[] {
+  const counts = new Map<string, number>();
+  for (const record of records) {
+    const company = record.applicant.trim();
+    if (!company) continue;
+    counts.set(company, (counts.get(company) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort(([leftCompany, leftCount], [rightCompany, rightCount]) => rightCount - leftCount || leftCompany.localeCompare(rightCompany, 'ja'))
+    .slice(0, limit)
+    .map(([company]) => company);
+}
+
+function focusFirstValidationError(errors: ValidationErrors): void {
+  const targets: Array<[keyof ValidationErrors, string]> = [
+    ['companies', 'companies-error'],
+    ['designKinds', 'design-kinds-error'],
+    ['purposes', 'purposes-error'],
+    ['departments', 'departments-error'],
+  ];
+  const targetId = targets.find(([key]) => Boolean(errors[key]))?.[1];
+  if (!targetId) return;
+
+  const target = document.getElementById(targetId);
+  target?.focus({ preventScroll: true });
+  target?.scrollIntoView({ behavior: 'auto', block: 'center' });
 }
 
 function localJpoAnalysisPeriodLabel(kind: LocalJpoDataPeriodKind): string {

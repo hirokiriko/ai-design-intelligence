@@ -11,6 +11,7 @@ import {
 import type { AnalysisPurpose, AnalysisRequest, Department, Period, ValidationErrors } from '../../domain/types';
 import type { LocalJpoLoadFailure, LocalJpoLoadSuccess } from '../../data/LocalJpoJsonDataSource';
 import type { DemoShowcaseLoadFailure, DemoShowcaseLoadSuccess } from '../../data/DemoShowcaseDataSource';
+import type { HosoeAnalysisPackLoadFailure, HosoeAnalysisPackLoadSuccess } from '../../data/HosoeAnalysisPackDataSource';
 import { Badge } from '../common/Badge';
 
 type LocalJpoPanelState =
@@ -25,17 +26,27 @@ type DemoShowcasePanelState =
   | { status: 'loaded'; load: DemoShowcaseLoadSuccess }
   | { status: 'error'; failure: DemoShowcaseLoadFailure };
 
+type HosoeAnalysisPackPanelState =
+  | { status: 'empty'; warnings: string[]; errors: string[] }
+  | { status: 'loading'; fileName: string; warnings: string[]; errors: string[] }
+  | { status: 'loaded'; load: HosoeAnalysisPackLoadSuccess }
+  | { status: 'error'; failure: HosoeAnalysisPackLoadFailure };
+
 interface SettingsPanelProps {
   request: AnalysisRequest;
   companyInput: string;
+  companyOptions?: string[];
   errors: ValidationErrors;
   isRunning: boolean;
+  hasResult?: boolean;
   localJpoState: LocalJpoPanelState;
+  enableLocalAnalysisPack: boolean;
   externalDemoMode: boolean;
   demoShowcaseState: DemoShowcasePanelState;
+  hosoeAnalysisPackState: HosoeAnalysisPackPanelState;
   onRequestChange: (request: AnalysisRequest) => void;
   onCompanyInputChange: (value: string) => void;
-  onAddCompany: () => void;
+  onAddCompany: (company?: string) => void;
   onRemoveCompany: (company: string) => void;
   onAnalyze: () => void;
   onLocalJsonFile: (file: File | null) => void;
@@ -43,16 +54,22 @@ interface SettingsPanelProps {
   onExternalDemoModeChange: (enabled: boolean) => void;
   onDemoShowcaseFile: (file: File | null) => void;
   onClearDemoShowcase: () => void;
+  onHosoeAnalysisPackFile: (file: File | null) => void;
+  onClearHosoeAnalysisPack: () => void;
 }
 
 export function SettingsPanel({
   request,
   companyInput,
+  companyOptions = [],
   errors,
   isRunning,
+  hasResult = false,
   localJpoState,
+  enableLocalAnalysisPack,
   externalDemoMode,
   demoShowcaseState,
+  hosoeAnalysisPackState,
   onRequestChange,
   onCompanyInputChange,
   onAddCompany,
@@ -63,12 +80,31 @@ export function SettingsPanel({
   onExternalDemoModeChange,
   onDemoShowcaseFile,
   onClearDemoShowcase,
+  onHosoeAnalysisPackFile,
+  onClearHosoeAnalysisPack,
 }: SettingsPanelProps) {
   const companies = request.scope.mode === 'companies' ? request.scope.companies : [];
+  const availableCompanyOptions = companyOptions.filter((company) => !companies.includes(company));
 
   return (
     <aside className="space-y-5">
-      <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
+      <details className="rounded-lg border border-line bg-white p-4 shadow-soft">
+        <summary className="cursor-pointer rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-bold text-ink">任意：データ・デモ設定</div>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                通常は開かずに分析できます。ローカルJSONや画面共有用の設定が必要な場合だけ開いてください。
+              </p>
+            </div>
+            <Badge tone={localJpoState.status === 'loaded' ? 'warning' : 'neutral'}>
+              {localJpoState.status === 'loaded' ? 'ローカルデータ利用中' : 'サンプルデータ利用中'}
+            </Badge>
+          </div>
+        </summary>
+
+        <div className="mt-4 space-y-5 border-t border-line pt-4">
+      <section className="rounded-lg border border-line bg-white p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-bold text-ink">外部デモモード</h2>
@@ -246,8 +282,94 @@ export function SettingsPanel({
         ) : null}
       </section>
 
-      <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
-        <h2 className="text-base font-bold text-ink">分析設定</h2>
+      {enableLocalAnalysisPack ? (
+        <section className="rounded-lg border border-line bg-white p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-ink">ローカル分析パックJSONを読み込む（開発用）</h2>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                画面共有用の検証テーマなどを、File APIで追加表示します。読み込んだJSONはこの画面のメモリ上だけで保持します。
+              </p>
+            </div>
+            <Badge tone={hosoeAnalysisPackState.status === 'loaded' ? 'accent' : hosoeAnalysisPackState.status === 'error' ? 'warning' : 'neutral'}>
+              {hosoeAnalysisPackState.status === 'loading'
+                ? '読込中'
+                : hosoeAnalysisPackState.status === 'loaded'
+                  ? '読込済み'
+                  : hosoeAnalysisPackState.status === 'error'
+                    ? '読込失敗'
+                    : '未読込'}
+            </Badge>
+          </div>
+          <label className="mt-4 block text-sm font-semibold text-ink">
+            ローカル分析パックJSON
+            <input
+              className="mt-2 w-full rounded-md border border-line px-3 py-2 text-sm"
+              type="file"
+              accept="application/json,.json"
+              onChange={(event) => {
+                onHosoeAnalysisPackFile(event.currentTarget.files?.[0] ?? null);
+                event.currentTarget.value = '';
+              }}
+            />
+          </label>
+          <p className="mt-2 text-xs leading-5 text-muted">
+            公開URL版には含めず、画面共有用のローカル検証時だけ手動選択して使います。
+          </p>
+          {hosoeAnalysisPackState.status === 'loaded' ? (
+            <div className="mt-4 rounded-md border border-teal-200 bg-teal-50 p-3 text-sm text-accent">
+              <div className="font-bold">読込済み</div>
+              <div className="readable-text mt-1 font-semibold">{hosoeAnalysisPackState.load.fileName}</div>
+              <div className="mt-1">{hosoeAnalysisPackState.load.summaryText}</div>
+              {hosoeAnalysisPackState.load.warnings.length > 0 ? (
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {hosoeAnalysisPackState.load.warnings.slice(0, 3).map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <button
+                className="mt-3 rounded-md border border-teal-300 bg-white px-3 py-2 text-sm font-semibold text-accent"
+                type="button"
+                onClick={onClearHosoeAnalysisPack}
+              >
+                分析パックをクリア
+              </button>
+            </div>
+          ) : null}
+          {hosoeAnalysisPackState.status === 'loading' ? (
+            <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-muted">
+              <div className="font-bold">読込中</div>
+              <div className="readable-text mt-1">{hosoeAnalysisPackState.fileName}</div>
+            </div>
+          ) : null}
+          {hosoeAnalysisPackState.status === 'error' ? (
+            <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <div className="font-bold">{hosoeAnalysisPackState.failure.fileName}</div>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {[...hosoeAnalysisPackState.failure.errors, ...hosoeAnalysisPackState.failure.warnings].map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+        </div>
+      </details>
+
+      <section id="analysis-settings" className="scroll-mt-6 rounded-lg border-2 border-teal-200 bg-white p-5 pb-24 shadow-soft sm:pb-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-accent">分析の準備</p>
+            <h2 className="mt-1 text-lg font-bold text-ink">分析条件を決める</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              対象・期間・知りたいことを選ぶと、市場や企業の動向を根拠意匠とともに確認できます。
+            </p>
+          </div>
+          <Badge tone="accent">①〜⑤</Badge>
+        </div>
 
         <div className="mt-5 space-y-6">
           <fieldset>
@@ -283,11 +405,32 @@ export function SettingsPanel({
 
             {request.scope.mode === 'companies' ? (
               <div className="mt-3">
+                {availableCompanyOptions.length > 0 ? (
+                  <label className="block text-sm font-semibold text-ink">
+                    データ内の企業候補
+                    <select
+                      className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2"
+                      aria-label="企業候補から追加"
+                      defaultValue=""
+                      onChange={(event) => {
+                        if (event.currentTarget.value) onAddCompany(event.currentTarget.value);
+                        event.currentTarget.value = '';
+                      }}
+                    >
+                      <option value="" disabled>候補から企業を追加</option>
+                      {availableCompanyOptions.map((company) => (
+                        <option key={company} value={company}>{company}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <p className="mt-3 text-xs leading-5 text-muted">候補にない名称は、下の入力欄から追加できます。</p>
                 <div className="flex gap-2">
                   <input
                     className="min-w-0 flex-1 rounded-md border border-line px-3 py-2"
                     value={companyInput}
-                    placeholder="例：企業A"
+                    aria-label="企業名"
+                    placeholder="企業名を入力"
                     onChange={(event) => onCompanyInputChange(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter') {
@@ -299,7 +442,7 @@ export function SettingsPanel({
                   <button
                     className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                     type="button"
-                    onClick={onAddCompany}
+                    onClick={() => onAddCompany()}
                     disabled={!companyInput.trim()}
                   >
                     ＋追加
@@ -319,7 +462,11 @@ export function SettingsPanel({
                     ))}
                   </div>
                 ) : null}
-                {errors.companies ? <p className="mt-2 text-sm font-semibold text-red-700">{errors.companies}</p> : null}
+                {errors.companies ? (
+                  <p id="companies-error" role="alert" tabIndex={-1} className="mt-2 text-sm font-semibold text-red-700 focus:outline-none">
+                    {errors.companies}
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
@@ -398,7 +545,11 @@ export function SettingsPanel({
                   />
                 ))}
               </div>
-              {errors.designKinds ? <p className="mt-2 text-sm font-semibold text-red-700">{errors.designKinds}</p> : null}
+              {errors.designKinds ? (
+                <p id="design-kinds-error" role="alert" tabIndex={-1} className="mt-2 text-sm font-semibold text-red-700 focus:outline-none">
+                  {errors.designKinds}
+                </p>
+              ) : null}
             </div>
             <div className="mt-3 rounded-md border border-line bg-slate-50 p-3">
               <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -428,6 +579,7 @@ export function SettingsPanel({
             selected={request.purposes}
             labels={PURPOSE_LABELS}
             error={errors.purposes}
+            errorId="purposes-error"
             onToggle={(value) =>
               onRequestChange({
                 ...request,
@@ -442,6 +594,7 @@ export function SettingsPanel({
             selected={request.departments}
             labels={DEPARTMENT_LABELS}
             error={errors.departments}
+            errorId="departments-error"
             onToggle={(value) =>
               onRequestChange({
                 ...request,
@@ -453,13 +606,27 @@ export function SettingsPanel({
 
         <button
           type="button"
-          className="mt-6 w-full rounded-md bg-ink px-4 py-3 font-bold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="mt-6 hidden w-full rounded-md bg-ink px-4 py-3 font-bold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:block"
           onClick={onAnalyze}
           disabled={isRunning}
         >
-          {isRunning ? '分析中...' : 'AI分析開始'}
+          {isRunning ? '分析しています...' : 'AI分析開始'}
         </button>
+        <p className="mt-2 text-center text-xs leading-5 text-muted">意匠動向をルールベースで分析します。APIキーは不要で、結果から根拠意匠へ戻れます。</p>
       </section>
+      {!hasResult ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white/95 px-4 py-3 shadow-[0_-6px_20px_rgba(15,23,42,0.12)] backdrop-blur sm:hidden">
+          <button
+            type="button"
+            className="w-full rounded-md bg-ink px-4 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+            onClick={onAnalyze}
+            disabled={isRunning}
+          >
+            {isRunning ? '分析しています...' : 'AI分析開始'}
+          </button>
+          <p className="mt-1 text-center text-[11px] text-muted">APIキー不要のルールベース分析</p>
+        </div>
+      ) : null}
     </aside>
   );
 }
@@ -479,6 +646,7 @@ function CheckboxGroup<T extends AnalysisPurpose | Department>({
   selected,
   labels,
   error,
+  errorId,
   onToggle,
 }: {
   title: string;
@@ -486,6 +654,7 @@ function CheckboxGroup<T extends AnalysisPurpose | Department>({
   selected: T[];
   labels: Record<T, string>;
   error?: string;
+  errorId: string;
   onToggle: (value: T) => void;
 }) {
   return (
@@ -496,7 +665,11 @@ function CheckboxGroup<T extends AnalysisPurpose | Department>({
           <CheckRow key={value} checked={selected.includes(value)} label={labels[value]} onChange={() => onToggle(value)} />
         ))}
       </div>
-      {error ? <p className="mt-2 text-sm font-semibold text-red-700">{error}</p> : null}
+      {error ? (
+        <p id={errorId} role="alert" tabIndex={-1} className="mt-2 text-sm font-semibold text-red-700 focus:outline-none">
+          {error}
+        </p>
+      ) : null}
     </fieldset>
   );
 }

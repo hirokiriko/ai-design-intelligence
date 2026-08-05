@@ -36,6 +36,17 @@ npm run build
 npm run dev
 ```
 
+## Vercel デプロイ
+
+Vercel は `vercel.json` に従い、pnpm の固定ロックファイルで `pnpm run build` を実行して `dist` を配信します。全パスはルートの `middleware.ts` で HTTP Basic 認証を必須にしています。
+
+Vercel の Preview と Production の両環境へ、次の値を暗号化された環境変数として設定してください。実値はリポジトリや `VITE_*` 変数へ保存しません。
+
+- `BASIC_AUTH_USER`
+- `BASIC_AUTH_PASSWORD`
+
+認証情報を変更した後は再デプロイし、リダイレクトを追従しないHTTP検査で「未認証 401・誤認証 401・正しい認証 200」を確認します。
+
 ## DB 方針
 
 Phase 0 は静的SPAとして動作し、DB・バックエンド・外部APIには接続しません。

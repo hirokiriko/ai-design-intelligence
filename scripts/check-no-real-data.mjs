@@ -43,6 +43,28 @@ export const FORBIDDEN_CONTENT_PATTERNS = [
   { label: 'real-like XML filename', pattern: /\b\d{7,}\.xml\b/i },
   { label: 'real-like image filename', pattern: /\b\d{7,}\.(?:jpe?g|png|gif|tiff?)\b/i },
 ];
+export const PUBLIC_BUILD_ONLY_CONTENT_PATTERNS = [
+  { label: 'local expert review personal name', pattern: tokenPattern('安', '立') },
+  { label: 'local analysis pack personal name', pattern: tokenPattern('細', '江') },
+  { label: 'local analysis pack real company term', pattern: tokenPattern('Soft', 'Bank') },
+  { label: 'local analysis pack real company term', pattern: tokenPattern('ソフト', 'バンク') },
+  { label: 'local analysis pack real company term', pattern: tokenPattern('Pay', 'Pay') },
+  { label: 'local analysis pack real company term', pattern: tokenPattern('LINE', 'ヤフー') },
+  { label: 'local analysis pack real company term', pattern: tokenPattern('LINE ', 'Yahoo') },
+  { label: 'local analysis pack real company term', pattern: tokenPattern('Apple') },
+  { label: 'local analysis pack real company term', pattern: tokenPattern('Google') },
+  { label: 'local analysis pack real company term', pattern: tokenPattern('NTT ', 'DOCOMO') },
+  { label: 'local analysis pack excluded company term', pattern: tokenPattern('Chain', 'alysis') },
+  { label: 'local analysis pack excluded record', pattern: tokenPattern('D-', '2022503085') },
+  { label: 'local analysis pack term', pattern: tokenPattern('Dターム', 'W候補') },
+  { label: 'local analysis pack term', pattern: tokenPattern('日本意匠分類にWを含む画像意匠候補') },
+  { label: 'local expert review term', pattern: tokenPattern('日本意匠分類', 'W') },
+  { label: 'local expert review term', pattern: tokenPattern('画像共通', 'Dターム') },
+  { label: 'local expert review term', pattern: tokenPattern('V系', 'Dターム') },
+  { label: 'local expert review term', pattern: tokenPattern('専門家', 'レビュー') },
+  { label: 'local analysis pack term', pattern: tokenPattern('strict', 'PrefixW') },
+  { label: 'local analysis pack term', pattern: tokenPattern('dTermWIncluded', 'Candidate') },
+];
 const EXCLUDED_FILE_PATTERNS = [
   /(^|\/)[^/]+\.(test|spec)\.[jt]sx?$/i,
   /(^|\/)__snapshots__(\/|$)/i,
@@ -79,6 +101,13 @@ export function findRealDataMatches({
           matches.push(`${relativePath} (${label})`);
         }
       }
+      if (isPublicBuildFile(relativePath)) {
+        for (const { label, pattern } of PUBLIC_BUILD_ONLY_CONTENT_PATTERNS) {
+          if (pattern.test(text)) {
+            matches.push(`${relativePath} (${label})`);
+          }
+        }
+      }
     });
   }
 
@@ -87,6 +116,10 @@ export function findRealDataMatches({
 
 function shouldSkip(relativePath) {
   return EXCLUDED_FILE_PATTERNS.some((pattern) => pattern.test(relativePath));
+}
+
+function isPublicBuildFile(relativePath) {
+  return relativePath === 'dist' || relativePath.startsWith('dist/');
 }
 
 function walk(currentPath, visit) {
@@ -105,11 +138,16 @@ function readRootArg(argv) {
   return argv[rootIndex + 1] ? path.resolve(argv[rootIndex + 1]) : process.cwd();
 }
 
+function readTargetDirs(argv) {
+  if (!argv.includes('--skip-dist')) return DEFAULT_TARGETS;
+  return DEFAULT_TARGETS.filter((target) => target !== 'dist');
+}
+
 const isCli = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (isCli) {
   const rootDir = readRootArg(process.argv);
-  const matches = findRealDataMatches({ rootDir });
+  const matches = findRealDataMatches({ rootDir, targetDirs: readTargetDirs(process.argv) });
   if (matches.length > 0) {
     console.error('Real-data-like files were found in build-controlled directories:');
     for (const match of matches) console.error(`- ${match}`);

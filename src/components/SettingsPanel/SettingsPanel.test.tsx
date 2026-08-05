@@ -23,8 +23,10 @@ describe('SettingsPanel external information wording', () => {
         errors: {},
         isRunning: false,
         localJpoState: { status: 'sample', warnings: [], errors: [] },
+        enableLocalAnalysisPack: true,
         externalDemoMode: true,
         demoShowcaseState: { status: 'empty', warnings: [], errors: [] },
+        hosoeAnalysisPackState: { status: 'empty', warnings: [], errors: [] },
         onRequestChange: vi.fn(),
         onCompanyInputChange: vi.fn(),
         onAddCompany: vi.fn(),
@@ -35,9 +37,19 @@ describe('SettingsPanel external information wording', () => {
         onExternalDemoModeChange: vi.fn(),
         onDemoShowcaseFile: vi.fn(),
         onClearDemoShowcase: vi.fn(),
+        onHosoeAnalysisPackFile: vi.fn(),
+        onClearHosoeAnalysisPack: vi.fn(),
       }),
     );
 
+    expect(html).toContain('任意：データ・デモ設定');
+    expect(html).toContain('分析条件を決める');
+    expect(html).toContain('AI分析開始');
+    expect(html).toContain('意匠動向をルールベースで分析します。');
+    expect(html).toContain('APIキーは不要');
+    expect(html).not.toMatch(/<details[^>]*\bopen(?:=|>)/i);
+    expect(html).toContain('ローカル分析パックJSONを読み込む（開発用）');
+    expect(html).toContain('未読込');
     expect(html).toContain('企業公開情報');
     expect(html).toContain('WEB情報');
     expect(html).toContain('企業プレスリリース');
@@ -55,5 +67,80 @@ describe('SettingsPanel external information wording', () => {
     expect(html).not.toMatch(/[A-Za-z]:\\[^<]*(?:\.jpe?g|\.png|\.gif|\.webp|\.bmp|\.tiff?)/i);
     expect(html).not.toMatch(new RegExp(['base', '64'].join(''), 'i'));
     expect(html).not.toContain('<img');
+  });
+
+  it('hides the local analysis pack input in public production mode', () => {
+    const html = renderToStaticMarkup(
+      createElement(SettingsPanel, {
+        request,
+        companyInput: '',
+        errors: {},
+        isRunning: false,
+        localJpoState: { status: 'sample', warnings: [], errors: [] },
+        enableLocalAnalysisPack: false,
+        externalDemoMode: true,
+        demoShowcaseState: { status: 'empty', warnings: [], errors: [] },
+        hosoeAnalysisPackState: { status: 'empty', warnings: [], errors: [] },
+        onRequestChange: vi.fn(),
+        onCompanyInputChange: vi.fn(),
+        onAddCompany: vi.fn(),
+        onRemoveCompany: vi.fn(),
+        onAnalyze: vi.fn(),
+        onLocalJsonFile: vi.fn(),
+        onResetToSampleData: vi.fn(),
+        onExternalDemoModeChange: vi.fn(),
+        onDemoShowcaseFile: vi.fn(),
+        onClearDemoShowcase: vi.fn(),
+        onHosoeAnalysisPackFile: vi.fn(),
+        onClearHosoeAnalysisPack: vi.fn(),
+      }),
+    );
+
+    expect(html).not.toContain('ローカル分析パックJSONを読み込む');
+    expect(html).not.toContain('細江');
+    expect(html).not.toContain('安立');
+    expect(html).not.toContain('スマホ関連6社の画像意匠');
+    expect(html).not.toContain('日本意匠分類にWを含む画像意匠候補');
+    expect(html).not.toContain('画像共通Dターム');
+    expect(html).not.toContain('専門家レビュー');
+    expect(html).not.toContain(['strict', 'PrefixW'].join(''));
+    expect(html).not.toContain(['dTermWIncluded', 'Candidate'].join(''));
+  });
+
+  it('offers companies from the active dataset and exposes validation errors accessibly', () => {
+    const html = renderToStaticMarkup(
+      createElement(SettingsPanel, {
+        request: { ...request, scope: { mode: 'companies', companies: [] } },
+        companyInput: '',
+        companyOptions: ['サンプル電機株式会社', '架空モビリティ株式会社'],
+        errors: { companies: '企業指定分析では、少なくとも1社を追加してください。' },
+        isRunning: false,
+        localJpoState: { status: 'sample', warnings: [], errors: [] },
+        enableLocalAnalysisPack: false,
+        externalDemoMode: true,
+        demoShowcaseState: { status: 'empty', warnings: [], errors: [] },
+        hosoeAnalysisPackState: { status: 'empty', warnings: [], errors: [] },
+        onRequestChange: vi.fn(),
+        onCompanyInputChange: vi.fn(),
+        onAddCompany: vi.fn(),
+        onRemoveCompany: vi.fn(),
+        onAnalyze: vi.fn(),
+        onLocalJsonFile: vi.fn(),
+        onResetToSampleData: vi.fn(),
+        onExternalDemoModeChange: vi.fn(),
+        onDemoShowcaseFile: vi.fn(),
+        onClearDemoShowcase: vi.fn(),
+        onHosoeAnalysisPackFile: vi.fn(),
+        onClearHosoeAnalysisPack: vi.fn(),
+      }),
+    );
+
+    expect(html).toContain('データ内の企業候補');
+    expect(html).toContain('企業候補から追加');
+    expect(html).toContain('サンプル電機株式会社');
+    expect(html).toContain('架空モビリティ株式会社');
+    expect(html).toContain('id="companies-error"');
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('tabindex="-1"');
   });
 });

@@ -17,7 +17,7 @@ describe('validateRequest', () => {
     expect(errors.companies).toBeDefined();
   });
 
-  it('requires design kinds, purposes, and departments', () => {
+  it('requires design kinds and purposes while allowing automatic departments', () => {
     const errors = validateRequest({
       ...validRequest,
       designKinds: [],
@@ -27,6 +27,12 @@ describe('validateRequest', () => {
 
     expect(errors.designKinds).toBeDefined();
     expect(errors.purposes).toBeDefined();
-    expect(errors.departments).toBeDefined();
+    expect(errors.departments).toBeUndefined();
+  });
+
+  it('requires a focus area for the industry scope', () => {
+    const errors = validateRequest({ ...validRequest, scope: { mode: 'industry', industry: '' }, productDomain: '' });
+
+    expect(errors.productDomain).toBeDefined();
   });
 });

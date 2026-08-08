@@ -19,8 +19,9 @@ import {
   type DemoShowcaseLoadFailure,
   type DemoShowcaseLoadSuccess,
 } from './data/DemoShowcaseDataSource';
+import { loadProtectedDemoData } from './data/ProtectedDemoDataSource';
 
-const DEFAULT_PURPOSES: AnalysisPurpose[] = ['market_trend', 'dx_dev', 'portfolio', 'filing_strategy'];
+const DEFAULT_PURPOSES: AnalysisPurpose[] = ['market_trend', 'competitor_design'];
 const ENABLE_LOCAL_ANALYSIS_PACK = import.meta.env.DEV || import.meta.env.VITE_ENABLE_LOCAL_ANALYSIS_PACK === 'true';
 
 const initialRequest: AnalysisRequest = {
@@ -29,7 +30,7 @@ const initialRequest: AnalysisRequest = {
   period: 'last_1y',
   designKinds: [...ALL_DESIGN_KINDS],
   purposes: DEFAULT_PURPOSES,
-  departments: ['product_planning', 'design', 'ip'],
+  departments: ['mgmt_planning', 'product_planning'],
   includeUnresolvedApplicants: true,
 };
 
@@ -77,7 +78,7 @@ export default function App() {
   const companyOptions = useMemo(() => buildCompanyOptions(allRecords), [allRecords]);
   const headerBadges =
     localJpoState.status === 'loaded'
-      ? ['ローカル実データJSON（開発用）', 'ルールベース分析', 'File API読込']
+      ? ['ローカル検証データ', 'ルールベース分析', 'ブラウザ内のみ']
       : STATUS_BADGES;
 
   useEffect(() => {
@@ -184,6 +185,13 @@ export default function App() {
     }
   };
 
+  const handleProtectedDemoData = async () => {
+    clearAnalysisResult();
+    setLocalJpoState({ status: 'loading', fileName: '保護された同一オリジンデータ', warnings: [], errors: [] });
+    const loadResult = await loadProtectedDemoData();
+    setLocalJpoState(loadResult.ok ? { status: 'loaded', load: loadResult } : { status: 'error', failure: loadResult });
+  };
+
   const handleDemoShowcaseFile = async (file: File | null) => {
     if (!file) return;
 
@@ -243,7 +251,7 @@ export default function App() {
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-normal text-ink">AI Design Intelligence</h1>
-            <p className="mt-1 text-sm text-muted">意匠情報を、先行商品戦略＆知財戦略へ活用</p>
+            <p className="mt-1 text-sm text-muted">意匠情報から、商品開発領域と企業戦略の先行ヒントを得る</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {headerBadges.map((badge, index) => (
@@ -273,24 +281,24 @@ export default function App() {
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Design intelligence workflow</p>
             <h2 className="mt-3 max-w-3xl text-2xl font-bold leading-tight text-ink sm:text-3xl">
-              競合や市場の意匠から、次に注目すべき商品領域と出願戦略のヒントを見つける
+              特許情報より早く公表される「意匠情報」を活用し、商品開発領域や企業戦略の先行ヒントを得る
             </h2>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-muted sm:text-base">
-              対象と知りたいことを選ぶだけで、動向・変化・ポートフォリオを整理し、根拠となる意匠まで確認できます。
+              案件や制度によって公表時期は異なるため、他の知財情報や事業情報とあわせて検討します。
             </p>
           </div>
           <ol className="grid gap-3 rounded-xl border border-teal-200 bg-white p-4 shadow-soft sm:grid-cols-3 lg:grid-cols-1">
             <li className="flex items-start gap-3">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">1</span>
-              <div><strong className="block text-sm text-ink">対象を決める</strong><span className="text-xs leading-5 text-muted">市場全体または企業を選択</span></div>
+              <div><strong className="block text-sm text-ink">対象を決める</strong><span className="text-xs leading-5 text-muted">市場・業界・企業を選択</span></div>
             </li>
             <li className="flex items-start gap-3">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">2</span>
-              <div><strong className="block text-sm text-ink">知りたいことを選ぶ</strong><span className="text-xs leading-5 text-muted">期間・意匠種別・分析目的を設定</span></div>
+              <div><strong className="block text-sm text-ink">見たい領域を決める</strong><span className="text-xs leading-5 text-muted">領域・意匠情報・期間を設定</span></div>
             </li>
             <li className="flex items-start gap-3">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">3</span>
-              <div><strong className="block text-sm text-ink">示唆と根拠を見る</strong><span className="text-xs leading-5 text-muted">重要な結果から根拠意匠へ</span></div>
+              <div><strong className="block text-sm text-ink">結果と根拠を確認する</strong><span className="text-xs leading-5 text-muted">件数から該当する根拠意匠へ</span></div>
             </li>
           </ol>
         </div>
@@ -316,6 +324,7 @@ export default function App() {
           localJpoState={localJpoState}
           enableLocalAnalysisPack={ENABLE_LOCAL_ANALYSIS_PACK}
           onLocalJsonFile={handleLocalJsonFile}
+          onProtectedDemoData={handleProtectedDemoData}
           onResetToSampleData={resetToSampleData}
           externalDemoMode={externalDemoMode}
           onExternalDemoModeChange={setExternalDemoMode}
@@ -367,7 +376,7 @@ function localJpoAnalysisDisclaimer(summary: LocalJpoLoadSuccess['summary']): st
   const periodDate = summary.dataPeriodKind === 'monthly_preview' ? formatMonthLabel(summary.dataPeriodDate) : summary.dataPeriodDate;
   return `この結果はローカル実データJSONをブラウザのメモリ上で読み込み、ルールベースで集計した参考情報です。${
     periodDate ? `${periodDate}対象の` : ''
-  }${localJpoAnalysisPeriodLabel(summary.dataPeriodKind)}のため、傾向判断には追加データが必要です。分析期間はgazetteDate基準です。法的助言ではありません。`;
+  }${localJpoAnalysisPeriodLabel(summary.dataPeriodKind)}のため、傾向判断には追加データが必要です。分析期間は公報発行日を基準にしています。法的助言ではありません。`;
 }
 
 function buildCompanyOptions(records: DesignRecord[], limit = 20): string[] {
@@ -387,6 +396,7 @@ function buildCompanyOptions(records: DesignRecord[], limit = 20): string[] {
 function focusFirstValidationError(errors: ValidationErrors): void {
   const targets: Array<[keyof ValidationErrors, string]> = [
     ['companies', 'companies-error'],
+    ['productDomain', 'product-domain-error'],
     ['designKinds', 'design-kinds-error'],
     ['purposes', 'purposes-error'],
     ['departments', 'departments-error'],

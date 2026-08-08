@@ -27,6 +27,8 @@ describe('RuleBasedAnalysisEngine', () => {
     expect(insights.every((insight) => insight.metric.label.length > 0)).toBe(true);
     expect(insights.every((insight) => ['low', 'medium', 'high'].includes(insight.confidence))).toBe(true);
     expect(insights.some((insight) => insight.evidenceIds.length > 0)).toBe(true);
+    const recordIds = new Set(records.map((record) => record.id));
+    expect(insights.flatMap((insight) => insight.evidenceIds).every((id) => recordIds.has(id))).toBe(true);
   });
 
   it('creates market view for all class analysis', async () => {
@@ -100,6 +102,15 @@ describe('RuleBasedAnalysisEngine', () => {
 
     const strongPhrases = ['増加' + 'しています', '強化' + 'しています', '注力' + 'しています'];
     strongPhrases.forEach((phrase) => expect(text).not.toContain(phrase));
+  });
+
+  it('does not claim absence when no records match', async () => {
+    const emptyRequest: AnalysisRequest = { ...request, scope: { mode: 'all_classes' } };
+    const result = await new RuleBasedAnalysisEngine().analyze(emptyRequest, [], '2026-06-15');
+    const text = collectMarketInsights(result.market!).map((insight) => insight.text).join('\n');
+
+    expect(text).toContain('現在のデータと条件では検出されませんでした。');
+    expect(text).not.toContain('該当意匠が存在しない');
   });
 });
 

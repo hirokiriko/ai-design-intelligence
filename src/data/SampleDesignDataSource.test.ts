@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALL_DESIGN_KINDS } from '../domain/labels';
-import { SampleDesignDataSource } from './SampleDesignDataSource';
+import { DEMO_PRESETS } from '../domain/presets';
+import { getPeriodStart, SampleDesignDataSource, validateDesignDataset } from './SampleDesignDataSource';
 import type { AnalysisRequest } from '../domain/types';
 
 const baseRequest: AnalysisRequest = {
@@ -48,6 +49,30 @@ describe('SampleDesignDataSource', () => {
     expect(text).not.toMatch(/[A-Za-z]:\\/);
     expect(text).not.toMatch(/https?:\/\//i);
     expect(text).not.toMatch(new RegExp(['base', '64'].join(''), 'i'));
+  });
+
+  it('keeps sample dates and identifiers internally consistent', () => {
+    const source = new SampleDesignDataSource();
+    const records = source.getAllRecords();
+
+    expect(validateDesignDataset({ dataAsOf: source.getDataAsOf(), records })).toEqual([]);
+    expect(records.every((record) => record.gazetteDate <= source.getDataAsOf())).toBe(true);
+    expect(new Set(records.map((record) => record.id)).size).toBe(records.length);
+    expect(new Set(records.map((record) => record.registrationNumber)).size).toBe(records.length);
+  });
+
+  it('calculates inclusive one-year and two-year calendar boundaries', () => {
+    expect(getPeriodStart('2026-06-15', 'last_1y').toISOString().slice(0, 10)).toBe('2025-06-15');
+    expect(getPeriodStart('2024-02-29', 'last_1y').toISOString().slice(0, 10)).toBe('2023-02-28');
+    expect(getPeriodStart('2024-02-29', 'last_2y').toISOString().slice(0, 10)).toBe('2022-02-28');
+  });
+
+  it('returns at least one record for every demo preset', async () => {
+    const source = new SampleDesignDataSource();
+
+    for (const preset of DEMO_PRESETS) {
+      expect((await source.query(preset.request)).length, preset.label).toBeGreaterThan(0);
+    }
   });
 
   it('filters last_1y from dataAsOf rather than the current date', async () => {

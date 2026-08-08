@@ -2,6 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { AnalysisRequest } from '../../domain/types';
+import { resolveDesignKinds } from '../../domain/selection';
 import { SettingsPanel } from './SettingsPanel';
 
 const request: AnalysisRequest = {
@@ -15,6 +16,12 @@ const request: AnalysisRequest = {
 };
 
 describe('SettingsPanel external information wording', () => {
+  it('automatically selects image designs until the user changes design kinds manually', () => {
+    expect(resolveDesignKinds(['ui_design'], ['article', 'image', 'interior'], false)).toEqual(['image']);
+    expect(resolveDesignKinds(['market_trend'], ['image'], false)).toEqual(['article', 'image', 'interior']);
+    expect(resolveDesignKinds(['ui_design'], ['article', 'interior'], true)).toEqual(['article', 'interior']);
+  });
+
   it('marks company public information sources as preparing and shows source/copyright notice', () => {
     const html = renderToStaticMarkup(
       createElement(SettingsPanel, {
@@ -33,6 +40,7 @@ describe('SettingsPanel external information wording', () => {
         onRemoveCompany: vi.fn(),
         onAnalyze: vi.fn(),
         onLocalJsonFile: vi.fn(),
+        onProtectedDemoData: vi.fn(),
         onResetToSampleData: vi.fn(),
         onExternalDemoModeChange: vi.fn(),
         onDemoShowcaseFile: vi.fn(),
@@ -42,24 +50,34 @@ describe('SettingsPanel external information wording', () => {
       }),
     );
 
-    expect(html).toContain('任意：データ・デモ設定');
+    expect(html).toContain('詳細設定・データ情報');
     expect(html).toContain('分析条件を決める');
-    expect(html).toContain('AI分析開始');
-    expect(html).toContain('意匠動向をルールベースで分析します。');
-    expect(html).toContain('APIキーは不要');
+    expect(html).toContain('分析を開始');
+    expect(html).toContain('6. 結果と根拠を確認する');
+    expect(html).not.toContain('保護されたデモデータを読み込む');
+    expect(html).toContain('外部データ未接続');
     expect(html).not.toMatch(/<details[^>]*\bopen(?:=|>)/i);
     expect(html).toContain('ローカル分析パックJSONを読み込む（開発用）');
     expect(html).toContain('未読込');
-    expect(html).toContain('企業公開情報');
+    expect(html).toContain('将来構想');
     expect(html).toContain('WEB情報');
     expect(html).toContain('企業プレスリリース');
     expect(html).toContain('新聞情報');
     expect(html).toContain('株主総会情報・事業方針');
     expect(html).toContain('準備中');
-    expect(html).toContain('企業公開情報との連携は、出典明示・利用条件・著作権を確認したうえで対応予定です。');
-    expect(html).toContain('本文転載ではなく、企業IR・プレスリリース等の一般公開情報への参照・要約・出典表示を前提に検討します。');
-    expect(html).not.toContain('本文転載ではなく、公開情報への参照・要約・出典表示を前提に検討します。');
-    expect(html).not.toContain('将来' + '拡張');
+    expect(html).toContain('現在の分析には使用しません。');
+    expect(html).toContain('出力部門（任意）');
+    const stepPositions = [
+      '1. 分析対象を決める',
+      '2. 見たい領域を決める',
+      '3. 対象となる意匠情報を決める',
+      '4. 対象期間を決める',
+      '5. 分析目的を選ぶ',
+    ].map((label) => html.indexOf(label));
+    expect(stepPositions.every((position) => position >= 0)).toBe(true);
+    expect(stepPositions).toEqual([...stepPositions].sort((left, right) => left - right));
+    expect(html).not.toContain('order-3');
+    expect(html).not.toContain('order-4');
     expect(html).not.toContain('C:\\KIRIKO_Data');
     expect(html).not.toContain(['design-records-', 'monthly-preview'].join(''));
     expect(html).not.toContain(['demo-candidate-', 'expanded'].join(''));
@@ -87,6 +105,7 @@ describe('SettingsPanel external information wording', () => {
         onRemoveCompany: vi.fn(),
         onAnalyze: vi.fn(),
         onLocalJsonFile: vi.fn(),
+        onProtectedDemoData: vi.fn(),
         onResetToSampleData: vi.fn(),
         onExternalDemoModeChange: vi.fn(),
         onDemoShowcaseFile: vi.fn(),
@@ -126,6 +145,7 @@ describe('SettingsPanel external information wording', () => {
         onRemoveCompany: vi.fn(),
         onAnalyze: vi.fn(),
         onLocalJsonFile: vi.fn(),
+        onProtectedDemoData: vi.fn(),
         onResetToSampleData: vi.fn(),
         onExternalDemoModeChange: vi.fn(),
         onDemoShowcaseFile: vi.fn(),

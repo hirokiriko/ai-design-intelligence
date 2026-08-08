@@ -1,6 +1,6 @@
 # AI Design Intelligence
 
-意匠情報を、先行商品戦略と知財戦略へ活用する Phase 0 の静的SPAです。
+特許情報より早く公表される場合がある意匠情報を活用し、商品開発領域や企業戦略の先行ヒントを得るためのSPAです。案件や制度によって公表時期は異なるため、他の知財情報や事業情報とあわせて検討します。
 
 ## 方針
 
@@ -28,12 +28,13 @@
 ## コマンド
 
 ```bash
-npm install
-npm run lint
-npm run typecheck
-npm run test
-npm run build
-npm run dev
+pnpm install --frozen-lockfile
+pnpm run lint
+pnpm run typecheck
+pnpm run test
+pnpm run check:no-real-data
+pnpm run build
+pnpm run dev
 ```
 
 ## Vercel デプロイ
@@ -67,17 +68,23 @@ DB 側の引継ぎ資料は `../特許ダウンロード手順_0/AGENT_ASSIGNMEN
 
 読み込んだ実データは `LocalJpoJsonDataSource` で既存の `DesignRecord` に変換し、既存の `RuleBasedAnalysisEngine` で分析します。意匠種別が明示されていない場合は、`designClass`、`articleName`、説明文から物品意匠・画像意匠・空間意匠を暫定推定します。
 
-一部のローカル検証JSONでは公報・図面メタデータを表示できます。ただし、公報・図面画像本体と外部リンクは未接続です。
+一部のローカル検証JSONでは、取得済みの公報・図面情報を表示できます。ただし、図面画像本体と外部リンクは未接続です。
 
 `unresolvedApplicants` または `unresolvedRightHolders` がある場合、申請人コードが正式名称に補完できていない状態として画面に警告します。この解消は DB 側の申請人マスタ拡充・名寄せ課題です。
 
 実データ混入チェック:
 
 ```bash
-npm run check:no-real-data
+pnpm run check:no-real-data
 ```
 
-`npm run build` の前後にも同じチェックを実行し、公開ビルド対象に実データ由来のファイル名、ローカル作業パス、実在企業名、実在番号らしき値、公報XML由来らしき参照がないことを確認します。
+`pnpm run build` の前後にも同じチェックを実行し、公開ビルド対象に実データ由来のファイル名、ローカル作業パス、実在企業名、実在番号らしき値、公報XML由来らしき参照がないことを確認します。
+
+## 保護されたデモデータ
+
+詳細設定の「保護されたデモデータを読み込む」は、Basic認証等で保護された同一オリジンの `/api/demo-designs` が実装・レビュー済みで、`VITE_ENABLE_PROTECTED_DEMO_DATA=true` を設定した場合だけ表示します。取得時は `cache: 'no-store'` を指定し、認証情報をフロントエンドへ入力・保存せず、レスポンスサイズを制限して既存のローカルJSON検証と不要項目の除外処理を通します。
+
+現在は安全な保存先と同一オリジンAPIが未実装のため、フラグは `false` のまま、読込ボタンも非表示です。実データをリポジトリへ追加して代替せず、状態は `BLOCKED_REAL_DATA_DEPLOY` として扱います。デモ用サンプルまたはGit管理外のローカルJSONで検証し、実データ条件の記録には `docs/demo/demo-data-manifest.example.md` を複製せず参照し、実値はGit管理外の `local-data/` に保存します。
 
 ## 注意
 

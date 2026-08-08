@@ -47,7 +47,7 @@ interface PublicSampleSummary {
 }
 
 interface EvidenceSelection {
-  result: AnalysisResult;
+  result: AnalysisResult | null;
   label: string;
   ids: string[];
 }
@@ -107,17 +107,16 @@ export function ResultsArea({
     externalDemoMode && demoShowcaseRecords.length === 0 && publicSampleSummary ? buildSampleDemoShowcaseRecords(allRecords) : [];
   const effectiveDemoShowcaseRecords = demoShowcaseRecords.length > 0 ? demoShowcaseRecords : derivedSampleShowcaseRecords;
   const demoMatches = externalDemoMode ? resolveDemoShowcaseMatches(effectiveDemoShowcaseRecords, allRecords) : [];
-  const activeEvidenceSelection = result && evidenceSelection?.result === result ? evidenceSelection : null;
-  const evidenceRecords = result
-    ? activeEvidenceSelection
-      ? recordsForEvidenceIds(activeEvidenceSelection.ids, allRecords)
-      : collectEvidenceRecords(result, allRecords)
-    : [];
+  const activeEvidenceSelection = evidenceSelection?.result === result ? evidenceSelection : null;
+  const evidenceRecords = activeEvidenceSelection
+    ? recordsForEvidenceIds(activeEvidenceSelection.ids, allRecords)
+    : result
+      ? collectEvidenceRecords(result, allRecords)
+      : [];
   const showAllEvidence = Boolean(result && expandedEvidenceResult === result);
   const visibleEvidenceRecords = showAllEvidence || activeEvidenceSelection ? evidenceRecords : evidenceRecords.slice(0, INITIAL_EVIDENCE_LIMIT);
   const warnings = [...localJpoWarnings, ...analysisWarnings];
   const selectEvidence = (label: string, ids: string[]) => {
-    if (!result) return;
     setEvidenceSelection({ result, label, ids });
     setExpandedEvidenceResult(result);
     queueMicrotask(() => document.getElementById('evidence-details')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
@@ -143,7 +142,6 @@ export function ResultsArea({
               </p>
             ) : null}
           </div>
-          <Badge tone="accent">ルールベース分析</Badge>
         </div>
 
         {isRunning ? <p className="mt-6 rounded-md bg-slate-50 p-4 font-semibold text-muted">分析中...</p> : null}
@@ -190,7 +188,7 @@ export function ResultsArea({
 
       {warnings.length > 0 ? <WarningPanel warnings={warnings} /> : null}
 
-      {result && evidenceRecords.length > 0 ? (
+      {evidenceRecords.length > 0 ? (
         <section id="evidence-details" className="scroll-mt-6 rounded-lg border border-line bg-white p-5 shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -221,7 +219,7 @@ export function ResultsArea({
               />
             ))}
           </div>
-          {evidenceRecords.length > INITIAL_EVIDENCE_LIMIT ? (
+          {!activeEvidenceSelection && evidenceRecords.length > INITIAL_EVIDENCE_LIMIT ? (
             <button
               type="button"
               className="mt-4 w-full rounded-md border border-line bg-panel px-4 py-2 text-sm font-bold text-ink"
@@ -244,9 +242,14 @@ export function ResultsArea({
         </summary>
         <div className="mt-4 space-y-5 border-t border-line pt-4">
           {localJpoSummary ? (
-            <LocalJpoSummaryPanel summary={localJpoSummary} externalDemoMode={externalDemoMode} demoShowcaseCount={effectiveDemoShowcaseRecords.length} />
+            <LocalJpoSummaryPanel
+              summary={localJpoSummary}
+              records={allRecords}
+              externalDemoMode={externalDemoMode}
+              onSelectEvidence={selectEvidence}
+            />
           ) : publicSampleSummary ? (
-            <PublicSampleSummaryPanel summary={publicSampleSummary} />
+            <PublicSampleSummaryPanel summary={publicSampleSummary} records={allRecords} onSelectEvidence={selectEvidence} />
           ) : null}
           {localAnalysisPackPanel}
           {externalDemoMode ? <DemoNavigation /> : null}
@@ -889,11 +892,14 @@ function DemoScopeItem({ label, value }: { label: string; value: string }) {
 
 function LocalJpoSummaryPanel({
   summary,
+  records,
   externalDemoMode,
+  onSelectEvidence,
 }: {
   summary: LocalJpoDatasetSummary;
+  records: DesignRecord[];
   externalDemoMode: boolean;
-  demoShowcaseCount: number;
+  onSelectEvidence: (label: string, ids: string[]) => void;
 }) {
   const primaryItems = [
     ['総件数', `${formatCount(summary.totalRecords)}件`],
@@ -965,10 +971,27 @@ function LocalJpoSummaryPanel({
             : '一部の申請人コードはまだ正式名称に補完できていません。DB側で申請人マスタの拡充が必要です。'}
         </p>
       ) : null}
-      <div className="mt-4 grid gap-4 xl:grid-cols-3">
-        <Ranking title="designClass上位" items={summary.topDesignClasses} />
-        <Ranking title="articleName上位" items={summary.topArticleNames} />
-        <Ranking title="applicant / rightHolder上位" items={summary.topParties} />
+      <div className="mt-4 grid gap-4 xl:grid-cols-4">
+        <Ranking
+          title="分類別ランキング"
+          items={summary.topDesignClasses}
+          onSelectItem={(item) => onSelectEvidence(`分類別ランキング：${item.label}`, rankingEvidenceIds(records, 'designClass', item.label))}
+        />
+        <Ranking
+          title="物品名別ランキング"
+          items={summary.topArticleNames}
+          onSelectItem={(item) => onSelectEvidence(`物品名別ランキング：${item.label}`, rankingEvidenceIds(records, 'articleName', item.label))}
+        />
+        <Ranking
+          title="企業別ランキング"
+          items={summary.topParties}
+          onSelectItem={(item) => onSelectEvidence(`企業別ランキング：${item.label}`, rankingEvidenceIds(records, 'party', item.label))}
+        />
+        <Ranking
+          title="意匠種別ランキング"
+          items={buildRanking(records.map((record) => DESIGN_KIND_LABELS[record.designKind]))}
+          onSelectItem={(item) => onSelectEvidence(`意匠種別ランキング：${item.label}`, rankingEvidenceIds(records, 'designKind', item.label))}
+        />
       </div>
       {summary.topUnresolvedCodes.length > 0 ? (
         <details className="mt-4 rounded-md border border-line bg-white p-4">
@@ -984,7 +1007,15 @@ function LocalJpoSummaryPanel({
   );
 }
 
-function PublicSampleSummaryPanel({ summary }: { summary: PublicSampleSummary }) {
+function PublicSampleSummaryPanel({
+  summary,
+  records,
+  onSelectEvidence,
+}: {
+  summary: PublicSampleSummary;
+  records: DesignRecord[];
+  onSelectEvidence: (label: string, ids: string[]) => void;
+}) {
   const primaryItems = [
     ['サンプルデータ件数', `${formatCount(summary.totalRecords)}件`],
     ['サンプルの公報・図面情報件数', `${formatCount(summary.gazetteDrawingKeysCount)}件`],
@@ -1018,10 +1049,26 @@ function PublicSampleSummaryPanel({ summary }: { summary: PublicSampleSummary })
         サンプルの図面名・画像ファイル名は架空メタデータです。画像本体、外部リンク、ローカルフルパス、埋め込み画像データは含めていません。
       </p>
       <div className="mt-4 grid gap-4 xl:grid-cols-4">
-        <Ranking title="サンプル企業上位" items={summary.topParties} />
-        <Ranking title="サンプルdesignClass上位" items={summary.topDesignClasses} />
-        <Ranking title="サンプルarticleName上位" items={summary.topArticleNames} />
-        <Ranking title="サンプル意匠種別" items={summary.designKindCounts} />
+        <Ranking
+          title="企業別ランキング"
+          items={summary.topParties}
+          onSelectItem={(item) => onSelectEvidence(`企業別ランキング：${item.label}`, rankingEvidenceIds(records, 'party', item.label))}
+        />
+        <Ranking
+          title="分類別ランキング"
+          items={summary.topDesignClasses}
+          onSelectItem={(item) => onSelectEvidence(`分類別ランキング：${item.label}`, rankingEvidenceIds(records, 'designClass', item.label))}
+        />
+        <Ranking
+          title="物品名別ランキング"
+          items={summary.topArticleNames}
+          onSelectItem={(item) => onSelectEvidence(`物品名別ランキング：${item.label}`, rankingEvidenceIds(records, 'articleName', item.label))}
+        />
+        <Ranking
+          title="意匠種別ランキング"
+          items={summary.designKindCounts}
+          onSelectItem={(item) => onSelectEvidence(`意匠種別ランキング：${item.label}`, rankingEvidenceIds(records, 'designKind', item.label))}
+        />
       </div>
     </section>
   );
@@ -1071,7 +1118,15 @@ function WarningPanel({ warnings }: { warnings: string[] }) {
   );
 }
 
-function Ranking({ title, items }: { title: string; items: RankedItem[] }) {
+function Ranking({
+  title,
+  items,
+  onSelectItem,
+}: {
+  title: string;
+  items: RankedItem[];
+  onSelectItem?: (item: RankedItem) => void;
+}) {
   return (
     <div className="rounded-md border border-line bg-panel p-4">
       <h3 className="text-sm font-bold text-ink">{title}</h3>
@@ -1082,7 +1137,18 @@ function Ranking({ title, items }: { title: string; items: RankedItem[] }) {
           {items.map((item) => (
             <li key={item.label} className="flex items-start justify-between gap-3">
               <span className="readable-text min-w-0 text-ink">{item.label}</span>
-              <span className="shrink-0 font-bold text-muted">{item.count}件</span>
+              {onSelectItem ? (
+                <button
+                  type="button"
+                  className="shrink-0 rounded border border-teal-200 bg-white px-2 py-1 font-bold text-accent underline decoration-transparent underline-offset-2 transition hover:decoration-current focus-visible:decoration-current"
+                  aria-label={`${title}の${item.label}、${formatCount(item.count)}件の根拠意匠を見る`}
+                  onClick={() => onSelectItem(item)}
+                >
+                  {formatCount(item.count)}件
+                </button>
+              ) : (
+                <span className="shrink-0 font-bold text-muted">{formatCount(item.count)}件</span>
+              )}
             </li>
           ))}
         </ol>
@@ -1394,7 +1460,6 @@ function InsightView({
   const recordsById = new Map(allRecords.map((record) => [record.id, record]));
   const evidenceIds =
     externalDemoMode && metadataOnly ? insight.evidenceIds.filter((id) => Boolean(recordsById.get(id)?.gazetteDrawingKeys)) : insight.evidenceIds;
-  const firstEvidenceId = evidenceIds[0] ?? insight.evidenceIds[0];
   const developerDetails = (
     <dl className="grid gap-2 text-xs text-muted">
       <div>
@@ -1430,6 +1495,7 @@ function InsightView({
       <p className="readable-text mt-3 text-sm leading-6 text-ink">{insight.text}</p>
       <button
         type="button"
+        data-testid="insight-evidence-button"
         className="mt-3 w-full rounded-md border border-line bg-panel p-3 text-left text-sm"
         onClick={() => onSelectEvidence(title, evidenceIds)}
         disabled={evidenceIds.length === 0}
@@ -1439,7 +1505,7 @@ function InsightView({
             {insight.metric.label}: {formatCount(insight.metric.value)}
             {insight.metric.unit ?? ''}
             {insight.metric.comparison ? ` / ${insight.metric.comparison}` : ''}
-            {evidenceIds.length > 0 ? ` ／ 根拠意匠${formatCount(evidenceIds.length)}件を見る` : ''}
+            {evidenceIds.length > 0 ? ` ／ 根拠意匠を見る（${formatCount(evidenceIds.length)}件）` : ''}
           </span>
       </button>
       {gazetteEvidenceCount > 0 ? (
@@ -1467,15 +1533,6 @@ function InsightView({
             </div>
           ) : null}
         </div>
-      ) : null}
-      {externalDemoMode && firstEvidenceId ? (
-        <button
-          type="button"
-          className="mt-3 inline-flex rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white"
-          onClick={() => onSelectEvidence(title, evidenceIds)}
-        >
-          根拠意匠を見る
-        </button>
       ) : null}
       {externalDemoMode ? (
         <details className="mt-3 rounded-md border border-line bg-panel p-3">
@@ -1865,6 +1922,32 @@ function buildRanking(values: string[], limit = 8): RankedItem[] {
     .map(([label, count]) => ({ label, count }))
     .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'ja-JP'))
     .slice(0, limit);
+}
+
+type RankingDimension = 'party' | 'designClass' | 'articleName' | 'designKind';
+
+function rankingEvidenceIds(records: DesignRecord[], dimension: RankingDimension, label: string): string[] {
+  return records
+    .filter((record) => {
+      if (dimension === 'designClass') return record.designClass === label;
+      if (dimension === 'articleName') return record.articleName === label;
+      if (dimension === 'designKind') return DESIGN_KIND_LABELS[record.designKind] === label;
+      return recordPartyLabels(record).includes(label);
+    })
+    .map((record) => record.id);
+}
+
+function recordPartyLabels(record: DesignRecord): string[] {
+  const candidates = [
+    record.applicantsDisplay,
+    record.applicant,
+    ...(record.applicants ?? []),
+    ...(record.applicantsNormalized ?? []),
+    ...(record.rightHolders ?? []),
+    ...(record.unresolvedApplicants ?? []),
+    ...(record.unresolvedRightHolders ?? []),
+  ];
+  return [...new Set(candidates.map((value) => displayPartyLabel(value)).filter((value): value is string => Boolean(value)))];
 }
 
 function listValue(values?: string[]): string {

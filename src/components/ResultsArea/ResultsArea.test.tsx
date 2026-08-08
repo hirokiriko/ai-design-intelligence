@@ -225,7 +225,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('今回の分析対象意匠数');
     expect(html).toContain('最初に確認する分析結果');
     expect(html).toContain('データ基準日 2026-06-23');
-    expect(html).toContain('ルールベース分析');
+    expect(html).not.toContain('ルールベース分析');
     expect(html).not.toContain('信頼度：');
     expect(html).toContain('選択した目的別の詳細分析を見る');
     expect(html.match(/data-testid="priority-insight"/g)).toHaveLength(3);
@@ -351,7 +351,14 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('この公開デモはサンプルデータ版です。特許庁実データを用いた検証版は、画面共有でご説明します。');
     expect(html).toContain('公開URL用デモサンプルデータ概要');
     expect(html).toContain('サンプルデータ件数');
-    expect(html).toContain('サンプル企業上位');
+    expect(html).toContain('企業別ランキング');
+    expect(html).toContain('分類別ランキング');
+    expect(html).toContain('物品名別ランキング');
+    expect(html).toContain('意匠種別ランキング');
+    expect(html).toContain('aria-label="企業別ランキングのサンプル電機株式会社、1件の根拠意匠を見る"');
+    expect(html).toContain('aria-label="分類別ランキングのS-N3-11、1件の根拠意匠を見る"');
+    expect(html).toContain('aria-label="物品名別ランキングのサンプル操作用画像、1件の根拠意匠を見る"');
+    expect(html).toContain('aria-label="意匠種別ランキングの画像意匠、1件の根拠意匠を見る"');
     expect(html).toContain('おすすめデモ候補');
     expect(html).toContain('デモ用サンプルデータから自動抽出した、架空の図面情報を説明しやすい意匠です。');
     expect(html).toContain('公開URL版のデータは架空データで、実在企業・実在公報ではありません。');

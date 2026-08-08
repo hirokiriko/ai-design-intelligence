@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { RuleBasedAnalysisEngine } from './analysis/RuleBasedAnalysisEngine';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
 import { ResultsArea } from './components/ResultsArea/ResultsArea';
-import { Badge } from './components/common/Badge';
-import { ALL_DESIGN_KINDS, STATUS_BADGES } from './domain/labels';
+import { ALL_DESIGN_KINDS } from './domain/labels';
 import type { AnalysisPurpose, AnalysisRequest, AnalysisResult, DesignRecord, HosoeAnalysisPack, ValidationErrors } from './domain/types';
 import { validateRequest } from './domain/validation';
 import { SampleDesignDataSource } from './data/SampleDesignDataSource';
@@ -23,6 +22,7 @@ import { loadProtectedDemoData } from './data/ProtectedDemoDataSource';
 
 const DEFAULT_PURPOSES: AnalysisPurpose[] = ['market_trend', 'competitor_design'];
 const ENABLE_LOCAL_ANALYSIS_PACK = import.meta.env.DEV || import.meta.env.VITE_ENABLE_LOCAL_ANALYSIS_PACK === 'true';
+const ENABLE_PROTECTED_DEMO_DATA = import.meta.env.VITE_ENABLE_PROTECTED_DEMO_DATA === 'true';
 
 const initialRequest: AnalysisRequest = {
   scope: { mode: 'all_classes' },
@@ -76,11 +76,6 @@ export default function App() {
   const dataSource = localJpoState.status === 'loaded' ? localJpoState.load.dataSource : sampleDataSource;
   const allRecords = useMemo(() => dataSource.getAllRecords(), [dataSource]);
   const companyOptions = useMemo(() => buildCompanyOptions(allRecords), [allRecords]);
-  const headerBadges =
-    localJpoState.status === 'loaded'
-      ? ['ローカル検証データ', 'ルールベース分析', 'ブラウザ内のみ']
-      : STATUS_BADGES;
-
   useEffect(() => {
     if (!ENABLE_LOCAL_ANALYSIS_PACK) return;
 
@@ -248,17 +243,10 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="border-b border-line bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mx-auto max-w-7xl px-4 py-4">
           <div>
             <h1 className="text-2xl font-bold tracking-normal text-ink">AI Design Intelligence</h1>
             <p className="mt-1 text-sm text-muted">意匠情報から、商品開発領域と企業戦略の先行ヒントを得る</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {headerBadges.map((badge, index) => (
-              <Badge key={badge} tone={index === 1 ? 'accent' : index === 2 ? 'warning' : 'neutral'}>
-                {badge}
-              </Badge>
-            ))}
           </div>
         </div>
         {localJpoState.status === 'loaded' ? (
@@ -287,20 +275,20 @@ export default function App() {
               案件や制度によって公表時期は異なるため、他の知財情報や事業情報とあわせて検討します。
             </p>
           </div>
-          <ol className="grid gap-3 rounded-xl border border-teal-200 bg-white p-4 shadow-soft sm:grid-cols-3 lg:grid-cols-1">
+          <ul aria-label="分析の流れ" className="grid gap-3 rounded-xl border border-teal-200 bg-white p-4 shadow-soft sm:grid-cols-3 lg:grid-cols-1">
             <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">1</span>
+              <span aria-hidden="true" className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
               <div><strong className="block text-sm text-ink">対象を決める</strong><span className="text-xs leading-5 text-muted">市場・業界・企業を選択</span></div>
             </li>
             <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">2</span>
+              <span aria-hidden="true" className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
               <div><strong className="block text-sm text-ink">見たい領域を決める</strong><span className="text-xs leading-5 text-muted">領域・意匠情報・期間を設定</span></div>
             </li>
             <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">3</span>
+              <span aria-hidden="true" className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
               <div><strong className="block text-sm text-ink">結果と根拠を確認する</strong><span className="text-xs leading-5 text-muted">件数から該当する根拠意匠へ</span></div>
             </li>
-          </ol>
+          </ul>
         </div>
       </section>
 
@@ -323,6 +311,7 @@ export default function App() {
           onAnalyze={analyze}
           localJpoState={localJpoState}
           enableLocalAnalysisPack={ENABLE_LOCAL_ANALYSIS_PACK}
+          protectedDemoDataAvailable={ENABLE_PROTECTED_DEMO_DATA}
           onLocalJsonFile={handleLocalJsonFile}
           onProtectedDemoData={handleProtectedDemoData}
           onResetToSampleData={resetToSampleData}

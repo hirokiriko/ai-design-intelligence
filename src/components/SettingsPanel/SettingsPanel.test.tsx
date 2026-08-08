@@ -54,8 +54,8 @@ describe('SettingsPanel external information wording', () => {
     expect(html).toContain('分析条件を決める');
     expect(html).toContain('分析を開始');
     expect(html).toContain('6. 結果と根拠を確認する');
-    expect(html).toContain('保護されたデモデータを読み込む');
-    expect(html).toContain('認証情報は入力・保存しません');
+    expect(html).not.toContain('保護されたデモデータを読み込む');
+    expect(html).toContain('外部データ未接続');
     expect(html).not.toMatch(/<details[^>]*\bopen(?:=|>)/i);
     expect(html).toContain('ローカル分析パックJSONを読み込む（開発用）');
     expect(html).toContain('未読込');
@@ -67,6 +67,17 @@ describe('SettingsPanel external information wording', () => {
     expect(html).toContain('準備中');
     expect(html).toContain('現在の分析には使用しません。');
     expect(html).toContain('出力部門（任意）');
+    const stepPositions = [
+      '1. 分析対象を決める',
+      '2. 見たい領域を決める',
+      '3. 対象となる意匠情報を決める',
+      '4. 対象期間を決める',
+      '5. 分析目的を選ぶ',
+    ].map((label) => html.indexOf(label));
+    expect(stepPositions.every((position) => position >= 0)).toBe(true);
+    expect(stepPositions).toEqual([...stepPositions].sort((left, right) => left - right));
+    expect(html).not.toContain('order-3');
+    expect(html).not.toContain('order-4');
     expect(html).not.toContain('C:\\KIRIKO_Data');
     expect(html).not.toContain(['design-records-', 'monthly-preview'].join(''));
     expect(html).not.toContain(['demo-candidate-', 'expanded'].join(''));

@@ -45,6 +45,7 @@ interface SettingsPanelProps {
   hasResult?: boolean;
   localJpoState: LocalJpoPanelState;
   enableLocalAnalysisPack: boolean;
+  protectedDemoDataAvailable?: boolean;
   externalDemoMode: boolean;
   demoShowcaseState: DemoShowcasePanelState;
   hosoeAnalysisPackState: HosoeAnalysisPackPanelState;
@@ -72,6 +73,7 @@ export function SettingsPanel({
   hasResult = false,
   localJpoState,
   enableLocalAnalysisPack,
+  protectedDemoDataAvailable = false,
   externalDemoMode,
   demoShowcaseState,
   hosoeAnalysisPackState,
@@ -135,6 +137,20 @@ export function SettingsPanel({
         </summary>
 
         <div className="mt-4 space-y-5 border-t border-line pt-4">
+      <section className="rounded-lg border border-line bg-slate-50 p-5">
+        <h2 className="text-base font-bold text-ink">利用中のデータ・分析方法</h2>
+        <p className="mt-1 text-sm leading-6 text-muted">
+          データ境界や分析方式など、画面共有時に必要な技術情報です。
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Badge tone={localJpoState.status === 'loaded' ? 'warning' : 'neutral'}>
+            {localJpoState.status === 'loaded' ? 'ローカル検証データ' : 'デモ用サンプルデータ'}
+          </Badge>
+          <Badge tone="accent">ルールベース分析</Badge>
+          {!protectedDemoDataAvailable ? <Badge tone="warning">外部データ未接続</Badge> : null}
+        </div>
+      </section>
+
       <section className="rounded-lg border border-line bg-white p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -192,17 +208,21 @@ export function SettingsPanel({
         <p className="mt-2 text-xs leading-5 text-muted">
           File APIで手動選択したJSONだけを、この画面のメモリ上で利用します。
         </p>
-        <button
-          className="mt-3 w-full rounded-md border border-teal-300 bg-teal-50 px-3 py-2 text-sm font-semibold text-accent disabled:cursor-not-allowed disabled:opacity-60"
-          type="button"
-          onClick={onProtectedDemoData}
-          disabled={localJpoState.status === 'loading'}
-        >
-          保護されたデモデータを読み込む
-        </button>
-        <p className="mt-2 text-xs leading-5 text-muted">
-          同一オリジンの保護エンドポイントが設定済みの場合だけ利用します。認証情報は入力・保存しません。
-        </p>
+        {protectedDemoDataAvailable ? (
+          <>
+            <button
+              className="mt-3 w-full rounded-md border border-teal-300 bg-teal-50 px-3 py-2 text-sm font-semibold text-accent disabled:cursor-not-allowed disabled:opacity-60"
+              type="button"
+              onClick={onProtectedDemoData}
+              disabled={localJpoState.status === 'loading'}
+            >
+              保護されたデモデータを読み込む
+            </button>
+            <p className="mt-2 text-xs leading-5 text-muted">
+              同一オリジンの保護エンドポイントを利用します。認証情報は入力・保存しません。
+            </p>
+          </>
+        ) : null}
         <details className="mt-2 rounded-md border border-line bg-panel p-3 text-xs leading-5 text-muted" open={!externalDemoMode}>
           <summary className="cursor-pointer font-semibold text-ink">読み込み例</summary>
           <p className="readable-text mt-2">
@@ -470,7 +490,7 @@ export function SettingsPanel({
         </div>
 
         <div className="mt-6 flex flex-col gap-6">
-          <fieldset className="order-1">
+          <fieldset>
             <legend className="text-sm font-bold text-ink">1. 分析対象を決める</legend>
             <div className="mt-3 grid gap-2">
               <label className="flex items-start gap-3 rounded-md border border-line p-3">
@@ -623,46 +643,7 @@ export function SettingsPanel({
             </div>
           </fieldset>
 
-          <fieldset className="order-4">
-            <legend className="text-sm font-bold text-ink">4. 対象期間を決める</legend>
-            <div className="mt-3 grid gap-2">
-              {(Object.keys(PERIOD_LABELS) as Period[]).map((period) => (
-                <label key={period} className="flex items-center gap-3 rounded-md border border-line p-3">
-                  <input
-                    type="radio"
-                    name="period"
-                    checked={request.period === period}
-                    onChange={() => onRequestChange({ ...request, period })}
-                  />
-                  <span className="font-semibold">{PERIOD_LABELS[period]}</span>
-                </label>
-              ))}
-            </div>
-            <p className="mt-2 text-sm text-muted">
-              案件によっては特許の出願公開より早期に把握できる可能性がある意匠情報を活用するため、最新動向を重視
-            </p>
-            {localJpoState.status === 'loaded' ? (
-              <label className="mt-3 flex items-start gap-2 rounded-md border border-line bg-panel p-3 text-sm">
-                <input
-                  className="mt-1"
-                  type="checkbox"
-                  checked={request.includeUnresolvedApplicants ?? true}
-                  onChange={() =>
-                    onRequestChange({
-                      ...request,
-                      includeUnresolvedApplicants: !(request.includeUnresolvedApplicants ?? true),
-                    })
-                  }
-                />
-                <span>
-                  <span className="block font-semibold text-ink">未解決applicant codeを含む</span>
-                  <span className="text-muted">OFFにすると、未補完の申請人コードを含むレコードを除外します。</span>
-                </span>
-              </label>
-            ) : null}
-          </fieldset>
-
-          <fieldset className="order-3">
+          <fieldset>
             <legend className="text-sm font-bold text-ink">3. 対象となる意匠情報を決める</legend>
             <div className="mt-3 rounded-md border border-line p-3">
               <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -703,7 +684,46 @@ export function SettingsPanel({
             ) : null}
           </fieldset>
 
-          <div className="order-5">
+          <fieldset>
+            <legend className="text-sm font-bold text-ink">4. 対象期間を決める</legend>
+            <div className="mt-3 grid gap-2">
+              {(Object.keys(PERIOD_LABELS) as Period[]).map((period) => (
+                <label key={period} className="flex items-center gap-3 rounded-md border border-line p-3">
+                  <input
+                    type="radio"
+                    name="period"
+                    checked={request.period === period}
+                    onChange={() => onRequestChange({ ...request, period })}
+                  />
+                  <span className="font-semibold">{PERIOD_LABELS[period]}</span>
+                </label>
+              ))}
+            </div>
+            <p className="mt-2 text-sm text-muted">
+              案件によっては特許の出願公開より早期に把握できる可能性がある意匠情報を活用するため、最新動向を重視
+            </p>
+            {localJpoState.status === 'loaded' ? (
+              <label className="mt-3 flex items-start gap-2 rounded-md border border-line bg-panel p-3 text-sm">
+                <input
+                  className="mt-1"
+                  type="checkbox"
+                  checked={request.includeUnresolvedApplicants ?? true}
+                  onChange={() =>
+                    onRequestChange({
+                      ...request,
+                      includeUnresolvedApplicants: !(request.includeUnresolvedApplicants ?? true),
+                    })
+                  }
+                />
+                <span>
+                  <span className="block font-semibold text-ink">未解決applicant codeを含む</span>
+                  <span className="text-muted">OFFにすると、未補完の申請人コードを含むレコードを除外します。</span>
+                </span>
+              </label>
+            ) : null}
+          </fieldset>
+
+          <div>
             <CheckboxGroup
               title="5. 分析目的を選ぶ"
               values={PRIMARY_PURPOSES}
@@ -736,7 +756,7 @@ export function SettingsPanel({
           >
             {isRunning ? '分析しています...' : '分析を開始'}
           </button>
-          <p className="mt-1 text-center text-[11px] text-muted">APIキー不要のルールベース分析</p>
+          <p className="mt-1 text-center text-[11px] text-muted">選択した条件で分析します</p>
         </div>
       ) : null}
     </aside>

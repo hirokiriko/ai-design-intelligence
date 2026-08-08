@@ -25,6 +25,7 @@ describe('loadProtectedDemoData', () => {
     expect(fetchImpl).toHaveBeenCalledWith('/api/demo-designs', {
       method: 'GET',
       credentials: 'same-origin',
+      cache: 'no-store',
       headers: { Accept: 'application/json' },
       redirect: 'error',
     });

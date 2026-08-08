@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import App from './App';
 
 describe('App primary task flow', () => {
-  it('explains the purpose, three-step flow, and sample-data boundary before analysis', () => {
+  it('explains the purpose, unnumbered flow, and sample-data boundary before analysis', () => {
     const html = renderToStaticMarkup(createElement(App));
 
     expect(html).toContain('サンプルデータ版です。');
@@ -15,6 +15,8 @@ describe('App primary task flow', () => {
     expect(html).toContain('対象を決める');
     expect(html).toContain('見たい領域を決める');
     expect(html).toContain('結果と根拠を確認する');
+    expect(html).toContain('aria-label="分析の流れ"');
+    expect(html).not.toContain('bg-accent text-sm font-bold text-white">1</span>');
     expect(html).toContain('詳細設定・データ情報');
     expect(html).toContain('分析条件を決める');
     expect(html).toContain('市場全体');

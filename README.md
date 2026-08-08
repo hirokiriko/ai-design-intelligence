@@ -82,9 +82,9 @@ pnpm run check:no-real-data
 
 ## 保護されたデモデータ
 
-詳細設定の「保護されたデモデータを読み込む」は、Basic認証等で保護された同一オリジンの `/api/demo-designs` が設定済みの場合だけ利用します。認証情報をフロントエンドへ入力・保存せず、レスポンスサイズを制限し、既存のローカルJSON検証と不要項目の除外処理を通します。
+詳細設定の「保護されたデモデータを読み込む」は、Basic認証等で保護された同一オリジンの `/api/demo-designs` が実装・レビュー済みで、`VITE_ENABLE_PROTECTED_DEMO_DATA=true` を設定した場合だけ表示します。取得時は `cache: 'no-store'` を指定し、認証情報をフロントエンドへ入力・保存せず、レスポンスサイズを制限して既存のローカルJSON検証と不要項目の除外処理を通します。
 
-安全な保存先と同一オリジンAPIが未設定の場合、実データをリポジトリへ追加して代替しません。その状態は `BLOCKED_REAL_DATA_DEPLOY` として扱い、デモ用サンプルまたはGit管理外のローカルJSONで検証します。実データ条件の記録には `docs/demo/demo-data-manifest.example.md` を複製せず参照し、実値はGit管理外の `local-data/` に保存します。
+現在は安全な保存先と同一オリジンAPIが未実装のため、フラグは `false` のまま、読込ボタンも非表示です。実データをリポジトリへ追加して代替せず、状態は `BLOCKED_REAL_DATA_DEPLOY` として扱います。デモ用サンプルまたはGit管理外のローカルJSONで検証し、実データ条件の記録には `docs/demo/demo-data-manifest.example.md` を複製せず参照し、実値はGit管理外の `local-data/` に保存します。
 
 ## 注意
 

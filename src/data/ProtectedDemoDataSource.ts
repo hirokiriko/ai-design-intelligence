@@ -20,6 +20,7 @@ export async function loadProtectedDemoData(
     const response = await fetchImpl(endpoint, {
       method: 'GET',
       credentials: 'same-origin',
+      cache: 'no-store',
       headers: { Accept: 'application/json' },
       redirect: 'error',
     });

@@ -25,15 +25,20 @@
 
 パナソニック本社部門向けには、公開URLを先に送らず、特許庁実データを用いたローカル検証版を画面共有で説明します。公開URLはサンプルデータ版として、画面イメージ確認・関係先紹介用に使います。
 
+## 開発運用
+
+ChatGPT、Codex、ユーザー間の開発は、GitHub Issue、Draft Pull Request、PRコメントを正本として進めます。役割分担、最短メッセージ、CI・Preview・Productionの境界は[GitHubを正本とする開発運用](docs/development/github-workflow.md)を参照してください。
+
 ## コマンド
 
 ```bash
-npm install
-npm run lint
-npm run typecheck
-npm run test
-npm run build
-npm run dev
+pnpm install --frozen-lockfile
+pnpm run lint
+pnpm run typecheck
+pnpm run test
+pnpm run check:no-real-data
+pnpm run build
+pnpm run dev
 ```
 
 ## Vercel デプロイ
@@ -74,10 +79,10 @@ DB 側の引継ぎ資料は `../特許ダウンロード手順_0/AGENT_ASSIGNMEN
 実データ混入チェック:
 
 ```bash
-npm run check:no-real-data
+pnpm run check:no-real-data
 ```
 
-`npm run build` の前後にも同じチェックを実行し、公開ビルド対象に実データ由来のファイル名、ローカル作業パス、実在企業名、実在番号らしき値、公報XML由来らしき参照がないことを確認します。
+`pnpm run build` の前後にも同じチェックを実行し、公開ビルド対象に実データ由来のファイル名、ローカル作業パス、実在企業名、実在番号らしき値、公報XML由来らしき参照がないことを確認します。
 
 ## 注意
 

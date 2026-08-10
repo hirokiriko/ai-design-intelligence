@@ -1,0 +1,129 @@
+name: Codex向け開発タスク
+description: GitHubを正本としてCodexへ実装を依頼するためのテンプレート
+title: "[Codex] "
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        このリポジトリは公開されています。秘密情報、認証情報、個人情報、実データ、顧客の未公開情報、ローカル絶対パス、秘密の認証付きURLを記載しないでください。
+
+        CodexはIssue本文と最新コメントを正式な作業指示として読みます。ユーザーがコピーする必要がある文章は、差分ではなくそのまま使用できる最新版全文を記載してください。
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: 目的
+      description: このIssueで達成する結果を具体的に記載してください。
+      placeholder: 何を、なぜ実施するかを記載してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_state
+    attributes:
+      label: 現在確認できている状態
+      description: 確認日時、main SHA、関連Issue・PR・CIなど、再確認可能な事実を記載してください。
+      placeholder: 確認日時とGitHub上の現在地を記載してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 対象範囲
+      description: Codexが変更してよい範囲を列挙してください。
+      placeholder: 対象ファイル、機能、文書、環境を記載してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: 対象外
+      description: 今回は変更しない事項を列挙してください。
+      placeholder: mainへのマージ、Production反映など、対象外を明記してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: 必須成果物
+      description: 作成または更新する成果物を、ファイル単位または確認可能な結果として記載してください。
+      placeholder: 必須ファイルと必要な内容を記載してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受入条件
+      description: 完了と判断できるチェック項目を記載してください。
+      placeholder: チェックリスト形式で記載してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: 検証方法
+      description: ローカル検証、CI、ブラウザ、APIなど、成果物に応じた検証を記載してください。
+      placeholder: 実行コマンドと確認対象を記載してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: data_boundary
+    attributes:
+      label: データ・秘密情報の境界
+      description: 公開してよい情報と、Git・Issue・PR・ログへ出してはいけない情報を記載してください。
+      placeholder: 実値は書かず、保存場所の種別、件数、禁止事項だけを記載してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: deployment_boundary
+    attributes:
+      label: Preview・Production・mainの制約
+      description: Preview可否、Production変更可否、Draft解除・mainマージの承認境界を記載してください。
+      placeholder: "例: Previewのみ可。Production、Draft解除、mainマージは別承認。"
+    validations:
+      required: true
+
+  - type: textarea
+    id: local_untracked
+    attributes:
+      label: 既知のローカル未追跡ファイル
+      description: 個別ファイル名、内容、絶対パスを公開せず、ディレクトリ名と件数だけを記載してください。
+      placeholder: "例: deliverables/ と output/ に合計5件。すべてコミット対象外。"
+    validations:
+      required: true
+
+  - type: textarea
+    id: open_questions
+    attributes:
+      label: 未確定事項
+      description: ユーザー判断や外部状態の確認が必要な事項を記載してください。なければ「なし」と記載してください。
+      placeholder: なし、または判断が必要な事項を記載してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: status
+    attributes:
+      label: 現在の状態
+      description: このIssue作成時点の状態を一文で記載してください。
+      placeholder: "例: 未着手。Issue本文の承認と作成が完了した状態。"
+    validations:
+      required: true
+
+  - type: textarea
+    id: next_action
+    attributes:
+      label: 次のアクション
+      description: 次に誰が何をするかを一文で記載してください。
+      placeholder: "例: Codexが最新mainから専用ブランチを作成する。"
+    validations:
+      required: true

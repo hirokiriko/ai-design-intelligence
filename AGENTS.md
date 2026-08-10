@@ -110,8 +110,8 @@ Phase 0 では以下を実装しない。
 - 実在の製品画像・企業ロゴ・権利処理が必要な素材を同梱しない。
 
 ## 10. Definition of Done（Phase 0）
-- [ ] `npm install && npm run build` が成功し、静的成果物が出力される。
-- [ ] ローカルで `npm run dev`（または既存リポの同等コマンド）で全画面が動作。
+- [ ] `pnpm install --frozen-lockfile && pnpm run build` が成功し、静的成果物が出力される。
+- [ ] ローカルで `pnpm run dev`（または既存リポの同等コマンド）で全画面が動作。
 - [ ] `RuleBasedAnalysisEngine` ＋ `SampleDesignDataSource` で **APIキー無し・LLM無し・オフライン**で分析結果が出る。
 - [ ] LLM連携、APIキー入力、`USE_LLM` 切替が実装されていない。
 - [ ] `AnalysisEngine` インターフェースは将来拡張点として存在する。
@@ -145,4 +145,25 @@ Phase 0 では以下を実装しない。
 6. `RuleBasedAnalysisEngine` を実装し、各示唆に `evidenceIds`、`metric`、`confidence` を付与する。
 7. UI（設定パネル→結果エリア）を実装し、常時ラベル、準備中表示、バリデーションを配線する。
 8. README、ビルド設定、GitHub Pages 設定を整える。
-9. `npm install && npm run build`、`npm run dev`、DoD を確認する。
+9. `pnpm install --frozen-lockfile && pnpm run build`、`pnpm run dev`、DoD を確認する。
+
+## 13. GitHubを正本とする開発運用
+
+製品実装規約に加え、次のGitHub運用を恒久ルールとする。詳細は`docs/development/github-workflow.md`を参照する。
+
+1. Codexへの正式な作業指示はGitHub Issue本文と最新コメントを正本とする。
+2. 作業開始前に、GitHub上の最新main、Issue、最新コメント、既存PRと、ローカルのbranch・差分・未追跡状態を確認する。
+3. 原則として1 Issueにつき1専用ブランチ、1 Draft PRとし、最新`origin/main`から`codex/issue-<issue-number>-<short-description>`形式のブランチを作る。
+4. Draft PR本文の先頭付近に`Refs #<issue-number>`を記載し、試運転中は`Closes`でIssueを自動クローズしない。
+5. PRコメントとレビューコメントをGitHubから直接読み、未解決のactionableな指摘を作業キューとして扱う。曖昧・競合・範囲外の指摘は推測で実装せず、PRで確認する。
+6. 新しいコミットをpushした場合は、最新head SHAと対応する検証、CI、Previewだけを現在の根拠とし、古いSHAの結果を流用しない。
+7. Vercel Previewは確認環境であり、Production反映ではない。Draft解除、mainへのマージ、Productionのdeploy・promote・rollbackは、それぞれユーザーの明示承認を必要とする。
+8. ChatGPTのレビュー完了や推奨を、Draft解除、mainへのマージ、Production反映の承認と解釈しない。
+9. `pnpm-lock.yaml`を尊重し、依存導入と検証にはpnpmを使う。通常の検証はlint、typecheck、test、`check:no-real-data`、buildを含める。
+10. 混在worktreeでは`git add -A`を使わず、Issue対象パスだけを明示してステージする。`deliverables/`、`output/`、`local-data/`、実データ、秘密情報、認証情報をステージしない。
+11. 公開Issue、PR、コメント、ログには、ローカル未追跡物の個別ファイル名、内容、絶対パスを記載しない。報告はディレクトリ名と件数に限定する。
+12. すべての進捗更新と最終報告に「現在の状態」と「次のアクション」を含める。
+13. ChatGPTがIssueを作成・更新する場合は、作業の合意状態に応じて次の2経路を使い分ける。
+    - 合意済みの作業: GitHubへ書き込む直前に対象リポジトリと実施内容を短く明示し、Issueを直接作成・更新できる。
+    - 未合意、仕様が曖昧、または影響が大きい作業: Issueタイトルと本文の最新版全文をユーザーへ提示し、明示承認後に作成・更新する。
+14. ユーザーがコピーして使う文章は差分指示ではなく、そのまま全置換できる最新版全文を提示する。GitHubへ直接反映できる場合は、上記の合意状態に応じた経路で直接反映する。

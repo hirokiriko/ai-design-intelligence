@@ -96,8 +96,8 @@ body:
     id: local_untracked
     attributes:
       label: 既知のローカル未追跡ファイル
-      description: 個別ファイル名、内容、絶対パスを公開せず、ディレクトリ名と件数だけを記載してください。
-      placeholder: "例: deliverables/ と output/ に合計5件。すべてコミット対象外。"
+      description: 個別ファイル名、内容、絶対パスを公開せず、確認できる場合はディレクトリ名と件数だけを記載してください。Issue作成時に確認できない場合は「未確認（Codexが作業開始時と終了時に確認）」と記載し、推測で補完しないでください。Codexは開始時に確認し、Issue記載との差異があればPRへ記録します。
+      placeholder: "例: deliverables/ と output/ に合計5件。すべてコミット対象外。／未確認（Codexが作業開始時と終了時に確認）"
     validations:
       required: true
 

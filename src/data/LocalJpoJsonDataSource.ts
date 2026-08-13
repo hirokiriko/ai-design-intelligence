@@ -1,4 +1,6 @@
+import { companySelectorMatchesMembership } from '../domain/analysisRecords';
 import type { AnalysisRequest, DesignKind, DesignRecord, GazetteDrawingKeys, GazetteDrawingRef, Period } from '../domain/types';
+import { projectLocalJpoDesignRecord, type ProjectedLegacyDesignRecord } from '../analysis/projectLegacyDesignRecord';
 import type { DesignDataSource } from './SampleDesignDataSource';
 
 export interface LocalJpoIntegratedJson {
@@ -107,23 +109,25 @@ export interface LocalJpoLoadFailure {
 export type LocalJpoLoadResult = LocalJpoLoadSuccess | LocalJpoLoadFailure;
 
 export class LocalJpoJsonDataSource implements DesignDataSource {
-  private readonly records: DesignRecord[];
+  private readonly records: ProjectedLegacyDesignRecord[];
+  private readonly viewRecords: DesignRecord[];
   private readonly dataAsOf: string;
 
   constructor(json: LocalJpoIntegratedJson, private readonly fileName: string) {
-    this.records = json.records
+    this.viewRecords = json.records
       .map((record, index) => convertLocalJpoRecord(record, index))
       .filter((record): record is DesignRecord => record !== null)
       .sort((left, right) => right.gazetteDate.localeCompare(left.gazetteDate));
-    this.dataAsOf = maxDate(this.records.map((record) => record.gazetteDate)) ?? todayIsoDate();
+    this.records = this.viewRecords.map(projectLocalJpoDesignRecord);
+    this.dataAsOf = maxDate(this.viewRecords.map((record) => record.gazetteDate)) ?? todayIsoDate();
   }
 
-  query(req: AnalysisRequest): Promise<DesignRecord[]> {
+  query(req: AnalysisRequest): Promise<ProjectedLegacyDesignRecord[]> {
     const fromDate = getPeriodStart(this.dataAsOf, req.period);
     const productQuery = normalize(req.productDomain ?? '');
-    const companies =
+    const companySelectors =
       req.scope.mode === 'companies'
-        ? req.scope.companies.map((company) => normalize(company)).filter(Boolean)
+        ? req.scope.companySelectors.filter((selector) => selector.origin === 'legacy')
         : [];
     const includeUnresolvedApplicants = req.includeUnresolvedApplicants ?? true;
 
@@ -131,7 +135,13 @@ export class LocalJpoJsonDataSource implements DesignDataSource {
       .filter((record) => new Date(`${record.gazetteDate}T00:00:00`) >= fromDate)
       .filter((record) => req.designKinds.includes(record.designKind))
       .filter((record) => includeUnresolvedApplicants || (record.unresolvedApplicants ?? []).length === 0)
-      .filter((record) => companies.length === 0 || companies.some((company) => matchesParty(record, company)))
+      .filter(
+        (record) =>
+          req.scope.mode === 'all_classes' ||
+          companySelectors.some((selector) =>
+            record.companyMemberships.some((membership) => companySelectorMatchesMembership(selector, membership)),
+          ),
+      )
       .filter((record) => (productQuery ? matchesProductDomain(record, productQuery) : true));
 
     return Promise.resolve(records);
@@ -141,8 +151,12 @@ export class LocalJpoJsonDataSource implements DesignDataSource {
     return this.dataAsOf;
   }
 
-  getAllRecords(): DesignRecord[] {
+  getAllRecords(): ProjectedLegacyDesignRecord[] {
     return [...this.records];
+  }
+
+  getViewRecords(): DesignRecord[] {
+    return [...this.viewRecords];
   }
 
   getFileName(): string {
@@ -163,7 +177,7 @@ export function loadLocalJpoJson(value: unknown, fileName = 'local-jpo.json'): L
 
   const json = value as unknown as LocalJpoIntegratedJson;
   const dataSource = new LocalJpoJsonDataSource(json, fileName);
-  const convertedRecords = dataSource.getAllRecords();
+  const convertedRecords = dataSource.getViewRecords();
   const skippedCount = json.records.length - convertedRecords.length;
   const warnings = [
     ...validation.warnings,
@@ -349,7 +363,10 @@ export function summarizeLocalJpoRecords(records: DesignRecord[], fileName: stri
   };
 }
 
-export function sanitizeAnalysisEvidenceIds(result: import('../domain/types').AnalysisResult, records: DesignRecord[]): string[] {
+export function sanitizeAnalysisEvidenceIds(
+  result: import('../domain/types').AnalysisResult,
+  records: ReadonlyArray<{ id: string }>,
+): string[] {
   const validIds = new Set(records.map((record) => record.id));
   const warnings: string[] = [];
   const sanitize = (insight: import('../domain/types').AnalysisInsight, label: string) => {
@@ -385,20 +402,7 @@ function getPeriodStart(dataAsOf: string, period: Period): Date {
   return start;
 }
 
-function matchesParty(record: DesignRecord, companyQuery: string): boolean {
-  return [
-    record.applicant,
-    record.applicantsDisplay,
-    ...(record.applicants ?? []),
-    ...(record.applicantsNormalized ?? []),
-    ...(record.rightHolders ?? []),
-    ...(record.unresolvedApplicants ?? []).map((code) => `未解決コード: ${code}`),
-  ]
-    .map((value) => normalize(value ?? ''))
-    .some((value) => value.includes(companyQuery));
-}
-
-function matchesProductDomain(record: DesignRecord, query: string): boolean {
+function matchesProductDomain(record: ProjectedLegacyDesignRecord, query: string): boolean {
   const target = [
     record.businessDomain,
     record.articleName,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALL_DESIGN_KINDS } from '../domain/labels';
 import { SampleDesignDataSource } from './SampleDesignDataSource';
 import type { AnalysisRequest } from '../domain/types';
+import { normalizeLocalCompanyKey } from '../analysis/projectLegacyDesignRecord';
 
 const baseRequest: AnalysisRequest = {
   scope: { mode: 'all_classes' },
@@ -15,6 +16,7 @@ describe('SampleDesignDataSource', () => {
   it('contains dataAsOf and 50 to 100 public sample records only', () => {
     const source = new SampleDesignDataSource();
     const records = source.getAllRecords();
+    const viewRecords = source.getViewRecords();
 
     expect(source.getDataAsOf()).toBe('2026-06-15');
     expect(records.length).toBeGreaterThanOrEqual(50);
@@ -25,6 +27,10 @@ describe('SampleDesignDataSource', () => {
     expect(new Set(records.map((record) => record.designKind))).toEqual(new Set(['article', 'image', 'interior']));
     expect(records.some((record) => record.gazetteDrawingKeys?.hasDrawingRefs)).toBe(true);
     expect(records.reduce((sum, record) => sum + (record.gazetteDrawingKeys?.drawingRefs?.length ?? 0), 0)).toBeGreaterThan(0);
+    expect(viewRecords).toHaveLength(records.length);
+    expect(records.every((record) => record.origin === 'sample')).toBe(true);
+    expect(records.every((record) => record.companyMemberships.length === 1)).toBe(true);
+    expect(records.every((record) => record.classificationMemberships.length === 1)).toBe(true);
   });
 
   it('does not include real company names or real-number-style identifiers in bundled samples', () => {
@@ -63,7 +69,17 @@ describe('SampleDesignDataSource', () => {
     const source = new SampleDesignDataSource();
     const records = await source.query({
       ...baseRequest,
-      scope: { mode: 'companies', companies: ['デモ住設株式会社'] },
+      scope: {
+        mode: 'companies',
+        companySelectors: [
+          {
+            origin: 'sample',
+            role: 'applicant',
+            localKey: normalizeLocalCompanyKey('デモ住設株式会社'),
+            displayLabel: 'デモ住設株式会社',
+          },
+        ],
+      },
       designKinds: ['image'],
       productDomain: '家電',
     });
@@ -72,5 +88,25 @@ describe('SampleDesignDataSource', () => {
     expect(records.every((record) => record.applicant === 'デモ住設株式会社')).toBe(true);
     expect(records.every((record) => record.designKind === 'image')).toBe(true);
     expect(records.some((record) => record.businessDomain.includes('家電'))).toBe(true);
+  });
+
+  it('does not match a legacy selector that happens to use the same local key', async () => {
+    const source = new SampleDesignDataSource();
+    const records = await source.query({
+      ...baseRequest,
+      scope: {
+        mode: 'companies',
+        companySelectors: [
+          {
+            origin: 'legacy',
+            role: 'applicant',
+            localKey: normalizeLocalCompanyKey('デモ住設株式会社'),
+            displayLabel: 'デモ住設株式会社',
+          },
+        ],
+      },
+    });
+
+    expect(records).toEqual([]);
   });
 });

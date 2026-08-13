@@ -1,3 +1,5 @@
+import type { CompanySelector } from './analysisRecords';
+
 export type DesignKind = 'article' | 'image' | 'interior';
 export type Period = 'last_1y' | 'last_2y';
 
@@ -27,7 +29,7 @@ export interface SampleDesignDataset {
 export interface AnalysisRequest {
   scope:
     | { mode: 'all_classes' }
-    | { mode: 'companies'; companies: string[] };
+    | { mode: 'companies'; companySelectors: CompanySelector[] };
   productDomain?: string;
   period: Period;
   designKinds: DesignKind[];
@@ -229,6 +231,7 @@ export interface AnalysisInsight {
 }
 
 export interface CompanyAnalysis {
+  companyKey: string;
   company: string;
   designTrend: {
     domains: AnalysisInsight;

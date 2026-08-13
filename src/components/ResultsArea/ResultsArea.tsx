@@ -9,15 +9,22 @@ import type {
   DemoShowcaseRecord,
   DesignRecord,
 } from '../../domain/types';
+import { classificationMembershipKey, type AnalysisReadyDesignRecord } from '../../domain/analysisRecords';
 import { designKindSummary } from '../../analysis/RuleBasedAnalysisEngine';
 import { displayPartyLabel, type LocalJpoDatasetSummary, type RankedItem } from '../../data/LocalJpoJsonDataSource';
+import type {
+  BackendContractAdapterSuccess,
+  BackendRecordViewModel,
+} from '../../data/BackendContractDataSource';
 import { Badge } from '../common/Badge';
 
 interface ResultsAreaProps {
   request: AnalysisRequest;
   result: AnalysisResult | null;
-  records: DesignRecord[];
+  analysisRecords: AnalysisReadyDesignRecord[];
   allRecords: DesignRecord[];
+  backendContract: BackendContractAdapterSuccess | null;
+  dataMode: 'sample' | 'legacy' | 'backend';
   isRunning: boolean;
   localJpoSummary: LocalJpoDatasetSummary | null;
   localJpoWarnings: string[];
@@ -45,6 +52,15 @@ interface PublicSampleSummary {
   topParties: RankedItem[];
   designKindCounts: RankedItem[];
 }
+
+interface EvidenceAvailability {
+  id: string;
+  hasDrawingMetadata: boolean;
+}
+
+type EvidenceRecordItem =
+  | { kind: 'legacy'; record: DesignRecord }
+  | { kind: 'backend'; record: BackendRecordViewModel };
 
 const INITIAL_EVIDENCE_LIMIT = 8;
 
@@ -77,8 +93,10 @@ const DEMO_SCENARIOS: Record<DemoScenarioKind, { label: string; steps: DemoScena
 export function ResultsArea({
   request,
   result,
-  records,
+  analysisRecords,
   allRecords,
+  backendContract,
+  dataMode,
   isRunning,
   localJpoSummary,
   localJpoWarnings,
@@ -95,12 +113,18 @@ export function ResultsArea({
   const activeScenario = DEMO_SCENARIOS[demoScenario];
   const activeStepIndex = Math.min(presenterStepIndex, activeScenario.steps.length - 1);
   const isPresenterMode = externalDemoMode && presenterMode;
-  const publicSampleSummary = localJpoSummary ? null : buildPublicSampleSummary(allRecords);
+  const publicSampleSummary = dataMode === 'sample' ? buildPublicSampleSummary(allRecords) : null;
   const derivedSampleShowcaseRecords =
     externalDemoMode && demoShowcaseRecords.length === 0 && publicSampleSummary ? buildSampleDemoShowcaseRecords(allRecords) : [];
   const effectiveDemoShowcaseRecords = demoShowcaseRecords.length > 0 ? demoShowcaseRecords : derivedSampleShowcaseRecords;
   const demoMatches = externalDemoMode ? resolveDemoShowcaseMatches(effectiveDemoShowcaseRecords, allRecords) : [];
-  const evidenceRecords = result ? collectEvidenceRecords(result, allRecords) : [];
+  const backendEvidenceRecords =
+    backendContract?.records.filter((record) => record.adapterDisposition.status === 'accepted') ?? [];
+  const evidenceAvailability: EvidenceAvailability[] = [
+    ...allRecords.map((record) => ({ id: record.id, hasDrawingMetadata: Boolean(record.gazetteDrawingKeys) })),
+    ...backendEvidenceRecords.map((record) => ({ id: record.id, hasDrawingMetadata: record.drawings.length > 0 })),
+  ];
+  const evidenceRecords = result ? collectEvidenceRecords(result, allRecords, backendEvidenceRecords) : [];
   const showAllEvidence = Boolean(result && expandedEvidenceResult === result);
   const visibleEvidenceRecords = showAllEvidence ? evidenceRecords : evidenceRecords.slice(0, INITIAL_EVIDENCE_LIMIT);
   const warnings = [...localJpoWarnings, ...analysisWarnings];
@@ -117,7 +141,7 @@ export function ResultsArea({
             <p className="text-xs font-bold uppercase tracking-wider text-accent">分析アウトプット</p>
             <h2 className="mt-1 text-xl font-bold text-ink">{result ? '今回わかったこと' : '分析すると得られること'}</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              {result ? `データ基準日 ${result.dataAsOf} / 対象 ${records.length}件 / ${designKindSummary(records)}` : '重要な示唆を先に読み、必要なときだけ詳細と根拠意匠を開けます。'}
+              {result ? `データ基準日 ${result.dataAsOf} / 対象 ${analysisRecords.length}件 / ${designKindSummary(analysisRecords)}` : '重要な示唆を先に読み、必要なときだけ詳細と根拠意匠を開けます。'}
             </p>
             {localJpoSummary ? (
               <p className="mt-1 text-sm text-caution">
@@ -130,7 +154,7 @@ export function ResultsArea({
 
         {isRunning ? <p className="mt-6 rounded-md bg-slate-50 p-4 font-semibold text-muted">分析中...</p> : null}
         {!isRunning && !result ? <AnalysisStartGuide /> : null}
-        {result ? <ExecutiveSummary result={result} recordCount={records.length} /> : null}
+        {result ? <ExecutiveSummary result={result} recordCount={analysisRecords.length} /> : null}
 
         {result ? (
           <details className="mt-6 rounded-lg border border-line bg-panel p-4">
@@ -139,13 +163,13 @@ export function ResultsArea({
               {result.request.purposes.map((purpose) => PURPOSE_LABELS[purpose]).join('、')}
             </p>
             {result.market ? (
-              <MarketView market={result.market} allRecords={allRecords} externalDemoMode={externalDemoMode} />
+              <MarketView market={result.market} allRecords={evidenceAvailability} externalDemoMode={externalDemoMode} />
             ) : null}
             {result.companies.map((company) => (
               <CompanyView
-                key={company.company}
+                key={company.companyKey}
                 analysis={company}
-                allRecords={allRecords}
+                allRecords={evidenceAvailability}
                 externalDemoMode={externalDemoMode}
                 purposes={result.request.purposes}
               />
@@ -159,7 +183,7 @@ export function ResultsArea({
       <details id="overview" className="scroll-mt-6 rounded-lg border border-line bg-white p-4 shadow-soft">
         <summary className="cursor-pointer font-bold text-ink">現在の分析条件を確認</summary>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <SummaryItem label="分析範囲" value={request.scope.mode === 'all_classes' ? '全意匠分類' : request.scope.companies.join('、') || '未指定'} />
+          <SummaryItem label="分析範囲" value={request.scope.mode === 'all_classes' ? '全意匠分類' : request.scope.companySelectors.map((selector) => selector.displayLabel).join('、') || '未指定'} />
           <SummaryItem label="商品・事業領域" value={request.productDomain?.trim() || '指定なし'} />
           <SummaryItem label="対象期間" value={PERIOD_LABELS[request.period]} />
           <SummaryItem label="意匠種別" value={request.designKinds.map((kind) => DESIGN_KIND_LABELS[kind]).join('、') || '未選択'} />
@@ -181,15 +205,19 @@ export function ResultsArea({
             <Badge tone="accent">{evidenceRecords.length}件</Badge>
           </div>
           <div className="mt-4 grid gap-3">
-            {visibleEvidenceRecords.map((record) => (
-              <EvidenceRecord
-                key={record.id}
-                record={record}
-                externalDemoMode={externalDemoMode}
-                presenterMode={isPresenterMode}
-                forceOpen={highlightedEvidenceId === record.id}
-              />
-            ))}
+            {visibleEvidenceRecords.map((item) =>
+              item.kind === 'backend' ? (
+                <BackendEvidenceRecord key={item.record.id} record={item.record} forceOpen={highlightedEvidenceId === item.record.id} />
+              ) : (
+                <EvidenceRecord
+                  key={item.record.id}
+                  record={item.record}
+                  externalDemoMode={externalDemoMode}
+                  presenterMode={isPresenterMode}
+                  forceOpen={highlightedEvidenceId === item.record.id}
+                />
+              ),
+            )}
           </div>
           {evidenceRecords.length > INITIAL_EVIDENCE_LIMIT ? (
             <button
@@ -213,14 +241,16 @@ export function ResultsArea({
           </div>
         </summary>
         <div className="mt-4 space-y-5 border-t border-line pt-4">
-          {localJpoSummary ? (
+          {backendContract ? (
+            <BackendContractSummaryPanel contract={backendContract} />
+          ) : localJpoSummary ? (
             <LocalJpoSummaryPanel summary={localJpoSummary} externalDemoMode={externalDemoMode} demoShowcaseCount={effectiveDemoShowcaseRecords.length} />
           ) : publicSampleSummary ? (
             <PublicSampleSummaryPanel summary={publicSampleSummary} />
           ) : null}
           {localAnalysisPackPanel}
-          {externalDemoMode ? <DemoNavigation /> : null}
-          {externalDemoMode ? (
+          {externalDemoMode && dataMode !== 'backend' ? <DemoNavigation /> : null}
+          {externalDemoMode && dataMode !== 'backend' ? (
             <DemoReadinessPanel
               summary={localJpoSummary}
               sampleSummary={publicSampleSummary}
@@ -228,7 +258,7 @@ export function ResultsArea({
               result={result}
             />
           ) : null}
-          {externalDemoMode ? (
+          {externalDemoMode && dataMode !== 'backend' ? (
             <PresenterModePanel
               presenterMode={presenterMode}
               onPresenterModeChange={setPresenterMode}
@@ -241,13 +271,13 @@ export function ResultsArea({
               activeStepIndex={activeStepIndex}
             />
           ) : null}
-          {isPresenterMode ? (
+          {isPresenterMode && dataMode !== 'backend' ? (
             <DemoScenarioPanel scenario={activeScenario} activeStepIndex={activeStepIndex} onStepSelect={setPresenterStepIndex} />
           ) : null}
-          {externalDemoMode ? (
+          {externalDemoMode && dataMode !== 'backend' ? (
             <ExternalDemoGuide summary={localJpoSummary} sampleSummary={publicSampleSummary} demoShowcaseCount={effectiveDemoShowcaseRecords.length} />
           ) : null}
-          {externalDemoMode && effectiveDemoShowcaseRecords.length > 0 ? (
+          {externalDemoMode && dataMode !== 'backend' && effectiveDemoShowcaseRecords.length > 0 ? (
             <DemoShowcasePanel
               records={effectiveDemoShowcaseRecords}
               matches={demoMatches}
@@ -256,8 +286,8 @@ export function ResultsArea({
               onOpenEvidence={setHighlightedEvidenceId}
             />
           ) : null}
-          {externalDemoMode ? <DemoClosingSummaryPanel summary={localJpoSummary} sampleSummary={publicSampleSummary} /> : null}
-          {externalDemoMode ? <DemoNoticePanel /> : null}
+          {externalDemoMode && dataMode !== 'backend' ? <DemoClosingSummaryPanel summary={localJpoSummary} sampleSummary={publicSampleSummary} /> : null}
+          {externalDemoMode && dataMode !== 'backend' ? <DemoNoticePanel /> : null}
         </div>
       </details>
     </main>
@@ -818,6 +848,45 @@ function DemoScopeItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+function BackendContractSummaryPanel({ contract }: { contract: BackendContractAdapterSuccess }) {
+  const { meta, summary } = contract;
+  const primaryItems = [
+    ['contract version', meta.contractVersion],
+    ['analysis cutoff', meta.analysisCutoff],
+    ['総件数', `${formatCount(summary.totalRecordCount)}件`],
+    ['分析対象', `${formatCount(summary.acceptedCount)}件`],
+    ['分析対象外', `${formatCount(summary.excludedCount)}件`],
+    ['warning', `${formatCount(summary.warningCount)}件`],
+    ['quarantined', `${formatCount(summary.quarantinedCount)}件`],
+    ['gazetteDate欠損', `${formatCount(summary.missingGazetteDateCount)}件`],
+    ['意匠種別unknown', `${formatCount(summary.unknownDesignTypeCount)}件`],
+    ['未解決applicant', `${formatCount(summary.unresolvedApplicantCount)}件`],
+    ['未解決right holder', `${formatCount(summary.unresolvedRightHolderCount)}件`],
+  ] as const;
+
+  return (
+    <section id="rankings" className="scroll-mt-24 rounded-lg border border-sky-200 bg-white p-5 shadow-soft">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-bold text-ink">Backend Contractデータ概要</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Contract 0.1.0をデータセット単位で検証し、受理したレコードだけを分析境界へ渡しています。
+          </p>
+        </div>
+        <Badge tone="accent">検証済みsafe subset</Badge>
+      </div>
+      <dl className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {primaryItems.map(([label, value]) => (
+          <SummaryItem key={label} label={label} value={value} />
+        ))}
+      </dl>
+      <p className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-muted">
+        provenance、内部参照、図面URLは表示・生成していません。件数指標には重複する状態があるため、warningや欠損件数を合算して総件数とは比較しません。
+      </p>
+    </section>
+  );
+}
+
 function LocalJpoSummaryPanel({
   summary,
   externalDemoMode,
@@ -1151,7 +1220,7 @@ function MarketView({
   externalDemoMode,
 }: {
   market: NonNullable<AnalysisResult['market']>;
-  allRecords: DesignRecord[];
+  allRecords: EvidenceAvailability[];
   externalDemoMode: boolean;
 }) {
   return (
@@ -1177,7 +1246,7 @@ function CompanyView({
   purposes,
 }: {
   analysis: CompanyAnalysis;
-  allRecords: DesignRecord[];
+  allRecords: EvidenceAvailability[];
   externalDemoMode: boolean;
   purposes: AnalysisPurpose[];
 }) {
@@ -1258,7 +1327,7 @@ function ResultGroup({
 }: {
   title: string;
   insights: [string, AnalysisInsight][];
-  allRecords: DesignRecord[];
+  allRecords: EvidenceAvailability[];
   externalDemoMode: boolean;
 }) {
   const visibleInsights = insights.filter(([, insight]) => shouldShowInsight(insight));
@@ -1278,7 +1347,7 @@ function InsightGrid({
   externalDemoMode,
 }: {
   insights: [string, AnalysisInsight][];
-  allRecords: DesignRecord[];
+  allRecords: EvidenceAvailability[];
   externalDemoMode: boolean;
 }) {
   const visibleInsights = insights.filter(([, insight]) => shouldShowInsight(insight));
@@ -1302,14 +1371,14 @@ function InsightView({
 }: {
   title: string;
   insight: AnalysisInsight;
-  allRecords: DesignRecord[];
+  allRecords: EvidenceAvailability[];
   externalDemoMode: boolean;
 }) {
   const [metadataOnly, setMetadataOnly] = useState(false);
   const gazetteEvidenceCount = countGazetteMetadataEvidence(insight, allRecords);
   const recordsById = new Map(allRecords.map((record) => [record.id, record]));
   const evidenceIds =
-    externalDemoMode && metadataOnly ? insight.evidenceIds.filter((id) => Boolean(recordsById.get(id)?.gazetteDrawingKeys)) : insight.evidenceIds;
+    externalDemoMode && metadataOnly ? insight.evidenceIds.filter((id) => Boolean(recordsById.get(id)?.hasDrawingMetadata)) : insight.evidenceIds;
   const firstEvidenceId = evidenceIds[0] ?? insight.evidenceIds[0];
   const developerDetails = (
     <dl className="grid gap-2 text-xs text-muted">
@@ -1398,6 +1467,121 @@ function InsightView({
         <div className="mt-3">{developerDetails}</div>
       )}
     </div>
+  );
+}
+
+function BackendEvidenceRecord({
+  record,
+  forceOpen,
+}: {
+  record: BackendRecordViewModel;
+  forceOpen: boolean;
+}) {
+  const applicantLabel = backendPartyListValue(record.applicants);
+  const rightHolderLabel = backendPartyListValue(record.rightHolders);
+  const designTypeLabel = record.designType === 'unknown' ? '不明' : DESIGN_KIND_LABELS[record.designType];
+
+  return (
+    <details id={evidenceDomId(record.id)} className="scroll-mt-24 rounded-md border border-sky-200 bg-sky-50/40 p-4" open={forceOpen || undefined}>
+      <summary className="cursor-pointer list-none">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="readable-text font-bold text-ink">
+              {record.id} / {record.articleName ?? '物品名未設定'}
+            </h3>
+            <p className="readable-text mt-1 text-sm text-muted">
+              {applicantLabel} / {designTypeLabel}
+            </p>
+          </div>
+          <Badge tone={record.quality.state === 'pass' ? 'accent' : 'warning'}>{record.quality.state}</Badge>
+        </div>
+      </summary>
+      <div className="mt-4 space-y-3">
+        <section className="rounded-md border border-line bg-white p-4">
+          <h4 className="text-sm font-bold text-ink">基本情報</h4>
+          <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+            <Detail label="stable id" value={record.id} />
+            <Detail label="物品名" value={record.articleName ?? '-'} />
+            <Detail label="意匠種別" value={designTypeLabel} />
+            <Detail label="gazetteDate" value={record.gazetteDate ?? '-'} />
+            <Detail label="applicationNumber" value={record.applicationNumber ?? '-'} />
+            <Detail label="registrationNumber" value={record.registrationNumber ?? '-'} />
+            <Detail label="applicationDate" value={record.applicationDate ?? '-'} />
+            <Detail label="registrationDate" value={record.registrationDate ?? '-'} />
+            <Detail label="applicants" value={applicantLabel} />
+            <Detail label="right holders" value={rightHolderLabel} />
+            <Detail label="quality" value={record.quality.state} />
+            <Detail
+              label="analysis disposition"
+              value={
+                record.adapterDisposition.status === 'accepted'
+                  ? 'accepted'
+                  : `excluded: ${record.adapterDisposition.exclusionReasons.join(', ')}`
+              }
+            />
+          </dl>
+        </section>
+
+        <section className="rounded-md border border-line bg-white p-4">
+          <h4 className="text-sm font-bold text-ink">分類</h4>
+          <ul className="mt-3 space-y-2 text-sm text-ink">
+            {record.classifications.map((classification) => (
+              <li key={classificationMembershipKey(classification)} className="rounded-md bg-panel px-3 py-2">
+                {classification.scheme} / {classification.code} / {classification.label ?? 'label未設定'}
+                {classification.isPrimary ? ' / primary' : ''}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="rounded-md border border-line bg-white p-4">
+          <h4 className="text-sm font-bold text-ink">publication</h4>
+          {record.publication ? (
+            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+              <Detail label="gazetteNumber" value={record.publication.gazetteNumber ?? '-'} />
+              <Detail label="publicationDocumentId" value={record.publication.publicationDocumentId ?? '-'} />
+              <Detail label="issueDate" value={record.publication.issueDate ?? '-'} />
+            </dl>
+          ) : (
+            <p className="mt-2 text-sm text-muted">publicationはnullです。別フィールドから補完していません。</p>
+          )}
+        </section>
+
+        <section className="rounded-md border border-line bg-white p-4">
+          <h4 className="text-sm font-bold text-ink">drawings</h4>
+          {record.drawings.length > 0 ? (
+            <ol className="mt-3 space-y-2 text-sm text-ink">
+              {record.drawings.map((drawing) => (
+                <li key={drawing.order} className="rounded-md bg-panel px-3 py-2">
+                  order {drawing.order}: {drawing.drawingId} / {drawing.label ?? 'label未設定'} / {drawing.fileName ?? 'fileName未設定'} /{' '}
+                  {drawing.mediaType ?? 'mediaType未設定'}
+                  {drawing.isRepresentativeCandidate ? ' / representative candidate' : ''}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-2 text-sm text-muted">図面メタデータはありません。</p>
+          )}
+          <p className="mt-3 text-xs leading-5 text-muted">図面画像、外部URL、source document参照は表示していません。</p>
+        </section>
+
+        {record.quality.findings.length > 0 || record.quality.duplicateCandidates.length > 0 ? (
+          <section className="rounded-md border border-amber-200 bg-amber-50 p-4">
+            <h4 className="text-sm font-bold text-caution">quality notices</h4>
+            {record.quality.findings.length > 0 ? (
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-caution">
+                {record.quality.findings.map((finding, index) => (
+                  <li key={`${finding.code}:${index}`}>{finding.code} / {finding.severity}</li>
+                ))}
+              </ul>
+            ) : null}
+            {record.quality.duplicateCandidates.length > 0 ? (
+              <p className="mt-2 text-sm text-caution">duplicate candidates: {record.quality.duplicateCandidates.join(', ')}</p>
+            ) : null}
+          </section>
+        ) : null}
+      </div>
+    </details>
   );
 }
 
@@ -1760,8 +1944,15 @@ function partyListValue(values?: string[]): string {
   return labels && labels.length > 0 ? labels.join('、') : '-';
 }
 
+function backendPartyListValue(parties: BackendRecordViewModel['applicants']): string {
+  if (parties.length === 0) return '-';
+  return parties
+    .map((party) => party.displayName ?? party.normalizedNameCandidate ?? party.rawName ?? '名称未設定')
+    .join('、');
+}
+
 function evidenceDomId(id: string): string {
-  return `evidence-${id.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+  return `evidence-${id.replace(/[.:]/g, (character) => `~${character.codePointAt(0)?.toString(16)}`)}`;
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
@@ -1781,16 +1972,20 @@ function safeMetadataValue(value?: string | null): string {
   return value;
 }
 
-function countGazetteMetadataEvidence(insight: AnalysisInsight, allRecords: DesignRecord[]): number {
+function countGazetteMetadataEvidence(insight: AnalysisInsight, allRecords: EvidenceAvailability[]): number {
   const recordsById = new Map(allRecords.map((record) => [record.id, record]));
-  return insight.evidenceIds.filter((id) => Boolean(recordsById.get(id)?.gazetteDrawingKeys)).length;
+  return insight.evidenceIds.filter((id) => recordsById.get(id)?.hasDrawingMetadata === true).length;
 }
 
 function shouldShowInsight(insight: AnalysisInsight): boolean {
   return insight.metric.value > 0 && insight.evidenceIds.length > 0;
 }
 
-function collectEvidenceRecords(result: AnalysisResult, allRecords: DesignRecord[]): DesignRecord[] {
+function collectEvidenceRecords(
+  result: AnalysisResult,
+  allRecords: DesignRecord[],
+  backendRecords: BackendRecordViewModel[],
+): EvidenceRecordItem[] {
   const orderedIds: string[] = [];
   const ids = new Set<string>();
   const addId = (id: string) => {
@@ -1817,8 +2012,13 @@ function collectEvidenceRecords(result: AnalysisResult, allRecords: DesignRecord
     }
   }
 
-  const recordsById = new Map(allRecords.map((record) => [record.id, record]));
-  return orderedIds.map((id) => recordsById.get(id)).filter((record): record is DesignRecord => Boolean(record));
+  const recordsById = new Map<string, EvidenceRecordItem>([
+    ...allRecords.map((record) => [record.id, { kind: 'legacy' as const, record }] as const),
+    ...backendRecords.map((record) => [record.id, { kind: 'backend' as const, record }] as const),
+  ]);
+  return orderedIds
+    .map((id) => recordsById.get(id))
+    .filter((record): record is EvidenceRecordItem => Boolean(record));
 }
 
 function resolveDemoShowcaseMatches(showcaseRecords: DemoShowcaseRecord[], allRecords: DesignRecord[]): DemoShowcaseMatch[] {

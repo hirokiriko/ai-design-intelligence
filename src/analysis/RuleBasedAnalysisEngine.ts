@@ -1,12 +1,22 @@
 import type { AnalysisEngine } from './AnalysisEngine';
 import { DEPARTMENT_LABELS, DESIGN_KIND_LABELS, PURPOSE_LABELS } from '../domain/labels';
+import {
+  classificationMembershipKey,
+  companyMembershipKey,
+  companySelectorFromMembership,
+  companySelectorKey,
+  companySelectorMatchesMembership,
+  type AnalysisReadyDesignRecord,
+  type ClassificationMembership,
+  type CompanyMembership,
+  type CompanySelector,
+} from '../domain/analysisRecords';
 import type {
   AnalysisInsight,
   AnalysisRequest,
   AnalysisResult,
   CompanyAnalysis,
   DesignKind,
-  DesignRecord,
   InsightMetric,
   MarketAnalysis,
 } from '../domain/types';
@@ -16,31 +26,49 @@ const SHAPE_TERMS = ['薄型', '小型', '大型', '曲面', '丸み', '透明',
 const UI_TERMS = ['カード', 'ダッシュボード', '通知', '進捗', '提案', '地図', '音声', 'AR', '多言語'];
 const DIGITAL_TERMS = ['AI', 'IoT', '遠隔', 'クラウド', 'センサー', '自動化', '予兆', 'ダッシュボード'];
 
+interface CompanyTarget {
+  selector: CompanySelector;
+  displayLabel: string;
+}
+
 export class RuleBasedAnalysisEngine implements AnalysisEngine {
-  analyze(req: AnalysisRequest, records: DesignRecord[], dataAsOf: string): Promise<AnalysisResult> {
-    const companies =
+  analyze(
+    req: AnalysisRequest,
+    records: AnalysisReadyDesignRecord[],
+    dataAsOf: string,
+  ): Promise<AnalysisResult> {
+    const companyTargets =
       req.scope.mode === 'companies'
-        ? req.scope.companies
-        : topCompanyLabels(records, 3);
+        ? requestedCompanyTargets(req.scope.companySelectors, records)
+        : topCompanyTargets(records, 3);
 
     const result: AnalysisResult = {
       request: req,
       dataAsOf,
       market: req.scope.mode === 'all_classes' ? this.createMarketAnalysis(records, dataAsOf) : undefined,
-      companies: companies.map((company) =>
-        this.createCompanyAnalysis(company, records.filter((record) => record.applicant === company), req, dataAsOf),
+      companies: companyTargets.map((target) =>
+        this.createCompanyAnalysis(
+          target,
+          records.filter((record) =>
+            record.companyMemberships.some((membership) =>
+              companySelectorMatchesMembership(target.selector, membership),
+            ),
+          ),
+          req,
+          dataAsOf,
+        ),
       ),
       generatedBy: 'rules',
       disclaimer:
-        'この結果はデモ用サンプルデータをルールベースで集計した参考情報です。法的助言ではありません。',
+        'この結果は対象データをルールベースで集計した参考情報です。法的助言ではありません。',
     };
 
     return Promise.resolve(result);
   }
 
-  private createMarketAnalysis(records: DesignRecord[], dataAsOf: string): MarketAnalysis {
-    const domains = topLabels(countBy(records, (record) => record.businessDomain), 3);
-    const companies = topCompanyLabels(records, 3);
+  private createMarketAnalysis(records: AnalysisReadyDesignRecord[], dataAsOf: string): MarketAnalysis {
+    const domains = topAreaLabels(records, 3);
+    const companies = topCompanyTargets(records, 3);
     const imageRecords = records.filter((record) => record.designKind === 'image');
     const imageCount = imageRecords.length;
 
@@ -49,7 +77,7 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
         records,
         text:
           records.length === 0
-            ? '対象条件に合う市場全体のサンプル意匠はありません。'
+            ? '対象条件に合う市場全体の意匠はありません。'
             : `${domains.join('、')}を中心に、画像意匠を含むデジタル接点の意匠に参考傾向が見られます。継続観察が必要です。`,
         metric: metric('対象意匠件数', records.length, '件', `${dataAsOf}基準`),
       }),
@@ -66,22 +94,23 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
         text:
           companies.length === 0
             ? '企業別の動きは確認できません。'
-            : `${companies.join('、')}がサンプル内で相対的に多く、複数領域へ意匠展開している可能性があります。`,
-        metric: metric('対象企業数', new Set(records.map((record) => record.applicant)).size, '社'),
+            : `${companies.map((company) => company.displayLabel).join('、')}が対象データ内で相対的に多く、複数領域へ意匠展開している可能性があります。`,
+        metric: metric('対象企業数', countApplicantCompanies(records), '社'),
       }),
     };
   }
 
   private createCompanyAnalysis(
-    company: string,
-    records: DesignRecord[],
+    target: CompanyTarget,
+    records: AnalysisReadyDesignRecord[],
     req: AnalysisRequest,
     dataAsOf: string,
   ): CompanyAnalysis {
+    const company = target.displayLabel;
     const recentRecords = filterRecentMonths(records, dataAsOf, 12);
     const olderRecords = records.filter((record) => !recentRecords.includes(record));
-    const topDomains = topLabels(countBy(records, (record) => record.businessDomain), 3);
-    const topClasses = topLabels(countBy(records, (record) => record.classLabel ?? record.designClass), 3);
+    const topDomains = topAreaLabels(records, 3);
+    const topClasses = topClassificationLabels(records, 3);
     const shapeRecords = findRecordsByTerms(records, SHAPE_TERMS);
     const uiRecords = records.filter((record) => record.designKind === 'image');
     const digitalRecords = findRecordsByTerms(records, DIGITAL_TERMS);
@@ -93,13 +122,14 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
       meaningfulKeywordCount >= 3 ? records.filter((record) => recordHasAnyKeyword(record, designDirectionKeywords)) : [];
 
     return {
+      companyKey: companySelectorKey(target.selector),
       company,
       designTrend: {
         domains: makeInsight({
           records,
           text:
             records.length === 0
-              ? `${company}の該当サンプル意匠はありません。`
+              ? `${company}の該当意匠はありません。`
               : `${company}は${topDomains.join('、')}で意匠展開が相対的に多い傾向が見られ、${topClasses.join('、')}が確認できます。`,
           metric: metric('企業別対象件数', records.length, '件'),
         }),
@@ -133,7 +163,7 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
           fallbackRecords: records,
           text:
             digitalRecords.length === 0
-              ? 'デジタルサービス接点を示すサンプルは限定的です。'
+              ? 'デジタルサービス接点を示す対象データは限定的です。'
               : `遠隔・クラウド・操作画面などの接点が${digitalRecords.length}件あり、サービス化の兆候が見られます。`,
           metric: metric('デジタル接点の該当件数', digitalRecords.length, '件'),
         }),
@@ -234,14 +264,99 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
   }
 }
 
+function requestedCompanyTargets(
+  selectors: CompanySelector[],
+  records: AnalysisReadyDesignRecord[],
+): CompanyTarget[] {
+  const targets = new Map<string, CompanyTarget>();
+  for (const selector of selectors) {
+    const key = companySelectorKey(selector);
+    if (targets.has(key)) continue;
+    targets.set(key, {
+      selector,
+      displayLabel: selectorDisplayLabel(selector, records),
+    });
+  }
+  return [...targets.values()];
+}
+
+function selectorDisplayLabel(
+  selector: CompanySelector,
+  records: AnalysisReadyDesignRecord[],
+): string {
+  const selectorLabel = 'displayLabel' in selector ? selector.displayLabel.trim() : '';
+  if (selectorLabel) return selectorLabel;
+
+  for (const record of records) {
+    const membership = record.companyMemberships.find((candidate) =>
+      companySelectorMatchesMembership(selector, candidate),
+    );
+    if (membership?.displayLabel.trim()) return membership.displayLabel;
+  }
+
+  return selector.origin === 'backend' ? selector.resolvedEntityId : selector.localKey;
+}
+
+function topCompanyTargets(records: AnalysisReadyDesignRecord[], limit: number): CompanyTarget[] {
+  const groups = new Map<
+    string,
+    { selector: CompanySelector; displayLabel: string; recordIds: Set<string> }
+  >();
+
+  for (const record of records) {
+    const seenForRecord = new Set<string>();
+    for (const membership of record.companyMemberships) {
+      if (!isApplicantAggregationMembership(membership)) continue;
+      const key = companyMembershipKey(membership);
+      if (seenForRecord.has(key)) continue;
+      seenForRecord.add(key);
+
+      const current = groups.get(key);
+      if (current) {
+        current.recordIds.add(record.id);
+      } else {
+        groups.set(key, {
+          selector: companySelectorFromMembership(membership),
+          displayLabel: membership.displayLabel,
+          recordIds: new Set([record.id]),
+        });
+      }
+    }
+  }
+
+  return [...groups.values()]
+    .sort(
+      (left, right) =>
+        right.recordIds.size - left.recordIds.size ||
+        left.displayLabel.localeCompare(right.displayLabel, 'ja-JP'),
+    )
+    .slice(0, limit)
+    .map(({ selector, displayLabel }) => ({ selector, displayLabel }));
+}
+
+function countApplicantCompanies(records: AnalysisReadyDesignRecord[]): number {
+  const keys = new Set<string>();
+  for (const record of records) {
+    for (const membership of record.companyMemberships) {
+      if (isApplicantAggregationMembership(membership)) keys.add(companyMembershipKey(membership));
+    }
+  }
+  return keys.size;
+}
+
+function isApplicantAggregationMembership(membership: CompanyMembership): boolean {
+  if (membership.role !== 'applicant') return false;
+  return membership.origin === 'backend' || membership.isPrimaryApplicant;
+}
+
 function makeInsight({
   records,
   fallbackRecords = [],
   text,
   metric,
 }: {
-  records: DesignRecord[];
-  fallbackRecords?: DesignRecord[];
+  records: AnalysisReadyDesignRecord[];
+  fallbackRecords?: AnalysisReadyDesignRecord[];
   text: string;
   metric: InsightMetric;
 }): AnalysisInsight {
@@ -277,53 +392,141 @@ function countBy<T>(items: T[], getKey: (item: T) => string): Map<string, number
 }
 
 function topEntries(map: Map<string, number>, limit: number): [string, number][] {
-  return [...map.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], 'ja-JP')).slice(0, limit);
+  return [...map.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], 'ja-JP'))
+    .slice(0, limit);
 }
 
 function topLabels(map: Map<string, number>, limit: number): string[] {
   return topEntries(map, limit).map(([label]) => label);
 }
 
-function topCompanyLabels(records: DesignRecord[], limit: number): string[] {
-  const namedCompanies = topLabels(countBy(records.filter((record) => !isUnresolvedParty(record.applicant)), (record) => record.applicant), limit);
-  if (namedCompanies.length >= limit) return namedCompanies;
+function topAreaLabels(records: AnalysisReadyDesignRecord[], limit: number): string[] {
+  const groups = new Map<string, { label: string; recordIds: Set<string> }>();
+  for (const record of records) {
+    const businessDomain = record.businessDomain?.trim();
+    if (businessDomain) {
+      addRecordGroup(groups, `business-domain:${businessDomain}`, businessDomain, record.id);
+      continue;
+    }
 
-  const unresolvedCompanies = topLabels(countBy(records.filter((record) => isUnresolvedParty(record.applicant)), (record) => record.applicant), limit);
-  return [...namedCompanies, ...unresolvedCompanies].slice(0, limit);
+    const seenForRecord = new Set<string>();
+    for (const membership of record.classificationMemberships) {
+      const key = classificationMembershipKey(membership);
+      if (seenForRecord.has(key)) continue;
+      seenForRecord.add(key);
+      addRecordGroup(groups, key, classificationDisplayLabel(membership), record.id);
+    }
+  }
+  return topRecordGroupLabels(groups, limit);
 }
 
-function isUnresolvedParty(value: string): boolean {
-  return /^未解決コード:\s*\d{5,}$/i.test(value.trim()) || /^(code:)?\d{5,}$/i.test(value.trim());
+function topClassificationLabels(records: AnalysisReadyDesignRecord[], limit: number): string[] {
+  const groups = new Map<string, { label: string; recordIds: Set<string> }>();
+  for (const record of records) {
+    const seenForRecord = new Set<string>();
+    for (const membership of record.classificationMemberships) {
+      const key = classificationMembershipKey(membership);
+      if (seenForRecord.has(key)) continue;
+      seenForRecord.add(key);
+      addRecordGroup(groups, key, classificationDisplayLabel(membership), record.id);
+    }
+  }
+  return topRecordGroupLabels(groups, limit);
 }
 
-function topKeywords(records: DesignRecord[], limit: number): string[] {
-  return topLabels(countBy(records.flatMap((record) => [...record.keywords, ...record.designFeatures]).filter((value) => !isStopWord(value)), (value) => value), limit);
+function addRecordGroup(
+  groups: Map<string, { label: string; recordIds: Set<string> }>,
+  key: string,
+  label: string,
+  recordId: string,
+): void {
+  const current = groups.get(key);
+  if (current) {
+    current.recordIds.add(recordId);
+  } else {
+    groups.set(key, { label, recordIds: new Set([recordId]) });
+  }
 }
 
-function uniqueKeywords(records: DesignRecord[]): string[] {
-  return [...new Set(records.flatMap((record) => [...record.keywords, ...record.designFeatures]).filter((value) => !isStopWord(value)))];
+function topRecordGroupLabels(
+  groups: Map<string, { label: string; recordIds: Set<string> }>,
+  limit: number,
+): string[] {
+  return [...groups.values()]
+    .sort(
+      (left, right) =>
+        right.recordIds.size - left.recordIds.size || left.label.localeCompare(right.label, 'ja-JP'),
+    )
+    .slice(0, limit)
+    .map((group) => group.label);
 }
 
-function recordHasAnyKeyword(record: DesignRecord, keywords: string[]): boolean {
-  const terms = [...record.keywords, ...record.designFeatures].filter((value) => !isStopWord(value));
+function classificationDisplayLabel(membership: ClassificationMembership): string {
+  const label = membership.label?.trim();
+  if (label) return label;
+  if (membership.scheme === 'sample-design-class' || membership.scheme === 'legacy-design-class') {
+    return membership.code;
+  }
+  return `${membership.scheme}:${membership.code}`;
+}
+
+function recordTerms(record: AnalysisReadyDesignRecord): string[] {
+  return [
+    record.articleName ?? '',
+    record.description ?? '',
+    record.articleDescription ?? '',
+    record.businessDomain ?? '',
+    ...record.classificationMemberships.flatMap((membership) => [
+      membership.scheme,
+      membership.code,
+      membership.label ?? '',
+    ]),
+    ...(record.keywords ?? []),
+    ...(record.designFeatures ?? []),
+  ].filter(Boolean);
+}
+
+function topKeywords(records: AnalysisReadyDesignRecord[], limit: number): string[] {
+  return topLabels(
+    countBy(
+      records
+        .flatMap((record) => [...(record.keywords ?? []), ...(record.designFeatures ?? [])])
+        .filter((value) => !isStopWord(value)),
+      (value) => value,
+    ),
+    limit,
+  );
+}
+
+function uniqueKeywords(records: AnalysisReadyDesignRecord[]): string[] {
+  return [
+    ...new Set(
+      records
+        .flatMap((record) => [...(record.keywords ?? []), ...(record.designFeatures ?? [])])
+        .filter((value) => !isStopWord(value)),
+    ),
+  ];
+}
+
+function recordHasAnyKeyword(record: AnalysisReadyDesignRecord, keywords: string[]): boolean {
+  const terms = [...(record.keywords ?? []), ...(record.designFeatures ?? [])].filter(
+    (value) => !isStopWord(value),
+  );
   return keywords.some((keyword) => terms.includes(keyword));
 }
 
-function findRecordsByTerms(records: DesignRecord[], terms: string[]): DesignRecord[] {
+function findRecordsByTerms(
+  records: AnalysisReadyDesignRecord[],
+  terms: string[],
+): AnalysisReadyDesignRecord[] {
   return records.filter((record) => {
-    const haystack = [
-      record.articleName,
-      record.businessDomain,
-      record.classLabel,
-      record.summary,
-      ...record.keywords,
-      ...record.designFeatures,
-    ].join(' ');
+    const haystack = recordTerms(record).join(' ');
     return terms.some((term) => haystack.includes(term));
   });
 }
 
-function topTerms(records: DesignRecord[], terms: string[]): string[] {
+function topTerms(records: AnalysisReadyDesignRecord[], terms: string[]): string[] {
   const counts = new Map<string, number>();
   for (const term of terms) {
     const count = findRecordsByTerms(records, [term]).length;
@@ -332,7 +535,11 @@ function topTerms(records: DesignRecord[], terms: string[]): string[] {
   return topLabels(counts, 3);
 }
 
-function filterRecentMonths(records: DesignRecord[], dataAsOf: string, months: number): DesignRecord[] {
+function filterRecentMonths(
+  records: AnalysisReadyDesignRecord[],
+  dataAsOf: string,
+  months: number,
+): AnalysisReadyDesignRecord[] {
   const from = new Date(`${dataAsOf}T00:00:00`);
   from.setMonth(from.getMonth() - months);
   return records.filter((record) => new Date(record.gazetteDate) >= from);
@@ -345,8 +552,8 @@ function ratio(part: number, total: number): number {
 function describeImageTrend(
   imageCount: number,
   totalCount: number,
-  recentRecords: DesignRecord[],
-  olderRecords: DesignRecord[],
+  recentRecords: AnalysisReadyDesignRecord[],
+  olderRecords: AnalysisReadyDesignRecord[],
 ): string {
   if (totalCount === 0) return '画像意匠の傾向は判断できません。';
   const recentImage = recentRecords.filter((record) => record.designKind === 'image').length;
@@ -355,16 +562,23 @@ function describeImageTrend(
   return `画像意匠は${imageCount}件（${ratio(imageCount, totalCount)}%）で、${direction}。追加期間での確認が必要です。`;
 }
 
-function describeTermDirection(records: DesignRecord[], terms: string[], label: string): string {
+function describeTermDirection(
+  records: AnalysisReadyDesignRecord[],
+  terms: string[],
+  label: string,
+): string {
   const matched = findRecordsByTerms(records, terms);
   if (matched.length === 0) return `${label}を示す明確な特徴語は限定的です。`;
   return `${label}では${topTerms(records, terms).join('、')}に関する特徴が見られます。`;
 }
 
-function describeStrengthening(recentRecords: DesignRecord[], olderRecords: DesignRecord[]): string {
+function describeStrengthening(
+  recentRecords: AnalysisReadyDesignRecord[],
+  olderRecords: AnalysisReadyDesignRecord[],
+): string {
   if (recentRecords.length === 0) return '直近1年で相対的に多い領域は確認できません。';
-  const recentTop = topLabels(countBy(recentRecords, (record) => record.businessDomain), 2);
-  const olderTop = topLabels(countBy(olderRecords, (record) => record.businessDomain), 2);
+  const recentTop = topAreaLabels(recentRecords, 2);
+  const olderTop = topAreaLabels(olderRecords, 2);
   const shifted = recentTop.filter((domain) => !olderTop.includes(domain));
   if (shifted.length > 0) {
     return `このデータ範囲では${shifted.join('、')}が相対的に多く確認できます。追加期間での確認が必要です。`;
@@ -372,15 +586,24 @@ function describeStrengthening(recentRecords: DesignRecord[], olderRecords: Desi
   return `直近1年でも${recentTop.join('、')}が参考傾向として確認できます。継続観察が必要です。`;
 }
 
-function whitespaceDomains(records: DesignRecord[]): string[] {
-  const existing = new Set(records.map((record) => record.businessDomain));
+function whitespaceDomains(records: AnalysisReadyDesignRecord[]): string[] {
+  const existing = new Set(
+    records
+      .map((record) => record.businessDomain?.trim())
+      .filter((domain): domain is string => Boolean(domain)),
+  );
   return DOMAIN_UNIVERSE.filter((domain) => !existing.has(domain));
 }
 
-function describeWhitespace(records: DesignRecord[]): string {
-  const whitespace = whitespaceDomains(records);
+function describeWhitespace(records: AnalysisReadyDesignRecord[]): string {
   if (records.length === 0) return '対象データがないため、確認できない領域の参考候補は判断できません。';
-  if (whitespace.length === 0) return 'このデータ範囲では主要候補領域を広く確認できます。確認できない領域の参考表示は控えています。';
+  if (records.every((record) => !record.businessDomain?.trim())) {
+    return '事業領域のsource factがないため、確認できない領域の参考表示は控えています。';
+  }
+  const whitespace = whitespaceDomains(records);
+  if (whitespace.length === 0) {
+    return 'このデータ範囲では主要候補領域を広く確認できます。確認できない領域の参考表示は控えています。';
+  }
   return `${whitespace.join('、')}はこのデータ範囲では確認できませんでしたが、出願がないこと自体を既存record.idで裏付けられないため参考表示を控えています。`;
 }
 
@@ -445,7 +668,7 @@ function isStopWord(value: string): boolean {
   return STOP_WORDS.has(normalized) || /^\d+$/.test(normalized);
 }
 
-export function countByDesignKind(records: DesignRecord[]): Record<DesignKind, number> {
+export function countByDesignKind(records: AnalysisReadyDesignRecord[]): Record<DesignKind, number> {
   return {
     article: records.filter((record) => record.designKind === 'article').length,
     image: records.filter((record) => record.designKind === 'image').length,
@@ -453,7 +676,7 @@ export function countByDesignKind(records: DesignRecord[]): Record<DesignKind, n
   };
 }
 
-export function designKindSummary(records: DesignRecord[]): string {
+export function designKindSummary(records: AnalysisReadyDesignRecord[]): string {
   const counts = countByDesignKind(records);
   return Object.entries(counts)
     .map(([kind, count]) => `${DESIGN_KIND_LABELS[kind as DesignKind]} ${count}件`)

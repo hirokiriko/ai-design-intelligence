@@ -323,6 +323,10 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('実データ検証版の到達点');
     expect(html).toContain('現在の未接続・改善予定');
     expect(html).toContain('セキュリティ・共有前提');
+    expect(html).toContain('現在はローカル検証版です。');
+    expect(html).toContain('この画面は画面共有用のローカル検証版です。');
+    expect(html).not.toContain('現在は公開URL用の架空サンプルデータ版です。');
+    expect(html).not.toContain('この画面は公開URL用の架空サンプルデータ版です。');
     expect(html).toContain('先方の社外秘情報を入力する必要はありません。');
     expect(html).toContain('商用導入時は、社内環境・閉域環境・セキュアなクラウド構成を相談可能です。');
     expect(html).toContain('デモナビ');
@@ -394,6 +398,10 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('デモ用サンプルデータから自動抽出した、架空の図面情報を説明しやすい意匠です。');
     expect(html).toContain('公開URL版のデータは架空データで、実在企業・実在公報ではありません。');
     expect(html).toContain('セキュリティ・共有前提');
+    expect(html).toContain('現在は公開URL用の架空サンプルデータ版です。');
+    expect(html).toContain('この画面は公開URL用の架空サンプルデータ版です。');
+    expect(html).not.toContain('現在はローカル検証版です。');
+    expect(html).not.toContain('この画面は画面共有用のローカル検証版です。');
     expect(html).not.toContain('細江');
     expect(html).not.toContain('6社比較ビュー');
     expect(html).not.toContain('Soft' + 'Bank');

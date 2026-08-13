@@ -44,7 +44,12 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
     const companies = topCompanyLabels(records, 3);
     const focusDomains = new Set(domains.slice(0, 2));
     const focusRecords = records.filter((record) => focusDomains.has(record.businessDomain));
-    const productNames = topLabels(countBy(records, (record) => record.articleName), 3);
+    const productNames = topLabels(countBy(focusRecords, (record) => record.articleName), 3);
+    const companyCount = new Set(records.map((record) => record.applicant)).size;
+    const companyRecordCounts = countBy(records, (record) => record.applicant);
+    const companyCountSummary = companies
+      .map((company) => `${company} ${companyRecordCounts.get(company) ?? 0}件`)
+      .join('、');
 
     return {
       trends: makeInsight({
@@ -68,8 +73,10 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
           text:
             companies.length === 0
               ? NO_MATCH_MESSAGE
-            : `${companies.join('、')}がサンプル内で相対的に多く、複数領域へ意匠展開している可能性があります。`,
-        metric: metric('対象企業数', new Set(records.map((record) => record.applicant)).size, '社'),
+              : companyCount === 1
+                ? `サンプル内では${companyCountSummary}の意匠が確認されました。`
+                : `サンプル内の対象${companyCount}社では、${companyCountSummary}が件数上位として確認されました。`,
+        metric: metric('対象意匠数', records.length, '件', `対象${companyCount}社`),
       }),
     };
   }
@@ -90,6 +97,9 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
     const digitalRecords = findRecordsByTerms(records, DIGITAL_TERMS);
     const purposeLabels = req.purposes.map((purpose) => PURPOSE_LABELS[purpose]).join('、');
     const departmentLabels = req.departments.map((department) => DEPARTMENT_LABELS[department]).join('、');
+    const departmentGuidance = departmentLabels
+      ? `${departmentLabels}向けには、この領域の継続監視が有効です。`
+      : '';
     const designDirectionKeywords = topKeywords(records, 4);
     const meaningfulKeywordCount = uniqueKeywords(records).length;
     const designDirectionRecords =
@@ -184,7 +194,7 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
           text:
             topDomains.length === 0
               ? '集中領域は確認できません。'
-              : `集中領域の参考候補は${topDomains.join('、')}です。${departmentLabels}向けには、この領域の継続監視が有効です。`,
+              : `集中領域の参考候補は${topDomains.join('、')}です。${departmentGuidance}`,
           metric: metric('集中領域数', topDomains.length, '領域'),
         }),
         strengthening: makeInsight({

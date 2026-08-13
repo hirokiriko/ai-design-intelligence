@@ -87,6 +87,7 @@ export function ResultsArea({
   const [expandedEvidenceResult, setExpandedEvidenceResult] = useState<AnalysisResult | null>(null);
   const [evidenceSelection, setEvidenceSelection] = useState<EvidenceSelection | null>(null);
   const evidenceSectionRef = useRef<HTMLElement>(null);
+  const restoreEvidenceFocusRef = useRef(false);
   const activeScenario = DEMO_SCENARIOS[demoScenario];
   const activeStepIndex = Math.min(presenterStepIndex, activeScenario.steps.length - 1);
   const isPresenterMode = externalDemoMode && presenterMode;
@@ -111,12 +112,20 @@ export function ResultsArea({
   };
 
   useEffect(() => {
-    if (!activeEvidenceSelection) return;
+    if (!activeEvidenceSelection && !restoreEvidenceFocusRef.current) return;
 
     const section = evidenceSectionRef.current;
     section?.focus({ preventScroll: true });
-    section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (activeEvidenceSelection) {
+      section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    restoreEvidenceFocusRef.current = false;
   }, [activeEvidenceSelection]);
+
+  const clearEvidenceSelection = () => {
+    restoreEvidenceFocusRef.current = true;
+    setEvidenceSelection(null);
+  };
 
   return (
     <main className="space-y-5">
@@ -206,7 +215,7 @@ export function ResultsArea({
             <button
               type="button"
               className="mt-3 rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-ink"
-              onClick={() => setEvidenceSelection(null)}
+              onClick={clearEvidenceSelection}
             >
               絞り込みを解除
             </button>
@@ -807,12 +816,14 @@ function ExternalDemoGuide({
           </ul>
         </div>
       </div>
-      <DemoSecurityPanel />
+      <DemoSecurityPanel isPublicSample={isPublicSample} />
       <ul className="mt-4 grid gap-2 text-sm leading-6 text-caution md:grid-cols-2">
         <li className="rounded-md border border-amber-200 bg-amber-50 p-3">分析結果は参考情報であり、法的助言ではありません。</li>
         <li className="rounded-md border border-amber-200 bg-amber-50 p-3">現時点では図面画像本体や外部リンクは表示していません。</li>
         <li className="rounded-md border border-amber-200 bg-amber-50 p-3">図面画像表示や外部リンクは、著作権・利用条件確認後に検討します。</li>
-        <li className="rounded-md border border-amber-200 bg-amber-50 p-3">この画面は画面共有用のローカル検証版です。</li>
+        <li className="rounded-md border border-amber-200 bg-amber-50 p-3">
+          {isPublicSample ? 'この画面は公開URL用の架空サンプルデータ版です。' : 'この画面は画面共有用のローカル検証版です。'}
+        </li>
       </ul>
     </section>
   );
@@ -826,12 +837,12 @@ function PublicSampleDemoNotice() {
   );
 }
 
-function DemoSecurityPanel() {
+function DemoSecurityPanel({ isPublicSample }: { isPublicSample: boolean }) {
   return (
     <div className="mt-4 rounded-md border border-slate-200 bg-white p-4">
       <h3 className="text-sm font-bold text-ink">セキュリティ・共有前提</h3>
       <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-ink">
-        <li>現在はローカル検証版です。</li>
+        <li>{isPublicSample ? '現在は公開URL用の架空サンプルデータ版です。' : '現在はローカル検証版です。'}</li>
         <li>実データは公開ビルドに含まれていません。</li>
         <li>先方の社外秘情報を入力する必要はありません。</li>
         <li>分析対象は意匠情報です。</li>

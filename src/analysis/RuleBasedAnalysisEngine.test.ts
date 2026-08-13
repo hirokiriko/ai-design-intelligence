@@ -98,6 +98,70 @@ describe('RuleBasedAnalysisEngine', () => {
     expect(insight.evidenceIds).toEqual(['ui-match']);
   });
 
+  it('omits department-specific guidance when no output department is selected', async () => {
+    const records = [makeRecord('no-department')];
+    const noDepartmentRequest: AnalysisRequest = {
+      ...singleCompanyRequest('架空テック株式会社'),
+      departments: [],
+    };
+
+    const result = await new RuleBasedAnalysisEngine().analyze(noDepartmentRequest, records, '2026-06-24');
+    const insight = result.companies[0].portfolio.focusAreas;
+
+    expect(insight.text).toBe('集中領域の参考候補はGraphical user interfaceです。');
+    expect(insight.text).not.toContain('向けには');
+  });
+
+  it('grounds company moves in record counts for one company in one domain', async () => {
+    const records = [
+      makeRecord('single-company-1', { articleName: '操作画面' }),
+      makeRecord('single-company-2', { articleName: '設定画面' }),
+      makeRecord('single-company-3', { articleName: '通知画面' }),
+    ];
+    const marketRequest: AnalysisRequest = { ...request, scope: { mode: 'all_classes' } };
+
+    const result = await new RuleBasedAnalysisEngine().analyze(marketRequest, records, '2026-06-24');
+    const insight = result.market!.companyMoves;
+
+    expect(insight.text).toContain('架空テック株式会社 3件');
+    expect(insight.text).not.toContain('複数領域');
+    expect(insight.metric).toEqual({ label: '対象意匠数', value: 3, unit: '件', comparison: '対象1社' });
+    expect(insight.evidenceIds).toEqual(['single-company-1', 'single-company-2', 'single-company-3']);
+    expect(insight.metric.value).toBe(insight.evidenceIds.length);
+  });
+
+  it('derives emerging product names and evidence from the same top-domain records', async () => {
+    const records = [
+      makeRecord('domain-a-1', { businessDomain: '領域A', articleName: '領域A商品1' }),
+      makeRecord('domain-a-2', { businessDomain: '領域A', articleName: '領域A商品2' }),
+      makeRecord('domain-a-3', { businessDomain: '領域A', articleName: '領域A商品3' }),
+      makeRecord('domain-a-4', { businessDomain: '領域A', articleName: '領域A商品4' }),
+      makeRecord('domain-b-1', { businessDomain: '領域B', articleName: '領域B商品1' }),
+      makeRecord('domain-b-2', { businessDomain: '領域B', articleName: '領域B商品2' }),
+      makeRecord('domain-b-3', { businessDomain: '領域B', articleName: '領域B商品3' }),
+      makeRecord('domain-c-1', { businessDomain: '領域C', articleName: '領域外上位商品' }),
+      makeRecord('domain-c-2', { businessDomain: '領域C', articleName: '領域外上位商品' }),
+    ];
+    const marketRequest: AnalysisRequest = { ...request, scope: { mode: 'all_classes' } };
+
+    const result = await new RuleBasedAnalysisEngine().analyze(marketRequest, records, '2026-06-24');
+    const insight = result.market!.emergingDomains;
+
+    expect(insight.text).toContain('領域A商品1');
+    expect(insight.text).not.toContain('領域外上位商品');
+    expect(insight.metric.value).toBe(7);
+    expect(insight.evidenceIds).toEqual([
+      'domain-a-1',
+      'domain-a-2',
+      'domain-a-3',
+      'domain-a-4',
+      'domain-b-1',
+      'domain-b-2',
+      'domain-b-3',
+    ]);
+    expect(insight.metric.value).toBe(insight.evidenceIds.length);
+  });
+
   it('filters generic English words from design direction keywords', async () => {
     const records = [
       makeRecord('english-1', { keywords: ['in', 'outermost', 'camera'], designFeatures: ['show', 'screen'] }),

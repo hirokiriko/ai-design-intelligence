@@ -27,6 +27,8 @@ describe('RuleBasedAnalysisEngine', () => {
     expect(insights.every((insight) => insight.metric.label.length > 0)).toBe(true);
     expect(insights.every((insight) => ['low', 'medium', 'high'].includes(insight.confidence))).toBe(true);
     expect(insights.some((insight) => insight.evidenceIds.length > 0)).toBe(true);
+    const recordIds = new Set(records.map((record) => record.id));
+    expect(insights.flatMap((insight) => insight.evidenceIds).every((id) => recordIds.has(id))).toBe(true);
   });
 
   it('creates market view for all class analysis', async () => {
@@ -39,6 +41,63 @@ describe('RuleBasedAnalysisEngine', () => {
     expect(collectMarketInsights(result.market!).every((insight) => insight.evidenceIds.length > 0)).toBe(true);
   });
 
+  it('creates a market view for an industry request while keeping company scope company-only', async () => {
+    const source = new SampleDesignDataSource();
+    const industryRequest: AnalysisRequest = {
+      ...request,
+      scope: { mode: 'industry', industry: '住宅設備' },
+      productDomain: '住宅設備',
+    };
+    const industryRecords = await source.query(industryRequest);
+    const industryResult = await new RuleBasedAnalysisEngine().analyze(
+      industryRequest,
+      industryRecords,
+      source.getDataAsOf(),
+    );
+    const companyRecords = await source.query(request);
+    const companyResult = await new RuleBasedAnalysisEngine().analyze(
+      request,
+      companyRecords,
+      source.getDataAsOf(),
+    );
+
+    expect(industryRecords.length).toBeGreaterThan(0);
+    expect(industryResult.request.scope).toEqual({ mode: 'industry', industry: '住宅設備' });
+    expect(industryResult.market).toBeDefined();
+    expect(industryResult.companies.length).toBeGreaterThan(0);
+    expect(companyResult.market).toBeUndefined();
+    expect(companyResult.companies.map((company) => company.company)).toEqual(request.scope.mode === 'companies' ? request.scope.companies : []);
+  });
+
+  it('uses existing unique record IDs and keeps count metrics aligned with their evidence', async () => {
+    const source = new SampleDesignDataSource();
+    const records = await source.query(request);
+    const result = await new RuleBasedAnalysisEngine().analyze(request, records, source.getDataAsOf());
+    const recordIds = new Set(records.map((record) => record.id));
+    const insights = result.companies.flatMap((company) => collectCompanyInsights(company));
+
+    for (const insight of insights) {
+      expect(new Set(insight.evidenceIds).size).toBe(insight.evidenceIds.length);
+      expect(insight.evidenceIds.every((id) => recordIds.has(id))).toBe(true);
+      if (insight.metric.unit === '件') {
+        expect(insight.metric.value, insight.metric.label).toBe(insight.evidenceIds.length);
+      }
+    }
+  });
+
+  it('uses the same matched record set for the UI change metric and evidence', async () => {
+    const records = [
+      makeRecord('ui-match', { keywords: ['通知'], designFeatures: ['カード'] }),
+      makeRecord('ui-non-match', { keywords: ['装飾'], designFeatures: ['配色'] }),
+    ];
+
+    const result = await new RuleBasedAnalysisEngine().analyze(singleCompanyRequest('架空テック株式会社'), records, '2026-06-24');
+    const insight = result.companies[0].designChange.uiChange;
+
+    expect(insight.metric.value).toBe(1);
+    expect(insight.evidenceIds).toEqual(['ui-match']);
+  });
+
   it('filters generic English words from design direction keywords', async () => {
     const records = [
       makeRecord('english-1', { keywords: ['in', 'outermost', 'camera'], designFeatures: ['show', 'screen'] }),
@@ -46,7 +105,7 @@ describe('RuleBasedAnalysisEngine', () => {
       makeRecord('english-3', { keywords: ['screen', 'interface'], designFeatures: ['of', 'display'] }),
     ];
 
-    const result = await new RuleBasedAnalysisEngine().analyze(singleCompanyRequest('Apple Inc.'), records, '2026-06-24');
+    const result = await new RuleBasedAnalysisEngine().analyze(singleCompanyRequest('架空テック株式会社'), records, '2026-06-24');
     const insight = result.companies[0].designTrend.designDirection;
 
     expect(insight.metric.value).toBeGreaterThanOrEqual(3);
@@ -63,7 +122,7 @@ describe('RuleBasedAnalysisEngine', () => {
       makeRecord('stop-only-2', { keywords: ['of', 'for', 'the'], designFeatures: ['view', 'figure'] }),
     ];
 
-    const result = await new RuleBasedAnalysisEngine().analyze(singleCompanyRequest('Apple Inc.'), records, '2026-06-24');
+    const result = await new RuleBasedAnalysisEngine().analyze(singleCompanyRequest('架空テック株式会社'), records, '2026-06-24');
     const insight = result.companies[0].designTrend.designDirection;
 
     expect(insight.metric.value).toBe(0);
@@ -75,7 +134,7 @@ describe('RuleBasedAnalysisEngine', () => {
   it('does not attach record evidence to whitespace insight', async () => {
     const records = [makeRecord('white-1', { businessDomain: '冷蔵庫' })];
 
-    const result = await new RuleBasedAnalysisEngine().analyze(singleCompanyRequest('Apple Inc.'), records, '2026-06-24');
+    const result = await new RuleBasedAnalysisEngine().analyze(singleCompanyRequest('架空テック株式会社'), records, '2026-06-24');
     const insight = result.companies[0].portfolio.whitespace;
 
     expect(insight.metric.value).toBe(0);
@@ -87,7 +146,7 @@ describe('RuleBasedAnalysisEngine', () => {
   it('keeps confidence below high for small evidence sets', async () => {
     const records = Array.from({ length: 6 }, (_, index) => makeRecord(`small-${index + 1}`));
 
-    const result = await new RuleBasedAnalysisEngine().analyze(singleCompanyRequest('Apple Inc.'), records, '2026-06-24');
+    const result = await new RuleBasedAnalysisEngine().analyze(singleCompanyRequest('架空テック株式会社'), records, '2026-06-24');
 
     expect(result.companies[0].designTrend.domains.confidence).not.toBe('high');
   });
@@ -101,6 +160,29 @@ describe('RuleBasedAnalysisEngine', () => {
     const strongPhrases = ['増加' + 'しています', '強化' + 'しています', '注力' + 'しています'];
     strongPhrases.forEach((phrase) => expect(text).not.toContain(phrase));
   });
+
+  it('does not make prediction, strategy-identification, or legal-judgment claims', async () => {
+    const source = new SampleDesignDataSource();
+    const records = await source.query(request);
+    const result = await new RuleBasedAnalysisEngine().analyze(request, records, source.getDataAsOf());
+    const text = result.companies
+      .flatMap((company) => collectCompanyInsights(company))
+      .map((insight) => insight.text)
+      .join('\n');
+
+    ['特許情報より早', '将来を予測', '企業戦略を特定', '侵害判断', '登録可能性を判断', '法的に問題ありません'].forEach(
+      (phrase) => expect(text).not.toContain(phrase),
+    );
+  });
+
+  it('does not claim absence when no records match', async () => {
+    const emptyRequest: AnalysisRequest = { ...request, scope: { mode: 'all_classes' } };
+    const result = await new RuleBasedAnalysisEngine().analyze(emptyRequest, [], '2026-06-15');
+    const text = collectMarketInsights(result.market!).map((insight) => insight.text).join('\n');
+
+    expect(text).toContain('現在のデータと条件では検出されませんでした。');
+    expect(text).not.toContain('該当意匠が存在しない');
+  });
 });
 
 function singleCompanyRequest(company: string): AnalysisRequest {
@@ -111,7 +193,7 @@ function makeRecord(id: string, overrides: Partial<DesignRecord> = {}): DesignRe
   return {
     id,
     gazetteDate: '2026-06-20',
-    applicant: 'Apple Inc.',
+    applicant: '架空テック株式会社',
     businessDomain: 'Graphical user interface',
     designKind: 'image',
     articleName: 'Graphical user interface',

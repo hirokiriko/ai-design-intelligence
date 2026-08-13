@@ -17,7 +17,24 @@ describe('validateRequest', () => {
     expect(errors.companies).toBeDefined();
   });
 
-  it('requires design kinds, purposes, and departments', () => {
+  it('accepts market, industry, and populated company scopes', () => {
+    expect(validateRequest(validRequest)).toEqual({});
+    expect(
+      validateRequest({
+        ...validRequest,
+        scope: { mode: 'industry', industry: '住宅設備' },
+        productDomain: '住宅設備',
+      }),
+    ).toEqual({});
+    expect(
+      validateRequest({
+        ...validRequest,
+        scope: { mode: 'companies', companies: ['架空モビリティ株式会社'] },
+      }),
+    ).toEqual({});
+  });
+
+  it('requires design kinds and purposes while allowing automatic departments', () => {
     const errors = validateRequest({
       ...validRequest,
       designKinds: [],
@@ -27,6 +44,18 @@ describe('validateRequest', () => {
 
     expect(errors.designKinds).toBeDefined();
     expect(errors.purposes).toBeDefined();
-    expect(errors.departments).toBeDefined();
+    expect(errors.departments).toBeUndefined();
+  });
+
+  it('requires a focus area for the industry scope', () => {
+    const errors = validateRequest({ ...validRequest, scope: { mode: 'industry', industry: '' }, productDomain: '' });
+
+    expect(errors.productDomain).toBeDefined();
+  });
+
+  it('allows analysis without an output department', () => {
+    const errors = validateRequest({ ...validRequest, departments: [] });
+
+    expect(errors).toEqual({});
   });
 });

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { DEPARTMENT_LABELS, DESIGN_KIND_LABELS, PERIOD_LABELS, PURPOSE_LABELS } from '../../domain/labels';
 import type {
   AnalysisInsight,
@@ -27,7 +27,7 @@ interface ResultsAreaProps {
   localAnalysisPackPanel: ReactNode | null;
 }
 
-type DemoScenarioKind = 'three_min' | 'ten_min';
+type DemoScenarioKind = 'five_min';
 
 interface DemoScenarioStep {
   label: string;
@@ -46,30 +46,23 @@ interface PublicSampleSummary {
   designKindCounts: RankedItem[];
 }
 
+interface EvidenceSelection {
+  result: AnalysisResult | null;
+  label: string;
+  ids: string[];
+}
+
 const INITIAL_EVIDENCE_LIMIT = 8;
 
 const DEMO_SCENARIOS: Record<DemoScenarioKind, { label: string; steps: DemoScenarioStep[] }> = {
-  three_min: {
-    label: '3分デモ',
+  five_min: {
+    label: '5分デモ',
     steps: [
-      { label: 'データ件数を見る', href: '#overview', description: 'まず、公開サンプルまたはローカル検証データとして読み込んだ件数とデータ範囲を確認します。' },
-      { label: '企業別・分類別・物品名ランキングを見る', href: '#rankings', description: '次に、公開意匠情報を企業別、分類別、物品名別に俯瞰します。' },
-      { label: 'AI分析結果を見る', href: '#ai-analysis', description: 'ルールベース参考分析で、参考傾向と検討材料を確認します。' },
-      { label: '根拠意匠IDを開く', href: '#evidence-details', description: 'Insightから根拠となる意匠IDへ戻れることを見せます。' },
-      { label: '公報・図面メタデータを見る', href: '#evidence-details', description: '一部レコードで、図面名や画像ファイル名などのメタデータを確認します。' },
-    ],
-  },
-  ten_min: {
-    label: '10分デモ',
-    steps: [
-      { label: 'アプリの目的', href: '#demo-strengths', description: '公開意匠情報から、企業各社や特定他社がどの領域に着目しているか、商品開発傾向・デザイン変化・出願活動の兆候を読むための検討材料である点を説明します。' },
-      { label: 'データ範囲', href: '#overview', description: '公開サンプル版とローカル検証版の違い、また実データ利用時のsourceUpdateDateとgazetteDateの違いを確認します。' },
-      { label: 'ランキング', href: '#rankings', description: '企業別、分類別、物品名別の相対的な分布を確認します。' },
-      { label: 'Insight', href: '#ai-analysis', description: '参考傾向として確認できる示唆と、根拠件数を説明します。' },
-      { label: '根拠意匠詳細', href: '#evidence-details', description: '根拠意匠IDに戻り、基本情報を確認します。' },
-      { label: '公報・図面メタデータ', href: '#evidence-details', description: '図面名、画像ファイル名、図面順序などのメタデータを確認します。' },
-      { label: '未解決コード・今後の改善点', href: '#open-improvements', description: '名寄せ改善中の点と、現在の未接続範囲を先に共有します。' },
-      { label: '本番化に向けた課題', href: '#demo-closing', description: '対象期間拡張、公報・図面リンク方針、利用条件確認が次フェーズであることをまとめます。' },
+      { label: '0:00–0:40 目的', href: '#analysis-settings', description: '意匠情報を俯瞰し、次の検討テーマを探すためのアプリであることを説明します。' },
+      { label: '0:40–1:30 条件設定', href: '#analysis-settings', description: '推奨プリセットを選び、対象・領域・期間・目的を短く確認します。' },
+      { label: '1:30–3:00 分析結果', href: '#ai-analysis', description: '分析対象意匠数、注目トレンド、商品化領域のヒント、企業動向を確認します。' },
+      { label: '3:00–4:10 根拠確認', href: '#evidence-details', description: '件数をクリックし、対応する根拠意匠の主要情報と取得済みの図面情報を確認します。' },
+      { label: '4:10–5:00 展開可能性と現在地', href: '#demo-closing', description: '条件を変更できること、現在版と将来構想の境界、次回確認したい課題を共有します。' },
     ],
   },
 };
@@ -88,10 +81,12 @@ export function ResultsArea({
   localAnalysisPackPanel,
 }: ResultsAreaProps) {
   const [presenterMode, setPresenterMode] = useState(true);
-  const [demoScenario, setDemoScenario] = useState<DemoScenarioKind>('three_min');
+  const [demoScenario, setDemoScenario] = useState<DemoScenarioKind>('five_min');
   const [presenterStepIndex, setPresenterStepIndex] = useState(0);
   const [highlightedEvidenceId, setHighlightedEvidenceId] = useState<string | null>(null);
   const [expandedEvidenceResult, setExpandedEvidenceResult] = useState<AnalysisResult | null>(null);
+  const [evidenceSelection, setEvidenceSelection] = useState<EvidenceSelection | null>(null);
+  const evidenceSectionRef = useRef<HTMLElement>(null);
   const activeScenario = DEMO_SCENARIOS[demoScenario];
   const activeStepIndex = Math.min(presenterStepIndex, activeScenario.steps.length - 1);
   const isPresenterMode = externalDemoMode && presenterMode;
@@ -100,10 +95,28 @@ export function ResultsArea({
     externalDemoMode && demoShowcaseRecords.length === 0 && publicSampleSummary ? buildSampleDemoShowcaseRecords(allRecords) : [];
   const effectiveDemoShowcaseRecords = demoShowcaseRecords.length > 0 ? demoShowcaseRecords : derivedSampleShowcaseRecords;
   const demoMatches = externalDemoMode ? resolveDemoShowcaseMatches(effectiveDemoShowcaseRecords, allRecords) : [];
-  const evidenceRecords = result ? collectEvidenceRecords(result, allRecords) : [];
+  const activeEvidenceSelection = evidenceSelection?.result === result ? evidenceSelection : null;
+  const evidenceRecords = activeEvidenceSelection
+    ? recordsForEvidenceIds(activeEvidenceSelection.ids, allRecords)
+    : result
+      ? collectEvidenceRecords(result, allRecords)
+      : [];
   const showAllEvidence = Boolean(result && expandedEvidenceResult === result);
-  const visibleEvidenceRecords = showAllEvidence ? evidenceRecords : evidenceRecords.slice(0, INITIAL_EVIDENCE_LIMIT);
+  const visibleEvidenceRecords = showAllEvidence || activeEvidenceSelection ? evidenceRecords : evidenceRecords.slice(0, INITIAL_EVIDENCE_LIMIT);
   const warnings = [...localJpoWarnings, ...analysisWarnings];
+  const selectEvidence = (label: string, ids: string[], highlightedId: string | null = null) => {
+    setHighlightedEvidenceId(highlightedId);
+    setEvidenceSelection({ result, label, ids });
+    setExpandedEvidenceResult(result);
+  };
+
+  useEffect(() => {
+    if (!activeEvidenceSelection) return;
+
+    const section = evidenceSectionRef.current;
+    section?.focus({ preventScroll: true });
+    section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [activeEvidenceSelection]);
 
   return (
     <main className="space-y-5">
@@ -121,16 +134,15 @@ export function ResultsArea({
             </p>
             {localJpoSummary ? (
               <p className="mt-1 text-sm text-caution">
-                ローカル実データでは意匠種別を designClass・articleName・description から暫定推定しています。
+                ローカル検証データでは、取得項目から意匠種別を暫定判定しています。
               </p>
             ) : null}
           </div>
-          <Badge tone="accent">ルールベース分析</Badge>
         </div>
 
         {isRunning ? <p className="mt-6 rounded-md bg-slate-50 p-4 font-semibold text-muted">分析中...</p> : null}
         {!isRunning && !result ? <AnalysisStartGuide /> : null}
-        {result ? <ExecutiveSummary result={result} recordCount={records.length} /> : null}
+        {result ? <ExecutiveSummary result={result} records={records} onSelectEvidence={selectEvidence} /> : null}
 
         {result ? (
           <details className="mt-6 rounded-lg border border-line bg-panel p-4">
@@ -139,7 +151,7 @@ export function ResultsArea({
               {result.request.purposes.map((purpose) => PURPOSE_LABELS[purpose]).join('、')}
             </p>
             {result.market ? (
-              <MarketView market={result.market} allRecords={allRecords} externalDemoMode={externalDemoMode} />
+              <MarketView market={result.market} allRecords={allRecords} externalDemoMode={externalDemoMode} onSelectEvidence={selectEvidence} />
             ) : null}
             {result.companies.map((company) => (
               <CompanyView
@@ -148,6 +160,7 @@ export function ResultsArea({
                 allRecords={allRecords}
                 externalDemoMode={externalDemoMode}
                 purposes={result.request.purposes}
+                onSelectEvidence={selectEvidence}
               />
             ))}
           </details>
@@ -159,7 +172,7 @@ export function ResultsArea({
       <details id="overview" className="scroll-mt-6 rounded-lg border border-line bg-white p-4 shadow-soft">
         <summary className="cursor-pointer font-bold text-ink">現在の分析条件を確認</summary>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <SummaryItem label="分析範囲" value={request.scope.mode === 'all_classes' ? '全意匠分類' : request.scope.companies.join('、') || '未指定'} />
+          <SummaryItem label="分析対象" value={requestScopeLabel(request)} />
           <SummaryItem label="商品・事業領域" value={request.productDomain?.trim() || '指定なし'} />
           <SummaryItem label="対象期間" value={PERIOD_LABELS[request.period]} />
           <SummaryItem label="意匠種別" value={request.designKinds.map((kind) => DESIGN_KIND_LABELS[kind]).join('、') || '未選択'} />
@@ -171,15 +184,33 @@ export function ResultsArea({
 
       {warnings.length > 0 ? <WarningPanel warnings={warnings} /> : null}
 
-      {result && evidenceRecords.length > 0 ? (
-        <section id="evidence-details" className="scroll-mt-6 rounded-lg border border-line bg-white p-5 shadow-soft">
+      {evidenceRecords.length > 0 ? (
+        <section
+          ref={evidenceSectionRef}
+          id="evidence-details"
+          className="scroll-mt-6 rounded-lg border border-line bg-white p-5 shadow-soft focus:outline-none"
+          tabIndex={-1}
+        >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-ink">根拠意匠を確認</h2>
-              <p className="mt-1 text-sm text-muted">示唆の根拠となった意匠を、必要なものだけ展開して確認できます。</p>
+              <h2 className="text-base font-bold text-ink">根拠意匠一覧</h2>
+              <p className="mt-1 text-sm text-muted" role="status" aria-live="polite">
+                {activeEvidenceSelection
+                  ? `「${activeEvidenceSelection.label}」に対応する根拠意匠${evidenceRecords.length}件に絞り込んでいます。`
+                  : `分析結果の根拠となった意匠${evidenceRecords.length}件を表示しています。`}
+              </p>
             </div>
             <Badge tone="accent">{evidenceRecords.length}件</Badge>
           </div>
+          {activeEvidenceSelection ? (
+            <button
+              type="button"
+              className="mt-3 rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-ink"
+              onClick={() => setEvidenceSelection(null)}
+            >
+              絞り込みを解除
+            </button>
+          ) : null}
           <div className="mt-4 grid gap-3">
             {visibleEvidenceRecords.map((record) => (
               <EvidenceRecord
@@ -191,7 +222,7 @@ export function ResultsArea({
               />
             ))}
           </div>
-          {evidenceRecords.length > INITIAL_EVIDENCE_LIMIT ? (
+          {!activeEvidenceSelection && evidenceRecords.length > INITIAL_EVIDENCE_LIMIT ? (
             <button
               type="button"
               className="mt-4 w-full rounded-md border border-line bg-panel px-4 py-2 text-sm font-bold text-ink"
@@ -214,9 +245,14 @@ export function ResultsArea({
         </summary>
         <div className="mt-4 space-y-5 border-t border-line pt-4">
           {localJpoSummary ? (
-            <LocalJpoSummaryPanel summary={localJpoSummary} externalDemoMode={externalDemoMode} demoShowcaseCount={effectiveDemoShowcaseRecords.length} />
+            <LocalJpoSummaryPanel
+              summary={localJpoSummary}
+              records={allRecords}
+              externalDemoMode={externalDemoMode}
+              onSelectEvidence={selectEvidence}
+            />
           ) : publicSampleSummary ? (
-            <PublicSampleSummaryPanel summary={publicSampleSummary} />
+            <PublicSampleSummaryPanel summary={publicSampleSummary} records={allRecords} onSelectEvidence={selectEvidence} />
           ) : null}
           {localAnalysisPackPanel}
           {externalDemoMode ? <DemoNavigation /> : null}
@@ -253,7 +289,7 @@ export function ResultsArea({
               matches={demoMatches}
               presenterMode={isPresenterMode}
               sampleMode={!localJpoSummary && demoShowcaseRecords.length === 0}
-              onOpenEvidence={setHighlightedEvidenceId}
+              onOpenEvidence={(id) => selectEvidence('デモ候補の根拠意匠', [id], id)}
             />
           ) : null}
           {externalDemoMode ? <DemoClosingSummaryPanel summary={localJpoSummary} sampleSummary={publicSampleSummary} /> : null}
@@ -280,7 +316,7 @@ function AnalysisStartGuide() {
         {[
           ['注力領域', 'どの企業・分類・物品に意匠が集まっているか'],
           ['変化の兆候', '画像意匠、UI、形状やサービス接点がどう変わっているか'],
-          ['戦略の材料', 'ポートフォリオと出願戦略で次に確認すべきこと'],
+          ['検討材料', '市場・企業・商品化領域について次に確認すべきこと'],
         ].map(([title, description]) => (
           <div key={title} className="rounded-lg border border-line bg-panel p-4">
             <h3 className="text-sm font-bold text-ink">{title}</h3>
@@ -289,7 +325,7 @@ function AnalysisStartGuide() {
         ))}
       </div>
       <p className="mt-4 rounded-md border border-teal-200 bg-teal-50 p-3 text-sm font-semibold leading-6 text-accent">
-        左の「分析条件を決める」で対象と目的を確認し、「AI分析開始」を押すと意匠動向を分析します。
+        左の「分析条件を決める」で対象と目的を確認し、「分析を開始」を押すと意匠動向を分析します。
       </p>
     </div>
   );
@@ -300,55 +336,107 @@ interface PriorityInsight {
   insight: AnalysisInsight;
 }
 
-function ExecutiveSummary({ result, recordCount }: { result: AnalysisResult; recordCount: number }) {
-  const priorityInsights = buildPriorityInsights(result);
-  if (priorityInsights.length === 0) {
+function ExecutiveSummary({
+  result,
+  records,
+  onSelectEvidence,
+}: {
+  result: AnalysisResult;
+  records: DesignRecord[];
+  onSelectEvidence: (label: string, ids: string[]) => void;
+}) {
+  const primaryInsights = buildPrimaryInsights(result);
+  const additionalInsights = buildPriorityInsights(result)
+    .filter(({ insight }) => !primaryInsights.some((primary) => primary.insight === insight))
+    .slice(0, 3);
+  if (records.length === 0) {
     return (
       <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-caution" role="status">
-        <p className="font-bold">{recordCount === 0 ? 'この条件に一致する意匠はありません。' : '根拠付きの示唆を表示できませんでした。'}</p>
-        <p className="mt-1">企業名、商品・事業領域、期間、意匠種別を見直して、もう一度分析してください。</p>
+        <p className="font-bold">現在のデータと条件では検出されませんでした。</p>
+        <p className="mt-1">企業名、見たい領域、期間、意匠情報の種類を見直して、もう一度分析してください。</p>
       </div>
     );
   }
 
   return (
-    <section className="mt-6" aria-label="重要な分析結果">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h3 className="text-base font-bold text-ink">重要な示唆</h3>
-          <p className="mt-1 text-sm text-muted">選択した分析目的に沿って、最初に確認したい結果を3件まで表示します。</p>
-        </div>
-        <Badge tone="neutral">{priorityInsights.length}件</Badge>
+    <section className="mt-6 space-y-5" aria-label="重要な分析結果">
+      <button
+        type="button"
+        className="w-full rounded-xl border-2 border-teal-300 bg-teal-50 p-5 text-left transition hover:border-teal-500"
+        onClick={() => onSelectEvidence('今回の分析対象意匠数', records.map((record) => record.id))}
+      >
+        <span className="block text-xs font-bold text-accent">1. 今回の分析対象意匠数</span>
+        <span className="mt-2 block text-3xl font-bold text-ink">{formatCount(records.length)}件</span>
+        <span className="mt-2 block text-sm font-semibold text-accent">クリックして対象意匠を確認</span>
+      </button>
+
+      <div>
+        <h3 className="text-base font-bold text-ink">最初に確認する分析結果</h3>
+        <p className="mt-1 text-sm text-muted">何が分かったかを先に示し、件数から該当する根拠意匠へ移動できます。</p>
       </div>
       <div className="mt-4 grid gap-3 xl:grid-cols-3">
-        {priorityInsights.map(({ label, insight }) => {
-          const firstEvidenceId = insight.evidenceIds[0];
-          return (
-            <article key={label} className="rounded-lg border border-teal-200 bg-teal-50/50 p-4" data-testid="priority-insight">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <h4 className="text-sm font-bold text-ink">{label}</h4>
-                <Badge tone={insight.confidence === 'high' ? 'accent' : insight.confidence === 'medium' ? 'warning' : 'neutral'}>
-                  信頼度：{confidenceLabel(insight.confidence)}
-                </Badge>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-ink">{insight.text}</p>
-              <div className="mt-3 rounded-md border border-line bg-white p-3 text-sm">
-                <span className="block text-xs font-bold text-muted">根拠となる数値</span>
-                <span className="mt-1 block font-semibold text-ink">
-                  {insight.metric.label}: {formatCount(insight.metric.value)}{insight.metric.unit ?? ''}
-                </span>
-              </div>
-              {firstEvidenceId ? (
-                <a className="mt-3 inline-flex text-sm font-bold text-accent underline" href={`#${evidenceDomId(firstEvidenceId)}`}>
-                  根拠意匠を確認する
-                </a>
-              ) : null}
-            </article>
-          );
-        })}
+        {primaryInsights.map(({ label, insight }, index) => (
+          <article key={label} className="rounded-lg border border-teal-200 bg-teal-50/50 p-4" data-testid="priority-insight">
+            <h4 className="text-sm font-bold text-ink">{index + 2}. {label}</h4>
+            <p className="mt-3 text-sm leading-6 text-ink">{insight.text}</p>
+            <button
+              type="button"
+              className="mt-3 w-full rounded-md border border-line bg-white p-3 text-left text-sm font-semibold text-accent"
+              onClick={() => onSelectEvidence(label, insight.evidenceIds)}
+            >
+              {insight.metric.label}: {formatCount(insight.metric.value)}{insight.metric.unit ?? ''} ／ 根拠意匠{formatCount(insight.evidenceIds.length)}件を見る
+            </button>
+          </article>
+        ))}
       </div>
+
+      {additionalInsights.length > 0 ? (
+        <details className="rounded-lg border border-line bg-panel p-4">
+          <summary className="cursor-pointer font-bold text-ink">5. デザイン・画像意匠・知財戦略の示唆</summary>
+          <div className="mt-4 grid gap-3 xl:grid-cols-3">
+            {additionalInsights.map(({ label, insight }) => (
+              <article key={label} className="rounded-md border border-line bg-white p-4">
+                <h4 className="text-sm font-bold text-ink">{label}</h4>
+                <p className="mt-2 text-sm leading-6 text-ink">{insight.text}</p>
+                <button
+                  type="button"
+                  className="mt-3 text-sm font-bold text-accent underline"
+                  onClick={() => onSelectEvidence(label, insight.evidenceIds)}
+                >
+                  根拠意匠{formatCount(insight.evidenceIds.length)}件を見る
+                </button>
+              </article>
+            ))}
+          </div>
+        </details>
+      ) : null}
     </section>
   );
+}
+
+function buildPrimaryInsights(result: AnalysisResult): PriorityInsight[] {
+  if (result.market) {
+    return [
+      { label: '注目トレンド', insight: result.market.trends },
+      { label: '商品化領域のヒント', insight: result.market.emergingDomains },
+      { label: '企業動向', insight: result.market.companyMoves },
+    ].filter(({ insight }) => shouldShowInsight(insight));
+  }
+
+  const companies = result.companies;
+  const pickStrongest = (select: (company: CompanyAnalysis) => AnalysisInsight): AnalysisInsight | undefined =>
+    companies
+      .map(select)
+      .filter(shouldShowInsight)
+      .sort((left, right) => insightStrength(right) - insightStrength(left))[0];
+  const candidates: Array<[string, AnalysisInsight | undefined]> = [
+    ['注目トレンド', pickStrongest((company) => company.portfolio.strengthening)],
+    ['商品化領域のヒント', pickStrongest((company) => company.portfolio.focusAreas)],
+    ['企業動向', pickStrongest((company) => company.designTrend.domains)],
+  ];
+  return candidates
+    .filter((candidate): candidate is [string, AnalysisInsight] => Boolean(candidate[1]))
+    .map(([label, insight]) => ({ label, insight }));
 }
 
 function buildPriorityInsights(result: AnalysisResult): PriorityInsight[] {
@@ -382,7 +470,7 @@ function insightsForPurpose(result: AnalysisResult, purpose: AnalysisPurpose): P
 
   if (purpose === 'market_trend' && result.market) {
     add('市場・商品トレンド', result.market.trends);
-    add('新商品領域', result.market.emergingDomains);
+    add('商品化領域のヒント', result.market.emergingDomains);
     add('企業動向', result.market.companyMoves);
   }
 
@@ -432,17 +520,11 @@ function hasAnyPurpose(selected: AnalysisPurpose[], candidates: AnalysisPurpose[
   return candidates.some((purpose) => selected.includes(purpose));
 }
 
-function confidenceLabel(confidence: AnalysisInsight['confidence']): string {
-  if (confidence === 'high') return '高';
-  if (confidence === 'medium') return '中';
-  return '低';
-}
-
 function DemoNavigation() {
   const items = [
     ['概要', '#overview'],
     ['ランキング', '#rankings'],
-    ['AI分析結果', '#ai-analysis'],
+    ['分析結果', '#ai-analysis'],
     ['デモ候補', '#demo-candidates'],
     ['根拠意匠詳細', '#evidence-details'],
     ['注意事項', '#notices'],
@@ -477,10 +559,10 @@ function DemoReadinessPanel({
   const usingSample = !summary && Boolean(sampleSummary);
   const readyForDemo = Boolean((summary || sampleSummary) && result);
   const nextAction = !summary && !sampleSummary
-    ? '次に、公開サンプルデータの読み込み状態を確認してください。'
+    ? '次に、デモ用サンプルデータの読み込み状態を確認してください。'
     : !result
-      ? '次に、「AI分析開始」を押してください。'
-      : 'デモ準備は整っています。ランキング、AI分析結果、デモ候補、根拠意匠詳細の順で説明できます。';
+      ? '次に、「分析を開始」を押してください。'
+      : 'デモ準備は整っています。ランキング、分析結果、デモ候補、根拠意匠詳細の順で説明できます。';
 
   return (
     <section className="rounded-lg border border-teal-200 bg-white p-5 shadow-soft">
@@ -494,7 +576,7 @@ function DemoReadinessPanel({
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <ReadinessItem
           done={Boolean(summary || sampleSummary)}
-          label={summary ? '本体JSON読込済み' : usingSample ? '公開サンプルデータ利用中' : 'データ未読込'}
+          label={summary ? '本体JSON読込済み' : usingSample ? 'デモ用サンプルデータ利用中' : 'データ未読込'}
         />
         <ReadinessItem
           done={demoShowcaseCount > 0}
@@ -502,7 +584,7 @@ function DemoReadinessPanel({
         />
         <ReadinessItem done label="外部デモモードON" />
         <ReadinessItem done={Boolean(result)} label={result ? '分析実行済み' : '分析未実行'} />
-        <ReadinessItem done={metadataCount > 0} label={`公報・図面メタデータあり件数: ${metadataCount > 0 ? `${formatCount(metadataCount)}件` : '-'}`} />
+        <ReadinessItem done={metadataCount > 0} label={`公報・図面情報あり件数: ${metadataCount > 0 ? `${formatCount(metadataCount)}件` : '-'}`} />
         <ReadinessItem done={drawingRefCount > 0} label={`図面参照数: ${drawingRefCount > 0 ? `${formatCount(drawingRefCount)}件` : '-'}`} />
         <ReadinessItem done label="実データは公開ビルドに含まれていない" />
       </div>
@@ -557,7 +639,7 @@ function PresenterModePanel({
         />
         <span>
           <span className="block font-semibold text-ink">プレゼンターモードを有効にする</span>
-          <span className="text-muted">見せ場となる数値、Insight、根拠意匠詳細を説明しやすい順番で表示します。</span>
+          <span className="text-muted">見せ場となる数値、分析結果、根拠意匠詳細を説明しやすい順番で表示します。</span>
         </span>
       </label>
       <div className="mt-4 rounded-md border border-line bg-panel p-4">
@@ -668,7 +750,7 @@ function ExternalDemoGuide({
         <div>
           <h2 className="text-base font-bold text-ink">外部デモモード</h2>
           <p className="mt-1 text-sm leading-6 text-muted">
-            公開意匠情報から、企業各社や特定他社がどの領域に着目しているか、商品開発傾向・デザイン変化・出願活動の兆候を読み取り、商品企画・知財戦略の検討材料として活用する分析デモです。企業別・分類別・物品名別の集計、ルールベースの参考分析、根拠意匠の確認を行います。
+            意匠情報を俯瞰し、市場・企業・商品化領域・デザイン変化の参考傾向を把握する分析デモです。企業別・分類別・物品名別の集計、ルールベースの参考分析、根拠意匠の確認を行います。
           </p>
         </div>
         <Badge tone="accent">画面共有用</Badge>
@@ -679,19 +761,17 @@ function ExternalDemoGuide({
         <div className="rounded-md border border-line bg-panel p-4">
           <h3 className="text-sm font-bold text-ink">デモで見るポイント</h3>
           <ol className="mt-3 space-y-2 text-sm leading-6 text-ink">
-            <li>① 月次プレビューの件数を見る</li>
-            <li>② 企業別・分類別・物品名別ランキングを見る</li>
-            <li>③ AI分析結果を見る</li>
-            <li>④ 根拠意匠IDを開く</li>
-            <li>⑤ 公報・図面メタデータを見る</li>
-            <li>⑥ 未接続・未解決の課題を確認する</li>
+            <li>分析対象意匠数と主な参考傾向を見る</li>
+            <li>件数から対応する根拠意匠一覧へ移動する</li>
+            <li>企業別・分類別・物品名別の分布を確認する</li>
+            <li>取得済みの公報・図面情報と未接続範囲を確認する</li>
           </ol>
         </div>
         <div className="rounded-md border border-line bg-panel p-4">
           <h3 className="text-sm font-bold text-ink">データスコープ</h3>
           <dl className="mt-3 grid gap-2 text-sm">
-            <DemoScopeItem label="データ種別" value={isPublicSample ? '公開URL用サンプルデータ（架空データ）' : 'ローカル検証用実データ'} />
-            <DemoScopeItem label="公報・図面メタデータあり" value={metadataCount > 0 ? `${formatCount(metadataCount)}件` : '未接続'} />
+            <DemoScopeItem label="データ種別" value={isPublicSample ? '公開URL用デモサンプル（架空データ）' : 'ローカル検証用実データ'} />
+            <DemoScopeItem label="公報・図面情報あり" value={metadataCount > 0 ? `${formatCount(metadataCount)}件` : '未接続'} />
             <DemoScopeItem label="図面参照数" value={drawingRefCount > 0 ? `${formatCount(drawingRefCount)}件` : '未接続'} />
             <DemoScopeItem label="図面画像本体と外部リンク" value="未接続" />
             <DemoScopeItem label="公開ビルドへの実データ同梱" value="なし" />
@@ -708,11 +788,11 @@ function ExternalDemoGuide({
           <h3 className="text-sm font-bold text-ink">このアプリの強み</h3>
           <p className="mt-2 text-sm leading-6 text-muted">このデモで伝えたいことを、外部向けの検討材料として整理しています。</p>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-ink">
-            <li>公開意匠情報から、企業各社や特定他社がどの領域に着目しているか、商品開発傾向・デザイン変化・出願活動の兆候を読むための参考情報にします。</li>
-            <li>企業別、分類別、物品名別に公開意匠情報を俯瞰し、検討材料として確認できます。</li>
-            <li>AI分析結果だけでなく、根拠となる意匠IDに戻れる点が特徴です。</li>
-            <li>一部の意匠では、図面名・画像ファイル名などの公報メタデータまで確認できます。</li>
-            <li>社外秘情報を入力せず、公開意匠情報を主対象に分析できます。必要に応じて、特許出願公開、企業IR、プレスリリース等の一般公開情報との照合も検討できます。</li>
+            <li>意匠情報から、企業各社や特定他社がどの領域に着目しているか、商品開発傾向・デザイン変化・出願活動の兆候を読むための参考情報にします。</li>
+            <li>企業別、分類別、物品名別に意匠情報を俯瞰し、検討材料として確認できます。</li>
+            <li>分析結果だけでなく、根拠となる意匠IDに戻れる点が特徴です。</li>
+            <li>一部の意匠では、取得済みの公報・図面情報まで確認できます。</li>
+            <li>社外秘情報を入力せず、意匠情報を主対象に分析できます。他の知財情報や事業情報との照合は別途検討します。</li>
           </ul>
         </div>
         <div id="open-improvements" className="scroll-mt-24 rounded-md border border-line bg-panel p-4">
@@ -754,7 +834,7 @@ function DemoSecurityPanel() {
         <li>現在はローカル検証版です。</li>
         <li>実データは公開ビルドに含まれていません。</li>
         <li>先方の社外秘情報を入力する必要はありません。</li>
-        <li>分析対象は公開意匠情報です。</li>
+        <li>分析対象は意匠情報です。</li>
         <li>図面画像本体や外部リンクは未接続です。</li>
         <li>商用導入時は、社内環境・閉域環境・セキュアなクラウド構成を相談可能です。</li>
       </ul>
@@ -777,7 +857,7 @@ function DemoMetricHighlights({
   const drawingRefCount = summary?.drawingRefTotalCount ?? sampleSummary?.drawingRefTotalCount;
   const metrics = [
     ['意匠データ', totalRecords ? `${formatCount(totalRecords)}件` : '未読込'],
-    ['公報・図面メタデータ接続', metadataCount ? `${formatCount(metadataCount)}件` : '未接続'],
+    ['公報・図面情報', metadataCount ? `${formatCount(metadataCount)}件` : '未接続'],
     ['図面参照', drawingRefCount ? `${formatCount(drawingRefCount)}件` : '未接続'],
     ['デモ候補', demoShowcaseCount > 0 ? `${formatCount(demoShowcaseCount)}件` : '未読込'],
     ['分析方式', 'ルールベース参考分析'],
@@ -788,11 +868,11 @@ function DemoMetricHighlights({
     <div className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold text-ink">{isPublicSample ? '公開URL用サンプル版の到達点' : '実データ検証版の到達点'}</h3>
+          <h3 className="text-sm font-bold text-ink">{isPublicSample ? '公開URL用デモサンプル版の到達点' : '実データ検証版の到達点'}</h3>
           <p className="mt-1 text-sm leading-6 text-muted">
             {isPublicSample
               ? '架空の公開デモ用サンプルから、企業別・分類別・物品別の集計と、根拠意匠の架空メタデータ確認までを体験できます。'
-              : '公開意匠情報から、企業別・分類別・物品別の集計と、根拠意匠の公報・図面メタデータ確認までをローカル検証しています。'}
+              : '意匠情報から、企業別・分類別・物品別の集計と、根拠意匠の公報・図面情報確認までをローカル検証しています。'}
           </p>
         </div>
         <Badge tone="accent">デモ用サマリー</Badge>
@@ -820,11 +900,14 @@ function DemoScopeItem({ label, value }: { label: string; value: string }) {
 
 function LocalJpoSummaryPanel({
   summary,
+  records,
   externalDemoMode,
+  onSelectEvidence,
 }: {
   summary: LocalJpoDatasetSummary;
+  records: DesignRecord[];
   externalDemoMode: boolean;
-  demoShowcaseCount: number;
+  onSelectEvidence: (label: string, ids: string[]) => void;
 }) {
   const primaryItems = [
     ['総件数', `${formatCount(summary.totalRecords)}件`],
@@ -833,7 +916,7 @@ function LocalJpoSummaryPanel({
       ? [['sourceUpdateDate範囲', `${summary.sourceUpdateDateFrom ?? '-'}〜${summary.sourceUpdateDateTo ?? '-'}`]]
       : []),
     ['gazetteDate範囲', `${summary.gazetteDateFrom ?? '-'}〜${summary.gazetteDateTo ?? '-'}`],
-    ['公報・図面メタデータあり', `${formatCount(summary.gazetteDrawingKeysCount)}件`],
+    ['公報・図面情報あり', `${formatCount(summary.gazetteDrawingKeysCount)}件`],
     ['図面参照あり', `${formatCount(summary.drawingRefsRecordCount)}件`],
     ['図面参照数', `${formatCount(summary.drawingRefTotalCount)}件`],
     ['公報日差異あり', `${formatCount(summary.gazetteDateMismatchCount)}件`],
@@ -887,7 +970,7 @@ function LocalJpoSummaryPanel({
         </p>
       ) : null}
       <p className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-muted">
-        現在は公報・図面メタデータのみを表示しています。図面画像本体や外部リンクは、利用条件確認後に対応予定です。
+        現在は取得済みの公報・図面情報だけを表示しています。図面画像本体や外部リンクは未接続です。
       </p>
       {summary.unresolvedApplicantsCount > 0 || summary.unresolvedRightHoldersCount > 0 ? (
         <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-caution">
@@ -896,10 +979,27 @@ function LocalJpoSummaryPanel({
             : '一部の申請人コードはまだ正式名称に補完できていません。DB側で申請人マスタの拡充が必要です。'}
         </p>
       ) : null}
-      <div className="mt-4 grid gap-4 xl:grid-cols-3">
-        <Ranking title="designClass上位" items={summary.topDesignClasses} />
-        <Ranking title="articleName上位" items={summary.topArticleNames} />
-        <Ranking title="applicant / rightHolder上位" items={summary.topParties} />
+      <div className="mt-4 grid gap-4 xl:grid-cols-4">
+        <Ranking
+          title="分類別ランキング"
+          items={summary.topDesignClasses}
+          onSelectItem={(item) => onSelectEvidence(`分類別ランキング：${item.label}`, rankingEvidenceIds(records, 'designClass', item.label))}
+        />
+        <Ranking
+          title="物品名別ランキング"
+          items={summary.topArticleNames}
+          onSelectItem={(item) => onSelectEvidence(`物品名別ランキング：${item.label}`, rankingEvidenceIds(records, 'articleName', item.label))}
+        />
+        <Ranking
+          title="企業別ランキング"
+          items={summary.topParties}
+          onSelectItem={(item) => onSelectEvidence(`企業別ランキング：${item.label}`, rankingEvidenceIds(records, 'party', item.label))}
+        />
+        <Ranking
+          title="意匠種別ランキング"
+          items={buildRanking(records.map((record) => DESIGN_KIND_LABELS[record.designKind]))}
+          onSelectItem={(item) => onSelectEvidence(`意匠種別ランキング：${item.label}`, rankingEvidenceIds(records, 'designKind', item.label))}
+        />
       </div>
       {summary.topUnresolvedCodes.length > 0 ? (
         <details className="mt-4 rounded-md border border-line bg-white p-4">
@@ -915,10 +1015,18 @@ function LocalJpoSummaryPanel({
   );
 }
 
-function PublicSampleSummaryPanel({ summary }: { summary: PublicSampleSummary }) {
+function PublicSampleSummaryPanel({
+  summary,
+  records,
+  onSelectEvidence,
+}: {
+  summary: PublicSampleSummary;
+  records: DesignRecord[];
+  onSelectEvidence: (label: string, ids: string[]) => void;
+}) {
   const primaryItems = [
     ['サンプルデータ件数', `${formatCount(summary.totalRecords)}件`],
-    ['サンプルの公報・図面メタデータ件数', `${formatCount(summary.gazetteDrawingKeysCount)}件`],
+    ['サンプルの公報・図面情報件数', `${formatCount(summary.gazetteDrawingKeysCount)}件`],
     ['サンプルの図面参照あり', `${formatCount(summary.drawingRefsRecordCount)}件`],
     ['サンプルの図面参照数', `${formatCount(summary.drawingRefTotalCount)}件`],
   ] as const;
@@ -927,7 +1035,7 @@ function PublicSampleSummaryPanel({ summary }: { summary: PublicSampleSummary })
     <section id="rankings" className="scroll-mt-24 rounded-lg border border-line bg-white p-5 shadow-soft">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold text-ink">公開URL用サンプルデータ概要</h2>
+          <h2 className="text-base font-bold text-ink">公開URL用デモサンプルデータ概要</h2>
           <p className="mt-1 text-sm leading-6 text-muted">
             公開URL版はサンプルデータ・架空データのみで動作します。実在企業・実在公報ではありません。実データ版は画面共有で説明します。
           </p>
@@ -949,10 +1057,26 @@ function PublicSampleSummaryPanel({ summary }: { summary: PublicSampleSummary })
         サンプルの図面名・画像ファイル名は架空メタデータです。画像本体、外部リンク、ローカルフルパス、埋め込み画像データは含めていません。
       </p>
       <div className="mt-4 grid gap-4 xl:grid-cols-4">
-        <Ranking title="サンプル企業上位" items={summary.topParties} />
-        <Ranking title="サンプルdesignClass上位" items={summary.topDesignClasses} />
-        <Ranking title="サンプルarticleName上位" items={summary.topArticleNames} />
-        <Ranking title="サンプル意匠種別" items={summary.designKindCounts} />
+        <Ranking
+          title="企業別ランキング"
+          items={summary.topParties}
+          onSelectItem={(item) => onSelectEvidence(`企業別ランキング：${item.label}`, rankingEvidenceIds(records, 'party', item.label))}
+        />
+        <Ranking
+          title="分類別ランキング"
+          items={summary.topDesignClasses}
+          onSelectItem={(item) => onSelectEvidence(`分類別ランキング：${item.label}`, rankingEvidenceIds(records, 'designClass', item.label))}
+        />
+        <Ranking
+          title="物品名別ランキング"
+          items={summary.topArticleNames}
+          onSelectItem={(item) => onSelectEvidence(`物品名別ランキング：${item.label}`, rankingEvidenceIds(records, 'articleName', item.label))}
+        />
+        <Ranking
+          title="意匠種別ランキング"
+          items={summary.designKindCounts}
+          onSelectItem={(item) => onSelectEvidence(`意匠種別ランキング：${item.label}`, rankingEvidenceIds(records, 'designKind', item.label))}
+        />
       </div>
     </section>
   );
@@ -1002,7 +1126,15 @@ function WarningPanel({ warnings }: { warnings: string[] }) {
   );
 }
 
-function Ranking({ title, items }: { title: string; items: RankedItem[] }) {
+function Ranking({
+  title,
+  items,
+  onSelectItem,
+}: {
+  title: string;
+  items: RankedItem[];
+  onSelectItem?: (item: RankedItem) => void;
+}) {
   return (
     <div className="rounded-md border border-line bg-panel p-4">
       <h3 className="text-sm font-bold text-ink">{title}</h3>
@@ -1013,7 +1145,18 @@ function Ranking({ title, items }: { title: string; items: RankedItem[] }) {
           {items.map((item) => (
             <li key={item.label} className="flex items-start justify-between gap-3">
               <span className="readable-text min-w-0 text-ink">{item.label}</span>
-              <span className="shrink-0 font-bold text-muted">{item.count}件</span>
+              {onSelectItem ? (
+                <button
+                  type="button"
+                  className="shrink-0 rounded border border-teal-200 bg-white px-2 py-1 font-bold text-accent underline decoration-transparent underline-offset-2 transition hover:decoration-current focus-visible:decoration-current"
+                  aria-label={`${title}の${item.label}、${formatCount(item.count)}件の根拠意匠を見る`}
+                  onClick={() => onSelectItem(item)}
+                >
+                  {formatCount(item.count)}件
+                </button>
+              ) : (
+                <span className="shrink-0 font-bold text-muted">{formatCount(item.count)}件</span>
+              )}
             </li>
           ))}
         </ol>
@@ -1049,8 +1192,8 @@ function DemoShowcasePanel({
           <h2 className="text-base font-bold text-ink">{presenterMode ? 'おすすめデモ候補' : 'デモで見せやすい根拠意匠候補'}</h2>
           <p className="mt-1 text-sm text-muted">
             {sampleMode
-              ? '公開サンプルデータから自動抽出した、架空メタデータを説明しやすい意匠です。公開URL版の見せ場として使えます。'
-              : '候補JSONから読み込んだ、図面メタデータを説明しやすい意匠です。画面共有時の見せ場として使えます。'}
+              ? 'デモ用サンプルデータから自動抽出した、架空の図面情報を説明しやすい意匠です。公開URL版の見せ場として使えます。'
+              : '候補JSONから読み込んだ、図面情報を説明しやすい意匠です。画面共有時の見せ場として使えます。'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1149,10 +1292,12 @@ function MarketView({
   market,
   allRecords,
   externalDemoMode,
+  onSelectEvidence,
 }: {
   market: NonNullable<AnalysisResult['market']>;
   allRecords: DesignRecord[];
   externalDemoMode: boolean;
+  onSelectEvidence: (label: string, ids: string[]) => void;
 }) {
   return (
     <div className="mt-5 space-y-4">
@@ -1160,9 +1305,10 @@ function MarketView({
       <InsightGrid
         allRecords={allRecords}
         externalDemoMode={externalDemoMode}
+        onSelectEvidence={onSelectEvidence}
         insights={[
           ['市場・商品トレンド', market.trends],
-          ['新商品領域', market.emergingDomains],
+          ['商品化領域のヒント', market.emergingDomains],
           ['企業動向', market.companyMoves],
         ]}
       />
@@ -1175,11 +1321,13 @@ function CompanyView({
   allRecords,
   externalDemoMode,
   purposes,
+  onSelectEvidence,
 }: {
   analysis: CompanyAnalysis;
   allRecords: DesignRecord[];
   externalDemoMode: boolean;
   purposes: AnalysisPurpose[];
+  onSelectEvidence: (label: string, ids: string[]) => void;
 }) {
   const designChangeInsights: [string, AnalysisInsight][] = purposes.includes('design_change')
     ? [
@@ -1198,6 +1346,7 @@ function CompanyView({
           title="意匠動向"
           allRecords={allRecords}
           externalDemoMode={externalDemoMode}
+          onSelectEvidence={onSelectEvidence}
           insights={[
             ['最近の意匠展開領域', analysis.designTrend.domains],
             ['形状変化', analysis.designTrend.shapeChange],
@@ -1210,6 +1359,7 @@ function CompanyView({
           title="DX商品開発動向"
           allRecords={allRecords}
           externalDemoMode={externalDemoMode}
+          onSelectEvidence={onSelectEvidence}
           insights={[
             ['画像意匠の参考領域', analysis.dxDevTrend.imageDesignGrowth],
             ['デジタルサービス展開', analysis.dxDevTrend.digitalService],
@@ -1218,13 +1368,14 @@ function CompanyView({
         />
       ) : null}
       {hasAnyPurpose(purposes, ['design_change', 'ui_design']) ? (
-        <ResultGroup title="デザイン変化分析" allRecords={allRecords} externalDemoMode={externalDemoMode} insights={designChangeInsights} />
+        <ResultGroup title="デザイン変化分析" allRecords={allRecords} externalDemoMode={externalDemoMode} insights={designChangeInsights} onSelectEvidence={onSelectEvidence} />
       ) : null}
       {purposes.includes('portfolio') ? (
         <ResultGroup
           title="意匠ポートフォリオ分析"
           allRecords={allRecords}
           externalDemoMode={externalDemoMode}
+          onSelectEvidence={onSelectEvidence}
           insights={[
             ['集中領域', analysis.portfolio.focusAreas],
             ['相対的に多い領域', analysis.portfolio.strengthening],
@@ -1234,9 +1385,10 @@ function CompanyView({
       ) : null}
       {purposes.includes('filing_strategy') ? (
         <ResultGroup
-          title="AI知財戦略コメント"
+          title="知財戦略の検討材料"
           allRecords={allRecords}
           externalDemoMode={externalDemoMode}
+          onSelectEvidence={onSelectEvidence}
           insights={[
             ['意匠保護領域', analysis.ipStrategy.designProtectionAreas],
             ['意匠出願戦略の方向性', analysis.ipStrategy.designFilingDirection],
@@ -1255,11 +1407,13 @@ function ResultGroup({
   insights,
   allRecords,
   externalDemoMode,
+  onSelectEvidence,
 }: {
   title: string;
   insights: [string, AnalysisInsight][];
   allRecords: DesignRecord[];
   externalDemoMode: boolean;
+  onSelectEvidence: (label: string, ids: string[]) => void;
 }) {
   const visibleInsights = insights.filter(([, insight]) => shouldShowInsight(insight));
   if (visibleInsights.length === 0) return null;
@@ -1267,7 +1421,7 @@ function ResultGroup({
   return (
     <section className="mt-4">
       <h4 className="text-sm font-bold text-ink">{title}</h4>
-      <InsightGrid insights={visibleInsights} allRecords={allRecords} externalDemoMode={externalDemoMode} />
+      <InsightGrid insights={visibleInsights} allRecords={allRecords} externalDemoMode={externalDemoMode} onSelectEvidence={onSelectEvidence} />
     </section>
   );
 }
@@ -1276,19 +1430,21 @@ function InsightGrid({
   insights,
   allRecords,
   externalDemoMode,
+  onSelectEvidence,
 }: {
   insights: [string, AnalysisInsight][];
   allRecords: DesignRecord[];
   externalDemoMode: boolean;
+  onSelectEvidence: (label: string, ids: string[]) => void;
 }) {
   const visibleInsights = insights.filter(([, insight]) => shouldShowInsight(insight));
   if (visibleInsights.length === 0) {
-    return <p className="mt-3 rounded-md bg-slate-50 p-4 text-sm text-muted">表示できる根拠付きInsightはありません。</p>;
+    return <p className="mt-3 rounded-md bg-slate-50 p-4 text-sm text-muted">表示できる根拠付きの分析結果はありません。</p>;
   }
   return (
     <div className="mt-3 grid gap-3 xl:grid-cols-3">
       {visibleInsights.map(([title, insight]) => (
-        <InsightView key={title} title={title} insight={insight} allRecords={allRecords} externalDemoMode={externalDemoMode} />
+        <InsightView key={title} title={title} insight={insight} allRecords={allRecords} externalDemoMode={externalDemoMode} onSelectEvidence={onSelectEvidence} />
       ))}
     </div>
   );
@@ -1299,18 +1455,19 @@ function InsightView({
   insight,
   allRecords,
   externalDemoMode,
+  onSelectEvidence,
 }: {
   title: string;
   insight: AnalysisInsight;
   allRecords: DesignRecord[];
   externalDemoMode: boolean;
+  onSelectEvidence: (label: string, ids: string[]) => void;
 }) {
   const [metadataOnly, setMetadataOnly] = useState(false);
   const gazetteEvidenceCount = countGazetteMetadataEvidence(insight, allRecords);
   const recordsById = new Map(allRecords.map((record) => [record.id, record]));
   const evidenceIds =
     externalDemoMode && metadataOnly ? insight.evidenceIds.filter((id) => Boolean(recordsById.get(id)?.gazetteDrawingKeys)) : insight.evidenceIds;
-  const firstEvidenceId = evidenceIds[0] ?? insight.evidenceIds[0];
   const developerDetails = (
     <dl className="grid gap-2 text-xs text-muted">
       <div>
@@ -1329,39 +1486,40 @@ function InsightView({
         <dt className="font-bold">evidenceIds</dt>
         <dd className="flex flex-wrap gap-1">
           {evidenceIds.length > 0
-            ? evidenceIds.map((id) => (
+            ? evidenceIds.slice(0, 20).map((id) => (
                 <a key={id} className="font-semibold text-accent underline" href={`#${evidenceDomId(id)}`}>
                   {id}
                 </a>
               ))
             : 'なし'}
+          {evidenceIds.length > 20 ? <span>ほか{formatCount(evidenceIds.length - 20)}件</span> : null}
         </dd>
       </div>
     </dl>
   );
   return (
     <div className={`rounded-md border p-4 ${externalDemoMode ? 'border-teal-200 bg-white' : 'border-line bg-panel'}`}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <h5 className="text-sm font-bold text-ink">{title}</h5>
-        <Badge tone={insight.confidence === 'high' ? 'accent' : insight.confidence === 'medium' ? 'warning' : 'neutral'}>
-          信頼度：{confidenceLabel(insight.confidence)}
-        </Badge>
-      </div>
+      <h5 className="text-sm font-bold text-ink">{title}</h5>
       <p className="readable-text mt-3 text-sm leading-6 text-ink">{insight.text}</p>
-      {externalDemoMode ? (
-        <div className="mt-3 rounded-md border border-line bg-panel p-3 text-sm">
-          <div className="font-bold text-muted">件数・対象数</div>
-          <div className="readable-text mt-1 text-ink">
+      <button
+        type="button"
+        data-testid="insight-evidence-button"
+        className="mt-3 w-full rounded-md border border-line bg-panel p-3 text-left text-sm"
+        onClick={() => onSelectEvidence(title, evidenceIds)}
+        disabled={evidenceIds.length === 0}
+      >
+          <span className="block font-bold text-muted">分析結果に対応する件数</span>
+          <span className="readable-text mt-1 block font-semibold text-accent">
             {insight.metric.label}: {formatCount(insight.metric.value)}
             {insight.metric.unit ?? ''}
             {insight.metric.comparison ? ` / ${insight.metric.comparison}` : ''}
-          </div>
-        </div>
-      ) : null}
+            {evidenceIds.length > 0 ? ` ／ 根拠意匠を見る（${formatCount(evidenceIds.length)}件）` : ''}
+          </span>
+      </button>
       {gazetteEvidenceCount > 0 ? (
         <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 p-3 text-sm font-semibold text-sky-900">
           <p>
-            図面メタデータあり：{formatCount(insight.evidenceIds.length)}件中{formatCount(gazetteEvidenceCount)}件
+            図面情報あり：{formatCount(insight.evidenceIds.length)}件中{formatCount(gazetteEvidenceCount)}件
           </p>
           {externalDemoMode ? (
             <div className="mt-3 rounded-md border border-sky-200 bg-white p-3">
@@ -1374,20 +1532,15 @@ function InsightView({
                   onChange={(event) => setMetadataOnly(event.currentTarget.checked)}
                 />
                 <span>
-                  <span className="block font-bold">図面メタデータありの根拠だけ表示</span>
+                  <span className="block font-bold">図面情報ありの根拠だけ表示</span>
                   <span className="block font-normal leading-5 text-sky-900">
-                    図面名・画像ファイル名が確認できる根拠意匠に絞ります。公開サンプル版では架空メタデータです。
+                    図面名が確認できる根拠意匠に絞ります。デモ用サンプル版では架空の図面情報です。
                   </span>
                 </span>
               </label>
             </div>
           ) : null}
         </div>
-      ) : null}
-      {externalDemoMode && firstEvidenceId ? (
-        <a className="mt-3 inline-flex rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" href={`#${evidenceDomId(firstEvidenceId)}`}>
-          根拠意匠を見る
-        </a>
       ) : null}
       {externalDemoMode ? (
         <details className="mt-3 rounded-md border border-line bg-panel p-3">
@@ -1437,11 +1590,37 @@ function EvidenceRecord({
         </div>
       </summary>
       <div className="mt-4">
+        <section className="rounded-md border border-line bg-white p-4">
+          <h4 className="text-sm font-bold text-ink">主要情報</h4>
+          <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+            <Detail label="企業名" value={partyLabel} />
+            <Detail label="物品名・画像の用途" value={record.articleName} />
+            <Detail label="意匠分類" value={`${record.designClass} ${record.classLabel ?? ''}`.trim()} />
+            <Detail label="意匠登録番号" value={record.registrationNumber ?? '-'} />
+            <Detail label="出願番号" value={record.applicationNumber ?? '-'} />
+            <Detail label="公報番号" value={record.gazetteNumber ?? record.gazetteDrawingKeys?.gazetteNumber ?? '-'} />
+            <Detail label="公報発行日" value={record.gazetteDate} />
+            <Detail label="意匠種別" value={`${DESIGN_KIND_LABELS[record.designKind]}${record.designKindInferred ? '（推定）' : ''}`} />
+            <Detail label="情報源" value={record.sourceLabel} />
+            <Detail label="データ更新時点" value={record.sourceUpdateDate ?? '-'} />
+          </dl>
+          <div className="mt-3 rounded-md bg-panel p-3 text-sm leading-6 text-ink">
+            <span className="block text-xs font-bold text-muted">意匠の説明</span>
+            {record.designDescription ?? record.summary ?? record.articleDescription ?? '説明は取得されていません。'}
+          </div>
+          <p className="mt-3 text-xs leading-5 text-muted">
+            図面画像本体と外部公報リンクは未接続です。取得済みの図面情報は下の折り畳みで確認できます。
+          </p>
+        </section>
+
+        <details className="mt-3 rounded-md border border-line bg-white p-4">
+          <summary className="cursor-pointer text-sm font-bold text-ink">図面情報と技術情報を表示</summary>
+          <div className="mt-3">
         {!record.isSample ? (
           <p className="mb-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-caution">
             {hasGazetteDrawingKeys
-              ? '一部レコードでは公報・図面メタデータを接続済みです。図面画像本体と外部リンクは未接続です。'
-              : '公報・図面リンクは未接続です。今後、公報・画像メタデータ取得後に対応予定です。'}
+              ? '一部レコードでは公報・図面情報を取得済みです。図面画像本体と外部リンクは未接続です。'
+              : '公報・図面リンクは未接続です。取得済み項目だけを表示します。'}
           </p>
         ) : null}
         {(record.unresolvedApplicants?.length ?? 0) > 0 || (record.unresolvedRightHolders?.length ?? 0) > 0 ? (
@@ -1506,7 +1685,7 @@ function EvidenceRecord({
         <GazetteDrawingMetadata
           record={record}
           externalDemoMode={externalDemoMode}
-          sectionTitle={externalDemoMode && presenterMode ? 'C. 公報・図面メタデータ' : undefined}
+          sectionTitle={externalDemoMode && presenterMode ? 'C. 公報・図面情報' : undefined}
         />
         {externalDemoMode ? (
           <section className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-4">
@@ -1527,6 +1706,8 @@ function EvidenceRecord({
             </div>
           </>
         ) : null}
+          </div>
+        </details>
       </div>
     </details>
   );
@@ -1544,7 +1725,7 @@ function EvidenceShowcaseSummary({ record, partyLabel }: { record: DesignRecord;
     <section className="rounded-md border border-teal-200 bg-white p-4">
       <div className="flex flex-wrap items-center gap-2">
         <h4 className="text-sm font-bold text-ink">A. 見せ場サマリー</h4>
-        {keys ? <Badge tone="accent">公報・図面メタデータ接続済み</Badge> : <Badge tone="warning">公報・図面メタデータ未接続</Badge>}
+        {keys ? <Badge tone="accent">公報・図面情報あり</Badge> : <Badge tone="warning">公報・図面情報未接続</Badge>}
       </div>
       <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-5">
         <Detail label="物品名" value={record.articleName} />
@@ -1571,9 +1752,9 @@ function GazetteDrawingMetadata({
   if (!keys) {
     return (
       <section className="mt-3 rounded-md border border-slate-200 bg-white p-4">
-        {externalDemoMode ? <h4 className="text-sm font-bold text-ink">{sectionTitle ?? 'B. 公報・図面メタデータ'}</h4> : null}
+        {externalDemoMode ? <h4 className="text-sm font-bold text-ink">{sectionTitle ?? 'B. 公報・図面情報'}</h4> : null}
         <p className="mt-3 rounded-md border border-slate-200 bg-white p-3 text-sm text-muted">
-          この意匠には、まだ公報・図面メタデータが接続されていません。
+          この意匠には、取得済みの公報・図面情報がありません。
         </p>
       </section>
     );
@@ -1582,13 +1763,13 @@ function GazetteDrawingMetadata({
   return (
     <section className="mt-3 rounded-md border border-sky-200 bg-white p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h4 className="text-sm font-bold text-ink">{externalDemoMode ? (sectionTitle ?? 'B. 公報・図面メタデータ') : '公報・図面メタデータあり'}</h4>
-        {externalDemoMode ? <Badge tone="accent">{isSampleMetadata ? '架空サンプルメタデータ' : '公報・図面メタデータあり'}</Badge> : null}
+        <h4 className="text-sm font-bold text-ink">{externalDemoMode ? (sectionTitle ?? 'B. 公報・図面情報') : '公報・図面情報あり'}</h4>
+        {externalDemoMode ? <Badge tone="accent">{isSampleMetadata ? '架空の図面情報' : '公報・図面情報あり'}</Badge> : null}
         <Badge tone="warning">画像本体・外部リンク未接続</Badge>
       </div>
       {isSampleMetadata ? (
         <p className="mt-3 rounded-md border border-sky-200 bg-sky-50 p-3 text-sm font-semibold leading-6 text-sky-900">
-          これは公開デモ用の架空メタデータです。実在企業・実在公報ではありません。
+          これはデモ用サンプルの架空情報です。実在企業・実在公報ではありません。
         </p>
       ) : null}
       {keys.gazetteDateMismatch ? (
@@ -1667,11 +1848,11 @@ function DemoClosingSummaryPanel({
           {totalRecords ? `${formatCount(totalRecords)}件の意匠データを対象に分析可能です。` : 'データ読み込み後に、対象件数を表示します。'}
         </li>
         <li className="rounded-md border border-line bg-panel p-3">企業別・分類別・物品名別の参考傾向を確認可能です。</li>
-        <li className="rounded-md border border-line bg-panel p-3">Insightから根拠意匠IDに戻れます。</li>
+        <li className="rounded-md border border-line bg-panel p-3">分析結果から根拠意匠IDに戻れます。</li>
         <li className="rounded-md border border-line bg-panel p-3">
           {metadataCount
-            ? `${formatCount(metadataCount)}件で公報・図面メタデータまで確認できます。`
-            : '一部の意匠では公報・図面メタデータまで接続できます。'}
+            ? `${formatCount(metadataCount)}件で公報・図面情報まで確認できます。`
+            : '一部の意匠では取得済みの公報・図面情報を確認できます。'}
         </li>
         <li className="rounded-md border border-line bg-panel p-3">
           {isPublicSample ? '実データ版は画面共有で説明します。' : '次フェーズは名寄せ改善、公報・図面リンク方針、対象期間拡張です。'}
@@ -1751,6 +1932,32 @@ function buildRanking(values: string[], limit = 8): RankedItem[] {
     .slice(0, limit);
 }
 
+type RankingDimension = 'party' | 'designClass' | 'articleName' | 'designKind';
+
+function rankingEvidenceIds(records: DesignRecord[], dimension: RankingDimension, label: string): string[] {
+  return records
+    .filter((record) => {
+      if (dimension === 'designClass') return record.designClass === label;
+      if (dimension === 'articleName') return record.articleName === label;
+      if (dimension === 'designKind') return DESIGN_KIND_LABELS[record.designKind] === label;
+      return recordPartyLabels(record).includes(label);
+    })
+    .map((record) => record.id);
+}
+
+function recordPartyLabels(record: DesignRecord): string[] {
+  const candidates = [
+    record.applicantsDisplay,
+    record.applicant,
+    ...(record.applicants ?? []),
+    ...(record.applicantsNormalized ?? []),
+    ...(record.rightHolders ?? []),
+    ...(record.unresolvedApplicants ?? []),
+    ...(record.unresolvedRightHolders ?? []),
+  ];
+  return [...new Set(candidates.map((value) => displayPartyLabel(value)).filter((value): value is string => Boolean(value)))];
+}
+
 function listValue(values?: string[]): string {
   return values && values.length > 0 ? values.join('、') : '-';
 }
@@ -1819,6 +2026,17 @@ function collectEvidenceRecords(result: AnalysisResult, allRecords: DesignRecord
 
   const recordsById = new Map(allRecords.map((record) => [record.id, record]));
   return orderedIds.map((id) => recordsById.get(id)).filter((record): record is DesignRecord => Boolean(record));
+}
+
+function recordsForEvidenceIds(ids: string[], allRecords: DesignRecord[]): DesignRecord[] {
+  const idSet = new Set(ids);
+  return allRecords.filter((record) => idSet.has(record.id));
+}
+
+function requestScopeLabel(request: AnalysisRequest): string {
+  if (request.scope.mode === 'all_classes') return '市場全体';
+  if (request.scope.mode === 'industry') return `特定業界：${request.scope.industry || request.productDomain || '未指定'}`;
+  return `特定企業：${request.scope.companies.join('、') || '未指定'}`;
 }
 
 function resolveDemoShowcaseMatches(showcaseRecords: DemoShowcaseRecord[], allRecords: DesignRecord[]): DemoShowcaseMatch[] {

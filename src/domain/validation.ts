@@ -2,7 +2,7 @@ import type { AnalysisRequest, ValidationErrors } from './types';
 
 export function validateRequest(request: AnalysisRequest): ValidationErrors {
   const errors: ValidationErrors = {};
-  if (request.scope.mode === 'companies' && request.scope.companies.length === 0) {
+  if (request.scope.mode === 'companies' && request.scope.companySelectors.length === 0) {
     errors.companies = '企業指定分析では、少なくとも1社を追加してください。';
   }
   if (request.designKinds.length === 0) {

@@ -66,11 +66,18 @@ DB 側の引継ぎ資料は `../特許ダウンロード手順_0/AGENT_ASSIGNMEN
 
 公開デモの既定は、従来どおり `src/data/sample-designs.json` のデモ用サンプルデータです。実データは app リポジトリへコピーせず、`src/data`、`public`、`dist`、Git管理下には置きません。
 
-開発時だけ、画面左側の「ローカル実データJSONを読み込む（開発用）」から DB 側で生成済みの統合JSONを選択します。ブラウザの File API で読み込み、データはメモリ上だけで保持します。localStorage、IndexedDB、public 配下への保存は行いません。
+開発時だけ、画面左側の「ローカル実データJSONを読み込む（開発用）」からJSONを選択します。ブラウザの File API で読み込み、データはメモリ上だけで保持します。localStorage、IndexedDB、public 配下への保存は行いません。
 
 読込対象は、DB 側で生成した日次・週次・月次プレビューの統合JSONです。具体的な保存場所やファイル名はローカル環境側で管理し、app リポジトリには記載・同梱しません。
 
-読み込んだ実データは `LocalJpoJsonDataSource` で既存の `DesignRecord` に変換し、既存の `RuleBasedAnalysisEngine` で分析します。意匠種別が明示されていない場合は、`designClass`、`articleName`、説明文から物品意匠・画像意匠・空間意匠を暫定推定します。
+入力経路は明示的に分離しています。
+
+- `contractVersion` を持つ Backend Contract export は、専用の `BackendContractDataSource` で exact `0.1.0` を検証します。unsupported version、contract違反、unsafe provenanceはdataset単位でfail closedとし、legacy loaderへfallbackしません。
+- versionを持たない従来JSONだけを `LocalJpoJsonDataSource` で既存の `DesignRecord` に変換します。このlegacy経路では、意匠種別が明示されていない場合に `designClass`、`articleName`、説明文から物品意匠・画像意匠・空間意匠を暫定推定します。
+
+Contract経路の分析基準日は envelope `sourceUpdatedAt` のUTC日付です。`gazetteDate: null`、基準日より未来の日付、`designType: unknown`、quarantined recordはsource値を補完・再推定せず分析から除外し、画面上のsummaryに件数を表示します。企業指定はresolved applicantの `(role, resolvedEntityId)`、分類集計はrepeatableな `(scheme, code)` をidentityとして扱います。
+
+手動確認用の `fixtures/backend-contract-v0.1.0/design-export-fictional.json` は完全架空の互換fixtureです。実データやBackend内部情報を含まず、`pnpm run check:no-real-data` の検査対象です。
 
 一部のローカル検証JSONでは公報・図面メタデータを表示できます。ただし、公報・図面画像本体と外部リンクは未接続です。
 

@@ -9,15 +9,18 @@ import {
   PURPOSE_LABELS,
 } from '../../domain/labels';
 import type { AnalysisPurpose, AnalysisRequest, Department, Period, ValidationErrors } from '../../domain/types';
+import { companySelectorKey, type CompanySelector } from '../../domain/analysisRecords';
 import type { LocalJpoLoadFailure, LocalJpoLoadSuccess } from '../../data/LocalJpoJsonDataSource';
 import type { DemoShowcaseLoadFailure, DemoShowcaseLoadSuccess } from '../../data/DemoShowcaseDataSource';
 import type { HosoeAnalysisPackLoadFailure, HosoeAnalysisPackLoadSuccess } from '../../data/HosoeAnalysisPackDataSource';
+import type { BackendContractAdapterSuccess } from '../../data/BackendContractDataSource';
 import { Badge } from '../common/Badge';
 
 type LocalJpoPanelState =
   | { status: 'sample'; warnings: string[]; errors: string[] }
   | { status: 'loading'; fileName: string; warnings: string[]; errors: string[] }
   | { status: 'loaded'; load: LocalJpoLoadSuccess }
+  | { status: 'backend_loaded'; fileName: string; adapted: BackendContractAdapterSuccess }
   | { status: 'error'; failure: LocalJpoLoadFailure };
 
 type DemoShowcasePanelState =
@@ -35,7 +38,8 @@ type HosoeAnalysisPackPanelState =
 interface SettingsPanelProps {
   request: AnalysisRequest;
   companyInput: string;
-  companyOptions?: string[];
+  companyOptions?: CompanySelector[];
+  companySelectionMode?: 'freeform' | 'options_only';
   errors: ValidationErrors;
   isRunning: boolean;
   hasResult?: boolean;
@@ -46,8 +50,8 @@ interface SettingsPanelProps {
   hosoeAnalysisPackState: HosoeAnalysisPackPanelState;
   onRequestChange: (request: AnalysisRequest) => void;
   onCompanyInputChange: (value: string) => void;
-  onAddCompany: (company?: string) => void;
-  onRemoveCompany: (company: string) => void;
+  onAddCompany: (selectorKey?: string) => void;
+  onRemoveCompany: (selectorKey: string) => void;
   onAnalyze: () => void;
   onLocalJsonFile: (file: File | null) => void;
   onResetToSampleData: () => void;
@@ -62,6 +66,7 @@ export function SettingsPanel({
   request,
   companyInput,
   companyOptions = [],
+  companySelectionMode = 'freeform',
   errors,
   isRunning,
   hasResult = false,
@@ -83,8 +88,9 @@ export function SettingsPanel({
   onHosoeAnalysisPackFile,
   onClearHosoeAnalysisPack,
 }: SettingsPanelProps) {
-  const companies = request.scope.mode === 'companies' ? request.scope.companies : [];
-  const availableCompanyOptions = companyOptions.filter((company) => !companies.includes(company));
+  const companySelectors = request.scope.mode === 'companies' ? request.scope.companySelectors : [];
+  const selectedCompanyKeys = new Set(companySelectors.map(companySelectorKey));
+  const availableCompanyOptions = companyOptions.filter((company) => !selectedCompanyKeys.has(companySelectorKey(company)));
 
   return (
     <aside className="space-y-5">
@@ -97,8 +103,12 @@ export function SettingsPanel({
                 通常は開かずに分析できます。ローカルJSONや画面共有用の設定が必要な場合だけ開いてください。
               </p>
             </div>
-            <Badge tone={localJpoState.status === 'loaded' ? 'warning' : 'neutral'}>
-              {localJpoState.status === 'loaded' ? 'ローカルデータ利用中' : 'サンプルデータ利用中'}
+            <Badge tone={localJpoState.status === 'loaded' ? 'warning' : localJpoState.status === 'backend_loaded' ? 'accent' : 'neutral'}>
+              {localJpoState.status === 'backend_loaded'
+                ? 'Contractデータ利用中'
+                : localJpoState.status === 'loaded'
+                  ? 'ローカルデータ利用中'
+                  : 'サンプルデータ利用中'}
             </Badge>
           </div>
         </summary>
@@ -136,10 +146,10 @@ export function SettingsPanel({
               実データはローカルファイルとして読み込まれ、リポジトリやブラウザ永続領域には保存されません。
             </p>
           </div>
-          <Badge tone={localJpoState.status === 'error' ? 'warning' : localJpoState.status === 'loaded' ? 'accent' : 'neutral'}>
+          <Badge tone={localJpoState.status === 'error' ? 'warning' : localJpoState.status === 'loaded' || localJpoState.status === 'backend_loaded' ? 'accent' : 'neutral'}>
             {localJpoState.status === 'loading'
               ? '読込中'
-              : localJpoState.status === 'loaded'
+              : localJpoState.status === 'loaded' || localJpoState.status === 'backend_loaded'
                 ? '読込済み'
                 : localJpoState.status === 'error'
                   ? '読込失敗'
@@ -193,6 +203,27 @@ export function SettingsPanel({
             ) : null}
             <button
               className="mt-3 rounded-md border border-teal-300 bg-white px-3 py-2 text-sm font-semibold text-accent"
+              type="button"
+              onClick={onResetToSampleData}
+            >
+              サンプルデータに戻す
+            </button>
+          </div>
+        ) : null}
+        {localJpoState.status === 'backend_loaded' ? (
+          <div className="mt-4 rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+            <div className="font-bold">Backend Contract読込済み</div>
+            <div className="readable-text mt-1 font-semibold">{localJpoState.fileName}</div>
+            <dl className="mt-2 grid gap-1 sm:grid-cols-2">
+              <div><dt className="inline font-semibold">contract version: </dt><dd className="inline">{localJpoState.adapted.meta.contractVersion}</dd></div>
+              <div><dt className="inline font-semibold">analysis cutoff: </dt><dd className="inline">{localJpoState.adapted.meta.analysisCutoff}</dd></div>
+              <div><dt className="inline font-semibold">total / accepted / excluded: </dt><dd className="inline">{localJpoState.adapted.summary.totalRecordCount} / {localJpoState.adapted.summary.acceptedCount} / {localJpoState.adapted.summary.excludedCount}</dd></div>
+              <div><dt className="inline font-semibold">warning / quarantined: </dt><dd className="inline">{localJpoState.adapted.summary.warningCount} / {localJpoState.adapted.summary.quarantinedCount}</dd></div>
+              <div><dt className="inline font-semibold">missing gazetteDate: </dt><dd className="inline">{localJpoState.adapted.summary.missingGazetteDateCount}</dd></div>
+              <div><dt className="inline font-semibold">unknown design type: </dt><dd className="inline">{localJpoState.adapted.summary.unknownDesignTypeCount}</dd></div>
+            </dl>
+            <button
+              className="mt-3 rounded-md border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-900"
               type="button"
               onClick={onResetToSampleData}
             >
@@ -394,7 +425,7 @@ export function SettingsPanel({
                   type="radio"
                   name="scope"
                   checked={request.scope.mode === 'companies'}
-                  onChange={() => onRequestChange({ ...request, scope: { mode: 'companies', companies } })}
+                  onChange={() => onRequestChange({ ...request, scope: { mode: 'companies', companySelectors } })}
                 />
                 <span>
                   <span className="block font-semibold">企業指定分析</span>
@@ -419,45 +450,53 @@ export function SettingsPanel({
                     >
                       <option value="" disabled>候補から企業を追加</option>
                       {availableCompanyOptions.map((company) => (
-                        <option key={company} value={company}>{company}</option>
+                        <option key={companySelectorKey(company)} value={companySelectorKey(company)}>{company.displayLabel}</option>
                       ))}
                     </select>
                   </label>
                 ) : null}
-                <p className="mt-3 text-xs leading-5 text-muted">候補にない名称は、下の入力欄から追加できます。</p>
-                <div className="flex gap-2">
-                  <input
-                    className="min-w-0 flex-1 rounded-md border border-line px-3 py-2"
-                    value={companyInput}
-                    aria-label="企業名"
-                    placeholder="企業名を入力"
-                    onChange={(event) => onCompanyInputChange(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault();
-                        onAddCompany();
-                      }
-                    }}
-                  />
-                  <button
-                    className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                    type="button"
-                    onClick={() => onAddCompany()}
-                    disabled={!companyInput.trim()}
-                  >
-                    ＋追加
-                  </button>
-                </div>
-                {companies.length > 0 ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {companies.map((company) => (
+                {companySelectionMode === 'freeform' ? (
+                  <>
+                    <p className="mt-3 text-xs leading-5 text-muted">候補にない名称は、下の入力欄から追加できます。</p>
+                    <div className="flex gap-2">
+                      <input
+                        className="min-w-0 flex-1 rounded-md border border-line px-3 py-2"
+                        value={companyInput}
+                        aria-label="企業名"
+                        placeholder="企業名を入力"
+                        onChange={(event) => onCompanyInputChange(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            onAddCompany();
+                          }
+                        }}
+                      />
                       <button
-                        key={company}
+                        className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                        type="button"
+                        onClick={() => onAddCompany()}
+                        disabled={!companyInput.trim()}
+                      >
+                        ＋追加
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-3 rounded-md border border-sky-200 bg-sky-50 p-3 text-xs leading-5 text-sky-900">
+                    Backend Contractでは、名称解決済みapplicantだけを候補から選択できます。表示名の自由入力やright holderへの代替は行いません。
+                  </p>
+                )}
+                {companySelectors.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {companySelectors.map((company) => (
+                      <button
+                        key={companySelectorKey(company)}
                         type="button"
                         className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-sm font-semibold text-accent"
-                        onClick={() => onRemoveCompany(company)}
+                        onClick={() => onRemoveCompany(companySelectorKey(company))}
                       >
-                        {company} ×
+                        {company.displayLabel} ×
                       </button>
                     ))}
                   </div>
@@ -525,7 +564,11 @@ export function SettingsPanel({
             <div className="mt-3 rounded-md border border-line p-3">
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <span className="font-semibold">
-                  {localJpoState.status === 'loaded' ? 'ローカル実データJSON' : 'デモ用意匠情報'}
+                  {localJpoState.status === 'backend_loaded'
+                    ? 'Backend Contract 0.1.0'
+                    : localJpoState.status === 'loaded'
+                      ? 'ローカル実データJSON'
+                      : 'デモ用意匠情報'}
                 </span>
                 <Badge tone="accent">現在利用</Badge>
                 {localJpoState.status === 'loaded' ? <Badge tone="warning">意匠種別は暫定推定</Badge> : null}

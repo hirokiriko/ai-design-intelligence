@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const DEFAULT_TARGET_DIRS = ['src/data', 'public', 'dist'];
-export const DEFAULT_TARGETS = ['src', 'public', 'dist', 'README.md', '.env.example', 'index.html'];
+export const DEFAULT_TARGET_DIRS = ['src/data', 'public', 'fixtures', 'dist'];
+export const DEFAULT_TARGETS = ['src', 'public', 'fixtures', 'dist', 'README.md', '.env.example', 'index.html'];
 const joinToken = (...parts) => parts.join('');
 const tokenPattern = (...parts) => new RegExp(joinToken(...parts).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 export const FORBIDDEN_NAME_PATTERNS = [
@@ -65,6 +65,19 @@ export const PUBLIC_BUILD_ONLY_CONTENT_PATTERNS = [
   { label: 'local analysis pack term', pattern: tokenPattern('strict', 'PrefixW') },
   { label: 'local analysis pack term', pattern: tokenPattern('dTermWIncluded', 'Candidate') },
 ];
+export const FIXTURE_ONLY_CONTENT_PATTERNS = [
+  { label: 'external URL in fixture', pattern: /\bhttps?:\/\//i },
+  { label: 'data or file URI in fixture', pattern: /\b(?:data|file):/i },
+  { label: 'absolute Windows path in fixture', pattern: /[A-Z]:[\\/]/i },
+  { label: 'UNC path in fixture', pattern: /\\{2,}/ },
+  { label: 'absolute user path in fixture', pattern: /(?:\/Users\/|\/home\/[^/]+\/)/i },
+  {
+    label: 'secret-like assignment in fixture',
+    pattern: /"(?:api[_-]?key|access[_-]?token|password|secret|connection[_-]?string)"\s*:\s*"[^"]+"/i,
+  },
+  { label: 'private key marker in fixture', pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/i },
+  { label: 'real-like long numeric identifier in fixture', pattern: /\b\d{7,}\b/ },
+];
 const EXCLUDED_FILE_PATTERNS = [
   /(^|\/)[^/]+\.(test|spec)\.[jt]sx?$/i,
   /(^|\/)__snapshots__(\/|$)/i,
@@ -101,6 +114,13 @@ export function findRealDataMatches({
           matches.push(`${relativePath} (${label})`);
         }
       }
+      if (isFixtureFile(relativePath)) {
+        for (const { label, pattern } of FIXTURE_ONLY_CONTENT_PATTERNS) {
+          if (pattern.test(text)) {
+            matches.push(`${relativePath} (${label})`);
+          }
+        }
+      }
       if (isPublicBuildFile(relativePath)) {
         for (const { label, pattern } of PUBLIC_BUILD_ONLY_CONTENT_PATTERNS) {
           if (pattern.test(text)) {
@@ -120,6 +140,10 @@ function shouldSkip(relativePath) {
 
 function isPublicBuildFile(relativePath) {
   return relativePath === 'dist' || relativePath.startsWith('dist/');
+}
+
+function isFixtureFile(relativePath) {
+  return relativePath.startsWith('fixtures/');
 }
 
 function walk(currentPath, visit) {

@@ -1,9 +1,14 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { companySelectorFromMembership } from '../../domain/analysisRecords';
 import type { AnalysisRequest, AnalysisResult, DemoShowcaseRecord, DesignRecord } from '../../domain/types';
 import type { LocalJpoDatasetSummary } from '../../data/LocalJpoJsonDataSource';
 import { RuleBasedAnalysisEngine } from '../../analysis/RuleBasedAnalysisEngine';
+import { projectLocalJpoDesignRecord } from '../../analysis/projectLegacyDesignRecord';
+import { loadDesignJsonText } from '../../data/DesignJsonFileLoader';
 import { ResultsArea } from './ResultsArea';
 
 const request: AnalysisRequest = {
@@ -75,6 +80,8 @@ const records: DesignRecord[] = [
     gazetteDrawingKeys: null,
   },
 ];
+
+const legacyAnalysisRecords = records.map(projectLocalJpoDesignRecord);
 
 const publicSampleRecords: DesignRecord[] = records.map((record, index) => ({
   ...record,
@@ -209,8 +216,10 @@ describe('ResultsArea gazette drawing metadata display', () => {
       createElement(ResultsArea, {
         request,
         result,
-        records,
+        analysisRecords: legacyAnalysisRecords,
         allRecords: records,
+        backendContract: null,
+        dataMode: 'legacy',
         isRunning: false,
         localJpoSummary: summary,
         localJpoWarnings: [],
@@ -244,13 +253,166 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).not.toContain('<img');
   });
 
+  it('renders the Backend Contract summary and dedicated evidence without provenance', () => {
+    const fixturePath = path.resolve('fixtures', 'backend-contract-v0.1.0', 'design-export-fictional.json');
+    const routed = loadDesignJsonText(fs.readFileSync(fixturePath, 'utf8'), 'design-export-fictional.json');
+    expect(routed.kind).toBe('backend_contract');
+    if (routed.kind !== 'backend_contract' || !routed.result.ok) {
+      throw new Error('The fictional Backend Contract fixture must be accepted.');
+    }
+    const backendContract = routed.result;
+    const backendResult: AnalysisResult = {
+      ...result,
+      dataAsOf: backendContract.meta.analysisCutoff,
+      market: {
+        trends: {
+          ...result.market!.trends,
+          evidenceIds: ['kds_fixture_alpha', 'kds_fixture_gamma', 'kds_fixture_delta'],
+          metric: { label: '対象意匠件数', value: 2, unit: '件' },
+        },
+        emergingDomains: {
+          ...result.market!.emergingDomains,
+          evidenceIds: ['kds_fixture_beta'],
+          metric: { label: '画像意匠件数', value: 1, unit: '件' },
+        },
+        companyMoves: {
+          ...result.market!.companyMoves,
+          evidenceIds: ['kds_fixture_alpha', 'kds_fixture_beta', 'kds_fixture_gamma'],
+          metric: { label: '対象企業数', value: 3, unit: '社' },
+        },
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: backendResult,
+        analysisRecords: backendContract.analysisRecords,
+        allRecords: [],
+        backendContract,
+        dataMode: 'backend',
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: true,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+      }),
+    );
+
+    expect(html).toContain('Backend Contractデータ概要');
+    expect(html).toContain('contract version');
+    expect(html).toContain('0.1.0');
+    expect(html).toContain('analysis cutoff');
+    expect(html).toContain('2026-08-10');
+    expect(html).toContain('総件数');
+    expect(html).toContain('分析対象');
+    expect(html).toContain('分析対象外');
+    expect(html).toContain('warning');
+    expect(html).toContain('quarantined');
+    expect(html).toContain('gazetteDate欠損');
+    expect(html).toContain('意匠種別unknown');
+    expect(html).toContain('id="evidence-kds_fixture_alpha"');
+    expect(html).toContain('id="evidence-kds_fixture_gamma"');
+    expect(html).not.toContain('id="evidence-kds_fixture_delta"');
+    expect(html).toContain('stable id');
+    expect(html).toContain('架空アルファ意匠研究所');
+    expect(html).toContain('right holders');
+    expect(html).toContain('FIXTURE-SCHEME-A / FIXTURE-CLASS-A1 / 架空分類アルファ主分類 / primary');
+    expect(html).toContain('FIXTURE-GAZETTE-ALPHA');
+    expect(html).toContain('publicationはnullです。別フィールドから補完していません。');
+    expect(html).not.toContain('sourceRecordLocator');
+    expect(html).not.toContain('FIXTURE-RUN-ALPHA');
+    expect(html).not.toContain('fixture:artifact:alpha');
+    expect(html).not.toContain('fixture:record:alpha');
+    expect(html).not.toContain('fixture-parser-0.1.0');
+    expect(html).not.toMatch(/https?:\/\//i);
+    expect(html).not.toMatch(/[A-Za-z]:\\/);
+    expect(html).not.toMatch(/^data:/im);
+    expect(html).not.toContain('<img');
+  });
+
+  it('keeps valid Backend record fragments and tuple-based row identities distinct', () => {
+    const fixturePath = path.resolve('fixtures', 'backend-contract-v0.1.0', 'design-export-fictional.json');
+    const routed = loadDesignJsonText(fs.readFileSync(fixturePath, 'utf8'), 'design-export-fictional.json');
+    expect(routed.kind).toBe('backend_contract');
+    if (routed.kind !== 'backend_contract' || !routed.result.ok) {
+      throw new Error('The fictional Backend Contract fixture must be accepted.');
+    }
+    const template = routed.result.records.find((record) => record.adapterDisposition.status === 'accepted');
+    if (!template) throw new Error('The fixture must contain an accepted record.');
+    const ids = ['fixture:a', 'fixture.a', 'fixture-a'];
+    const backendContract = {
+      ...routed.result,
+      records: ids.map((id, index) => ({
+        ...template,
+        id,
+        classifications:
+          index === 0
+            ? [
+                { scheme: 'a:b', code: 'c', label: '架空分類コロン一', isPrimary: true },
+                { scheme: 'a', code: 'b:c', label: '架空分類コロン二', isPrimary: false },
+              ]
+            : template.classifications,
+        drawings:
+          index === 0 && template.drawings.length > 0
+            ? [
+                { ...template.drawings[0], drawingId: 'fixture-duplicate-drawing', order: 1 },
+                { ...template.drawings[0], drawingId: 'fixture-duplicate-drawing', order: 2 },
+              ]
+            : template.drawings,
+      })),
+    };
+    const collisionResult: AnalysisResult = {
+      ...result,
+      market: {
+        ...result.market!,
+        trends: { ...result.market!.trends, evidenceIds: ids },
+        emergingDomains: { ...result.market!.emergingDomains, evidenceIds: [] },
+        companyMoves: { ...result.market!.companyMoves, evidenceIds: [] },
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: collisionResult,
+        analysisRecords: [],
+        allRecords: [],
+        backendContract,
+        dataMode: 'backend',
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: false,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+      }),
+    );
+
+    expect(html).toContain('href="#evidence-fixture~3aa"');
+    expect(html).toContain('href="#evidence-fixture~2ea"');
+    expect(html).toContain('href="#evidence-fixture-a"');
+    expect(html).toContain('id="evidence-fixture~3aa"');
+    expect(html).toContain('id="evidence-fixture~2ea"');
+    expect(html).toContain('id="evidence-fixture-a"');
+    expect(html).toContain('架空分類コロン一');
+    expect(html).toContain('架空分類コロン二');
+    expect(html).toContain('order 1: fixture-duplicate-drawing');
+    expect(html).toContain('order 2: fixture-duplicate-drawing');
+  });
+
   it('renders external demo mode guide, showcase records, and folded unresolved codes safely', () => {
     const html = renderToStaticMarkup(
       createElement(ResultsArea, {
         request,
         result,
-        records,
+        analysisRecords: legacyAnalysisRecords,
         allRecords: records,
+        backendContract: null,
+        dataMode: 'legacy',
         isRunning: false,
         localJpoSummary: {
           ...summary,
@@ -327,8 +489,10 @@ describe('ResultsArea gazette drawing metadata display', () => {
       createElement(ResultsArea, {
         request,
         result: null,
-        records: [],
+        analysisRecords: [],
         allRecords: publicSampleRecords,
+        backendContract: null,
+        dataMode: 'sample',
         isRunning: false,
         localJpoSummary: null,
         localJpoWarnings: [],
@@ -376,10 +540,17 @@ describe('ResultsArea gazette drawing metadata display', () => {
   it('shows only the selected company-purpose details and matching evidence records', async () => {
     const purposeRequest: AnalysisRequest = {
       ...request,
-      scope: { mode: 'companies', companies: [records[0].applicant] },
+      scope: {
+        mode: 'companies',
+        companySelectors: [companySelectorFromMembership(legacyAnalysisRecords[0].companyMemberships[0])],
+      },
       purposes: ['dx_dev'],
     };
-    const purposeResult = await new RuleBasedAnalysisEngine().analyze(purposeRequest, records, '2026-06-23');
+    const purposeResult = await new RuleBasedAnalysisEngine().analyze(
+      purposeRequest,
+      legacyAnalysisRecords,
+      '2026-06-23',
+    );
     const company = purposeResult.companies[0];
     company.designTrend.domains.evidenceIds = ['fixture-without-keys'];
     company.designTrend.domains.metric.value = 1;
@@ -388,8 +559,10 @@ describe('ResultsArea gazette drawing metadata display', () => {
       createElement(ResultsArea, {
         request: purposeRequest,
         result: purposeResult,
-        records,
+        analysisRecords: legacyAnalysisRecords,
         allRecords: records,
+        backendContract: null,
+        dataMode: 'legacy',
         isRunning: false,
         localJpoSummary: null,
         localJpoWarnings: [],
@@ -409,13 +582,19 @@ describe('ResultsArea gazette drawing metadata display', () => {
 
   it('keeps the market overview as scope context while emphasizing a non-market purpose', async () => {
     const purposeRequest: AnalysisRequest = { ...request, purposes: ['dx_dev'] };
-    const purposeResult = await new RuleBasedAnalysisEngine().analyze(purposeRequest, records, '2026-06-23');
+    const purposeResult = await new RuleBasedAnalysisEngine().analyze(
+      purposeRequest,
+      legacyAnalysisRecords,
+      '2026-06-23',
+    );
     const html = renderToStaticMarkup(
       createElement(ResultsArea, {
         request: purposeRequest,
         result: purposeResult,
-        records,
+        analysisRecords: legacyAnalysisRecords,
         allRecords: records,
+        backendContract: null,
+        dataMode: 'legacy',
         isRunning: false,
         localJpoSummary: null,
         localJpoWarnings: [],
@@ -450,8 +629,10 @@ describe('ResultsArea gazette drawing metadata display', () => {
       createElement(ResultsArea, {
         request,
         result: manyResult,
-        records: manyRecords,
+        analysisRecords: manyRecords.map(projectLocalJpoDesignRecord),
         allRecords: manyRecords,
+        backendContract: null,
+        dataMode: 'legacy',
         isRunning: false,
         localJpoSummary: null,
         localJpoWarnings: [],
@@ -480,8 +661,10 @@ describe('ResultsArea gazette drawing metadata display', () => {
       createElement(ResultsArea, {
         request,
         result: emptyResult,
-        records: [],
+        analysisRecords: [],
         allRecords: publicSampleRecords,
+        backendContract: null,
+        dataMode: 'sample',
         isRunning: false,
         localJpoSummary: null,
         localJpoWarnings: [],

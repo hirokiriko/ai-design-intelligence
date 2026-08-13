@@ -110,9 +110,22 @@ describe('SettingsPanel external information wording', () => {
   it('offers companies from the active dataset and exposes validation errors accessibly', () => {
     const html = renderToStaticMarkup(
       createElement(SettingsPanel, {
-        request: { ...request, scope: { mode: 'companies', companies: [] } },
+        request: { ...request, scope: { mode: 'companies', companySelectors: [] } },
         companyInput: '',
-        companyOptions: ['サンプル電機株式会社', '架空モビリティ株式会社'],
+        companyOptions: [
+          {
+            origin: 'sample',
+            role: 'applicant',
+            localKey: 'サンプル電機株式会社',
+            displayLabel: 'サンプル電機株式会社',
+          },
+          {
+            origin: 'sample',
+            role: 'applicant',
+            localKey: '架空モビリティ株式会社',
+            displayLabel: '架空モビリティ株式会社',
+          },
+        ],
         errors: { companies: '企業指定分析では、少なくとも1社を追加してください。' },
         isRunning: false,
         localJpoState: { status: 'sample', warnings: [], errors: [] },

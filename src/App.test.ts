@@ -12,7 +12,7 @@ const validRequest: AnalysisRequest = {
 
 describe('validateRequest', () => {
   it('requires companies when company scope is selected', () => {
-    const errors = validateRequest({ ...validRequest, scope: { mode: 'companies', companies: [] } });
+    const errors = validateRequest({ ...validRequest, scope: { mode: 'companies', companySelectors: [] } });
 
     expect(errors.companies).toBeDefined();
   });

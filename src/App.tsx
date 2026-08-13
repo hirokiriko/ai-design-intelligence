@@ -5,15 +5,27 @@ import { ResultsArea } from './components/ResultsArea/ResultsArea';
 import { Badge } from './components/common/Badge';
 import { ALL_DESIGN_KINDS, STATUS_BADGES } from './domain/labels';
 import type { AnalysisPurpose, AnalysisRequest, AnalysisResult, DesignRecord, HosoeAnalysisPack, ValidationErrors } from './domain/types';
+import {
+  companySelectorFromMembership,
+  companySelectorKey,
+  type AnalysisReadyDesignRecord,
+  type CompanySelector,
+} from './domain/analysisRecords';
 import { validateRequest } from './domain/validation';
+import { normalizeLocalCompanyKey } from './analysis/projectLegacyDesignRecord';
 import { SampleDesignDataSource } from './data/SampleDesignDataSource';
 import {
-  loadLocalJpoJson,
   sanitizeAnalysisEvidenceIds,
   type LocalJpoDataPeriodKind,
   type LocalJpoLoadFailure,
   type LocalJpoLoadSuccess,
 } from './data/LocalJpoJsonDataSource';
+import {
+  BackendContractDataSource,
+  type BackendContractAdapterSuccess,
+  type DatasetAdapterErrorCode,
+} from './data/BackendContractDataSource';
+import { loadDesignJsonText } from './data/DesignJsonFileLoader';
 import {
   loadDemoShowcaseJson,
   type DemoShowcaseLoadFailure,
@@ -37,6 +49,12 @@ type LocalJpoState =
   | { status: 'sample'; warnings: string[]; errors: string[] }
   | { status: 'loading'; fileName: string; warnings: string[]; errors: string[] }
   | { status: 'loaded'; load: LocalJpoLoadSuccess }
+  | {
+      status: 'backend_loaded';
+      fileName: string;
+      adapted: BackendContractAdapterSuccess;
+      dataSource: BackendContractDataSource;
+    }
   | { status: 'error'; failure: LocalJpoLoadFailure };
 
 type DemoShowcaseState =
@@ -64,7 +82,7 @@ export default function App() {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [records, setRecords] = useState<DesignRecord[]>([]);
+  const [analysisRecords, setAnalysisRecords] = useState<AnalysisReadyDesignRecord[]>([]);
   const [localJpoState, setLocalJpoState] = useState<LocalJpoState>({ status: 'sample', warnings: [], errors: [] });
   const [demoShowcaseState, setDemoShowcaseState] = useState<DemoShowcaseState>({ status: 'empty', warnings: [], errors: [] });
   const [hosoeAnalysisPackState, setHosoeAnalysisPackState] = useState<HosoeAnalysisPackState>({ status: 'empty', warnings: [], errors: [] });
@@ -72,13 +90,25 @@ export default function App() {
   const [externalDemoMode, setExternalDemoMode] = useState(true);
   const [analysisWarnings, setAnalysisWarnings] = useState<string[]>([]);
 
-  const dataSource = localJpoState.status === 'loaded' ? localJpoState.load.dataSource : sampleDataSource;
-  const allRecords = useMemo(() => dataSource.getAllRecords(), [dataSource]);
-  const companyOptions = useMemo(() => buildCompanyOptions(allRecords), [allRecords]);
+  const dataSource =
+    localJpoState.status === 'backend_loaded'
+      ? localJpoState.dataSource
+      : localJpoState.status === 'loaded'
+        ? localJpoState.load.dataSource
+        : sampleDataSource;
+  const dataMode = localJpoState.status === 'backend_loaded' ? 'backend' : localJpoState.status === 'loaded' ? 'legacy' : 'sample';
+  const allAnalysisRecords = useMemo(() => dataSource.getAllRecords(), [dataSource]);
+  const legacyViewRecords = useMemo<DesignRecord[]>(
+    () => (localJpoState.status === 'backend_loaded' ? [] : dataSource.getViewRecords() as DesignRecord[]),
+    [dataSource, localJpoState.status],
+  );
+  const companyOptions = useMemo(() => buildCompanyOptions(allAnalysisRecords), [allAnalysisRecords]);
   const headerBadges =
-    localJpoState.status === 'loaded'
-      ? ['ローカル実データJSON（開発用）', 'ルールベース分析', 'File API読込']
-      : STATUS_BADGES;
+    localJpoState.status === 'backend_loaded'
+      ? ['Backend Contract 0.1.0', 'ルールベース分析', 'File API読込']
+      : localJpoState.status === 'loaded'
+        ? ['ローカル実データJSON（開発用）', 'ルールベース分析', 'File API読込']
+        : STATUS_BADGES;
 
   useEffect(() => {
     if (!ENABLE_LOCAL_ANALYSIS_PACK) return;
@@ -102,21 +132,37 @@ export default function App() {
 
   const clearAnalysisResult = () => {
     setResult(null);
-    setRecords([]);
+    setAnalysisRecords([]);
     setAnalysisWarnings([]);
   };
 
-  const addCompany = (suggestedCompany?: string) => {
-    const nextCompany = (suggestedCompany ?? companyInput).trim();
-    if (!nextCompany) return;
+  const addCompany = (suggestedSelectorKey?: string) => {
+    const inputLabel = companyInput.trim();
+    const option = suggestedSelectorKey
+      ? companyOptions.find((candidate) => companySelectorKey(candidate) === suggestedSelectorKey)
+      : companyOptions.find((candidate) => candidate.displayLabel === inputLabel);
+    const nextSelector: CompanySelector | undefined =
+      option ??
+      (inputLabel && dataMode !== 'backend'
+        ? {
+            origin: dataMode,
+            role: 'applicant',
+            localKey: normalizeLocalCompanyKey(inputLabel),
+            displayLabel: inputLabel,
+          }
+        : undefined);
+    if (!nextSelector) return;
 
     setRequest((current) => {
-      const companies = current.scope.mode === 'companies' ? current.scope.companies : [];
+      const companySelectors = current.scope.mode === 'companies' ? current.scope.companySelectors : [];
+      const nextKey = companySelectorKey(nextSelector);
       return {
         ...current,
         scope: {
           mode: 'companies',
-          companies: companies.includes(nextCompany) ? companies : [...companies, nextCompany],
+          companySelectors: companySelectors.some((selector) => companySelectorKey(selector) === nextKey)
+            ? companySelectors
+            : [...companySelectors, nextSelector],
         },
       };
     });
@@ -124,14 +170,14 @@ export default function App() {
     clearAnalysisResult();
   };
 
-  const removeCompany = (company: string) => {
+  const removeCompany = (selectorKey: string) => {
     setRequest((current) => {
-      const companies = current.scope.mode === 'companies' ? current.scope.companies : [];
+      const companySelectors = current.scope.mode === 'companies' ? current.scope.companySelectors : [];
       return {
         ...current,
         scope: {
           mode: 'companies',
-          companies: companies.filter((item) => item !== company),
+          companySelectors: companySelectors.filter((selector) => companySelectorKey(selector) !== selectorKey),
         },
       };
     });
@@ -147,11 +193,13 @@ export default function App() {
     try {
       const queriedRecords = await dataSource.query(request);
       const nextResult = await analysisEngine.analyze(request, queriedRecords, dataSource.getDataAsOf());
-      const evidenceWarnings = sanitizeAnalysisEvidenceIds(nextResult, allRecords);
+      const evidenceWarnings = sanitizeAnalysisEvidenceIds(nextResult, allAnalysisRecords);
       if (localJpoState.status === 'loaded') {
         nextResult.disclaimer = localJpoAnalysisDisclaimer(localJpoState.load.summary);
+      } else if (localJpoState.status === 'backend_loaded') {
+        nextResult.disclaimer = backendContractAnalysisDisclaimer(localJpoState.adapted);
       }
-      setRecords(queriedRecords);
+      setAnalysisRecords(queriedRecords);
       setResult(nextResult);
       setAnalysisWarnings(evidenceWarnings);
     } finally {
@@ -163,25 +211,48 @@ export default function App() {
     if (!file) return;
 
     setResult(null);
-    setRecords([]);
+    setAnalysisRecords([]);
     setAnalysisWarnings([]);
     setLocalJpoState({ status: 'loading', fileName: file.name, warnings: [], errors: [] });
+    let routed: ReturnType<typeof loadDesignJsonText>;
     try {
-      const text = await file.text();
-      const parsed = JSON.parse(text.replace(/^\uFEFF/, '')) as unknown;
-      const loadResult = loadLocalJpoJson(parsed, file.name);
-      setLocalJpoState(loadResult.ok ? { status: 'loaded', load: loadResult } : { status: 'error', failure: loadResult });
-    } catch (error) {
+      routed = loadDesignJsonText(await file.text(), file.name);
+    } catch {
       setLocalJpoState({
         status: 'error',
         failure: {
           ok: false,
           fileName: file.name,
-          errors: [`JSONを読み込めませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`],
+          errors: ['ファイルを読み込めませんでした。ファイルを選び直してください。'],
+          warnings: [],
+        },
+      });
+      setRequest((current) => ({ ...current, scope: { mode: 'all_classes' } }));
+      setCompanyInput('');
+      return;
+    }
+    if (routed.kind === 'legacy') {
+      setLocalJpoState(routed.result.ok ? { status: 'loaded', load: routed.result } : { status: 'error', failure: routed.result });
+    } else if (routed.result.ok) {
+      setLocalJpoState({
+        status: 'backend_loaded',
+        fileName: file.name,
+        adapted: routed.result,
+        dataSource: new BackendContractDataSource(routed.result),
+      });
+    } else {
+      setLocalJpoState({
+        status: 'error',
+        failure: {
+          ok: false,
+          fileName: file.name,
+          errors: formatBackendAdapterErrors(routed.result.errors.map((error) => error.code)),
           warnings: [],
         },
       });
     }
+    setRequest((current) => ({ ...current, scope: { mode: 'all_classes' } }));
+    setCompanyInput('');
   };
 
   const handleDemoShowcaseFile = async (file: File | null) => {
@@ -231,9 +302,9 @@ export default function App() {
 
   const resetToSampleData = () => {
     setLocalJpoState({ status: 'sample', warnings: [], errors: [] });
-    setResult(null);
-    setRecords([]);
-    setAnalysisWarnings([]);
+    setRequest((current) => ({ ...current, scope: { mode: 'all_classes' } }));
+    setCompanyInput('');
+    clearAnalysisResult();
   };
   const LocalAnalysisPackPanel = localAnalysisPackPanel;
 
@@ -253,7 +324,13 @@ export default function App() {
             ))}
           </div>
         </div>
-        {localJpoState.status === 'loaded' ? (
+        {localJpoState.status === 'backend_loaded' ? (
+          <div className="border-t border-line bg-sky-50">
+            <div className="mx-auto max-w-7xl px-4 py-3 text-sm leading-6 text-sky-900">
+              Backend Contract 0.1.0の公開用DTOを使用中です。検証済みのanalysis-ready subsetだけをブラウザのメモリ上で分析します。
+            </div>
+          </div>
+        ) : localJpoState.status === 'loaded' ? (
           <div className="border-t border-line bg-teal-50">
             <div className="mx-auto max-w-7xl px-4 py-3 text-sm leading-6 text-accent">
               ローカル検証データを使用中です。データはブラウザのメモリ上だけで扱い、公開ビルドには含めません。
@@ -301,6 +378,7 @@ export default function App() {
           request={request}
           companyInput={companyInput}
           companyOptions={companyOptions}
+          companySelectionMode={dataMode === 'backend' ? 'options_only' : 'freeform'}
           errors={errors}
           isRunning={isRunning}
           hasResult={Boolean(result)}
@@ -328,27 +406,29 @@ export default function App() {
         />
         <div className="min-w-0">
           <ResultsArea
-          request={request}
-          result={result}
-          records={records}
-          allRecords={allRecords}
-          isRunning={isRunning}
-          localJpoSummary={localJpoState.status === 'loaded' ? localJpoState.load.summary : null}
-          localJpoWarnings={
-            localJpoState.status === 'loaded'
-              ? localJpoState.load.warnings
-              : localJpoState.status === 'error'
-                ? [...localJpoState.failure.errors, ...localJpoState.failure.warnings]
-                : []
-          }
-          analysisWarnings={analysisWarnings}
-          externalDemoMode={externalDemoMode}
-          demoShowcaseRecords={demoShowcaseState.status === 'loaded' ? demoShowcaseState.load.records : []}
-          localAnalysisPackPanel={
-            ENABLE_LOCAL_ANALYSIS_PACK && hosoeAnalysisPackState.status === 'loaded' && LocalAnalysisPackPanel ? (
-              <LocalAnalysisPackPanel pack={hosoeAnalysisPackState.load.pack} />
-            ) : null
-          }
+            request={request}
+            result={result}
+            analysisRecords={analysisRecords}
+            allRecords={legacyViewRecords}
+            backendContract={localJpoState.status === 'backend_loaded' ? localJpoState.adapted : null}
+            dataMode={dataMode}
+            isRunning={isRunning}
+            localJpoSummary={localJpoState.status === 'loaded' ? localJpoState.load.summary : null}
+            localJpoWarnings={
+              localJpoState.status === 'loaded'
+                ? localJpoState.load.warnings
+                : localJpoState.status === 'error'
+                  ? [...localJpoState.failure.errors, ...localJpoState.failure.warnings]
+                  : []
+            }
+            analysisWarnings={analysisWarnings}
+            externalDemoMode={externalDemoMode}
+            demoShowcaseRecords={demoShowcaseState.status === 'loaded' ? demoShowcaseState.load.records : []}
+            localAnalysisPackPanel={
+              ENABLE_LOCAL_ANALYSIS_PACK && hosoeAnalysisPackState.status === 'loaded' && LocalAnalysisPackPanel ? (
+                <LocalAnalysisPackPanel pack={hosoeAnalysisPackState.load.pack} />
+              ) : null
+            }
           />
         </div>
       </div>
@@ -370,18 +450,44 @@ function localJpoAnalysisDisclaimer(summary: LocalJpoLoadSuccess['summary']): st
   }${localJpoAnalysisPeriodLabel(summary.dataPeriodKind)}のため、傾向判断には追加データが必要です。分析期間はgazetteDate基準です。法的助言ではありません。`;
 }
 
-function buildCompanyOptions(records: DesignRecord[], limit = 20): string[] {
-  const counts = new Map<string, number>();
+function backendContractAnalysisDisclaimer(contract: BackendContractAdapterSuccess): string {
+  return `この結果はBackend Contract ${contract.meta.contractVersion}をブラウザのメモリ上で検証し、分析対象として受理した${contract.summary.acceptedCount}件を、${contract.meta.analysisCutoff}を基準日にルールベースで集計した参考情報です。除外レコードは根拠IDに使用していません。法的助言ではありません。`;
+}
+
+function formatBackendAdapterErrors(codes: DatasetAdapterErrorCode[]): string[] {
+  const labels: Record<DatasetAdapterErrorCode, string> = {
+    MALFORMED_JSON: 'JSONを解析できませんでした。ファイル形式を確認してください。',
+    INVALID_ENVELOPE: 'Backend Contractの必須メタデータを確認できませんでした。',
+    UNSUPPORTED_CONTRACT_VERSION: '対応していないBackend Contract versionです。対応versionは0.1.0です。',
+    CONTRACT_VALIDATION_FAILED: 'Backend Contract 0.1.0の検証に失敗しました。データセット全体を読み込んでいません。',
+    UNSAFE_PUBLIC_PROVENANCE: '公開境界で許可されていない参照情報を検出したため、データセット全体を読み込んでいません。',
+  };
+  return [...new Set(codes)].map((code) => labels[code]);
+}
+
+function buildCompanyOptions(records: AnalysisReadyDesignRecord[]): CompanySelector[] {
+  const options = new Map<string, { selector: CompanySelector; count: number }>();
   for (const record of records) {
-    const company = record.applicant.trim();
-    if (!company) continue;
-    counts.set(company, (counts.get(company) ?? 0) + 1);
+    const seen = new Set<string>();
+    for (const membership of record.companyMemberships) {
+      if (membership.role !== 'applicant') continue;
+      const selector = companySelectorFromMembership(membership);
+      const key = companySelectorKey(selector);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const current = options.get(key);
+      options.set(key, { selector: current?.selector ?? selector, count: (current?.count ?? 0) + 1 });
+    }
   }
 
-  return [...counts.entries()]
-    .sort(([leftCompany, leftCount], [rightCompany, rightCount]) => rightCount - leftCount || leftCompany.localeCompare(rightCompany, 'ja'))
-    .slice(0, limit)
-    .map(([company]) => company);
+  return [...options.values()]
+    .sort(
+      (left, right) =>
+        right.count - left.count ||
+        left.selector.displayLabel.localeCompare(right.selector.displayLabel, 'ja') ||
+        companySelectorKey(left.selector).localeCompare(companySelectorKey(right.selector)),
+    )
+    .map(({ selector }) => selector);
 }
 
 function focusFirstValidationError(errors: ValidationErrors): void {

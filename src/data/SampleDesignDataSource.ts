@@ -1,27 +1,37 @@
 import dataset from './sample-designs.json';
+import { companySelectorMatchesMembership, type AnalysisReadyDesignRecord } from '../domain/analysisRecords';
 import type { AnalysisRequest, DesignRecord, Period, SampleDesignDataset } from '../domain/types';
+import { projectSampleDesignRecord, type ProjectedLegacyDesignRecord } from '../analysis/projectLegacyDesignRecord';
 
 const sampleDataset = dataset as SampleDesignDataset;
+const sampleAnalysisRecords = sampleDataset.records.map(projectSampleDesignRecord);
 
 export interface DesignDataSource {
-  query(req: AnalysisRequest): Promise<DesignRecord[]>;
+  query(req: AnalysisRequest): Promise<AnalysisReadyDesignRecord[]>;
   getDataAsOf(): string;
-  getAllRecords(): DesignRecord[];
+  getAllRecords(): AnalysisReadyDesignRecord[];
+  getViewRecords(): DesignRecord[];
 }
 
 export class SampleDesignDataSource implements DesignDataSource {
-  query(req: AnalysisRequest): Promise<DesignRecord[]> {
+  query(req: AnalysisRequest): Promise<ProjectedLegacyDesignRecord[]> {
     const fromDate = getPeriodStart(sampleDataset.dataAsOf, req.period);
     const productQuery = normalize(req.productDomain ?? '');
-    const companies =
+    const companySelectors =
       req.scope.mode === 'companies'
-        ? req.scope.companies.map((company) => company.trim()).filter(Boolean)
+        ? req.scope.companySelectors.filter((selector) => selector.origin === 'sample')
         : [];
 
-    const records = sampleDataset.records
+    const records = sampleAnalysisRecords
       .filter((record) => new Date(record.gazetteDate) >= fromDate)
       .filter((record) => req.designKinds.includes(record.designKind))
-      .filter((record) => companies.length === 0 || companies.includes(record.applicant))
+      .filter(
+        (record) =>
+          req.scope.mode === 'all_classes' ||
+          companySelectors.some((selector) =>
+            record.companyMemberships.some((membership) => companySelectorMatchesMembership(selector, membership)),
+          ),
+      )
       .filter((record) => (productQuery ? matchesProductDomain(record, productQuery) : true))
       .sort((left, right) => right.gazetteDate.localeCompare(left.gazetteDate));
 
@@ -32,7 +42,11 @@ export class SampleDesignDataSource implements DesignDataSource {
     return sampleDataset.dataAsOf;
   }
 
-  getAllRecords(): DesignRecord[] {
+  getAllRecords(): ProjectedLegacyDesignRecord[] {
+    return [...sampleAnalysisRecords].sort((left, right) => right.gazetteDate.localeCompare(left.gazetteDate));
+  }
+
+  getViewRecords(): DesignRecord[] {
     return [...sampleDataset.records].sort((left, right) => right.gazetteDate.localeCompare(left.gazetteDate));
   }
 }
@@ -43,7 +57,7 @@ export function getPeriodStart(dataAsOf: string, period: Period): Date {
   return start;
 }
 
-function matchesProductDomain(record: DesignRecord, query: string): boolean {
+function matchesProductDomain(record: ProjectedLegacyDesignRecord, query: string): boolean {
   const target = [
     record.businessDomain,
     record.articleName,

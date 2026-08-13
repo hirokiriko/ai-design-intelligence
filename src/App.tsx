@@ -6,12 +6,12 @@ import { Badge } from './components/common/Badge';
 import { ALL_DESIGN_KINDS, STATUS_BADGES } from './domain/labels';
 import type { AnalysisPurpose, AnalysisRequest, AnalysisResult, DesignRecord, HosoeAnalysisPack, ValidationErrors } from './domain/types';
 import {
-  companySelectorFromMembership,
   companySelectorKey,
   type AnalysisReadyDesignRecord,
   type CompanySelector,
 } from './domain/analysisRecords';
 import { validateRequest } from './domain/validation';
+import { buildCompanyOptions } from './analysis/buildCompanyOptions';
 import { normalizeLocalCompanyKey } from './analysis/projectLegacyDesignRecord';
 import { SampleDesignDataSource } from './data/SampleDesignDataSource';
 import {
@@ -463,31 +463,6 @@ function formatBackendAdapterErrors(codes: DatasetAdapterErrorCode[]): string[] 
     UNSAFE_PUBLIC_PROVENANCE: '公開境界で許可されていない参照情報を検出したため、データセット全体を読み込んでいません。',
   };
   return [...new Set(codes)].map((code) => labels[code]);
-}
-
-function buildCompanyOptions(records: AnalysisReadyDesignRecord[]): CompanySelector[] {
-  const options = new Map<string, { selector: CompanySelector; count: number }>();
-  for (const record of records) {
-    const seen = new Set<string>();
-    for (const membership of record.companyMemberships) {
-      if (membership.role !== 'applicant') continue;
-      const selector = companySelectorFromMembership(membership);
-      const key = companySelectorKey(selector);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const current = options.get(key);
-      options.set(key, { selector: current?.selector ?? selector, count: (current?.count ?? 0) + 1 });
-    }
-  }
-
-  return [...options.values()]
-    .sort(
-      (left, right) =>
-        right.count - left.count ||
-        left.selector.displayLabel.localeCompare(right.selector.displayLabel, 'ja') ||
-        companySelectorKey(left.selector).localeCompare(companySelectorKey(right.selector)),
-    )
-    .map(({ selector }) => selector);
 }
 
 function focusFirstValidationError(errors: ValidationErrors): void {

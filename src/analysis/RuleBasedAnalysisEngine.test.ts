@@ -39,6 +39,8 @@ describe('RuleBasedAnalysisEngine', () => {
 
     expect(result.market).toBeDefined();
     expect(collectMarketInsights(result.market!).every((insight) => insight.evidenceIds.length > 0)).toBe(true);
+    expect(result.market!.companyMoves.text).toContain('今回の対象データの対象');
+    expect(result.market!.companyMoves.text).not.toContain('サンプル内');
   });
 
   it('creates a market view for an industry request while keeping company scope company-only', async () => {
@@ -123,11 +125,27 @@ describe('RuleBasedAnalysisEngine', () => {
     const result = await new RuleBasedAnalysisEngine().analyze(marketRequest, records, '2026-06-24');
     const insight = result.market!.companyMoves;
 
+    expect(insight.text).toContain('今回の対象データでは');
+    expect(insight.text).not.toContain('サンプル内');
     expect(insight.text).toContain('架空テック株式会社 3件');
     expect(insight.text).not.toContain('複数領域');
     expect(insight.metric).toEqual({ label: '対象意匠数', value: 3, unit: '件', comparison: '対象1社' });
     expect(insight.evidenceIds).toEqual(['single-company-1', 'single-company-2', 'single-company-3']);
     expect(insight.metric.value).toBe(insight.evidenceIds.length);
+  });
+
+  it('uses neutral company-move wording for non-sample records', async () => {
+    const records = [
+      makeRecord('local-company-1', { applicant: '架空テック株式会社', isSample: false }),
+      makeRecord('local-company-2', { applicant: '仮想デザイン株式会社', isSample: false }),
+    ];
+    const marketRequest: AnalysisRequest = { ...request, scope: { mode: 'all_classes' } };
+
+    const result = await new RuleBasedAnalysisEngine().analyze(marketRequest, records, '2026-06-24');
+    const insight = result.market!.companyMoves;
+
+    expect(insight.text).toContain('今回の対象データの対象2社');
+    expect(insight.text).not.toContain('サンプル内');
   });
 
   it('derives emerging product names and evidence from the same top-domain records', async () => {

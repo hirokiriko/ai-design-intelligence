@@ -74,8 +74,8 @@ export class RuleBasedAnalysisEngine implements AnalysisEngine {
             companies.length === 0
               ? NO_MATCH_MESSAGE
               : companyCount === 1
-                ? `サンプル内では${companyCountSummary}の意匠が確認されました。`
-                : `サンプル内の対象${companyCount}社では、${companyCountSummary}が件数上位として確認されました。`,
+                ? `今回の対象データでは${companyCountSummary}の意匠が確認されました。`
+                : `今回の対象データの対象${companyCount}社では、${companyCountSummary}が件数上位として確認されました。`,
         metric: metric('対象意匠数', records.length, '件', `対象${companyCount}社`),
       }),
     };

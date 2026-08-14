@@ -1,6 +1,6 @@
 import { next } from '@vercel/functions';
 
-const BASIC_AUTH_REALM = 'AI Design Intelligence external verification';
+const BASIC_AUTH_REALM = 'KIRIKO Design Signals external verification';
 
 export const config = {
   matcher: ['/', '/:path*'],

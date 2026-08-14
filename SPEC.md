@@ -1,263 +1,330 @@
-# SPEC.md — AI Design Intelligence（意匠インテリジェンス）
+# SPEC.md — KIRIKO Design Signals
 
 ## 0. このドキュメントの位置づけ
-- 本書は **Codex（Coding Agent）向けの「何を作るか（プロダクト仕様）」**。
-- 「どう作るか（作業規約・技術スタック・完了条件）」は `AGENTS.md`、実装上の落とし穴は `GOTCHAS.md` を参照。
-- 出典：細江氏のコンセプト資料「AI Design Intelligence」＋ 2026年6月のメール指示。
-- ベース資産：既存の **GENBA Search**（現場のことばで探す特許検索／静的GitHub Pagesデモ）を beachhead とする想定。ただし、実装前に必ず現在のリポジトリ構成を調査し、既存構成が存在する場合はそれに合わせて拡張する。
 
----
+- 本書はCodex向けのプロダクト仕様である。
+- 作業規約、技術スタック、完了条件は `AGENTS.md`、実装上の注意は `GOTCHAS.md` を参照する。
+- リポジトリ名、Vercelプロジェクト名、ドメイン等の内部識別子は変更しない。
+- 既存のVite / React / TypeScript / Vitest構成とGitHub運用を維持する。
 
 ## 1. プロダクト概要
 
-意匠情報を活用した **「先行商品戦略・知財戦略 支援AI分析アプリ」**。
+- 製品名: **KIRIKO Design Signals**
+- 主メッセージ: **意匠情報から、市場・企業・商品化領域の先行シグナルを捉える**
 
-従来の意匠検索（＝意匠出願前の「類似する先行意匠」チェック）とは **目的が根本的に異なる**。本アプリは、案件によっては特許の出願公開より早期に把握できる可能性がある意匠情報から、競合企業の **DX商品開発動向・デザイン変化・意匠ポートフォリオ** を読み取り、**商品企画／経営企画／研究開発／デザイン／知財** の各部門の意思決定を支援する。
+意匠情報を俯瞰し、市場動向、企業動向、商品化領域、デザイン変化の検討材料を得るためのアプリである。分析結果から根拠意匠へ戻り、他の知財情報、商品情報、事業情報等と組み合わせて次の確認テーマを検討できる。
 
-- キャッチコピー：**「意匠情報を、先行商品戦略＆知財戦略へ活用」**
-- 本質：*意匠を「検索」するのではなく、意匠情報から「読む」ためのアプリ*。
+分析結果は将来予測、企業戦略の特定、法的判断、登録可能性判断、侵害判断、類否判断を行うものではない。現在のデータと選択条件から得られる参考傾向として提示する。
 
----
+## 2. スコープと恒久的な境界
 
-## 2. スコープ（依頼主＝細江氏の明確な指示。**最優先・逸脱禁止**）
-
-メールでの指示を以下の4点に固定する。Codexはこの範囲を超えて機能を勝手に拡張しないこと。
-
-1. **データソースは「意匠情報のみ」に限定する。**
-   WEB情報・プレスリリース・新聞情報・株主総会情報は、利用許諾契約など法律面が重くなるため **実装しない**。
-   → ただし UI 上には項目として**表示し、「準備中」ラベルで非活性（disabled）**にしておく（将来拡張の意思表示）。
-
-2. **「軽く・費用も安く」。**
-   静的ホスティング（GitHub Pages）で動き、ランニングコストがほぼゼロになる構成を最優先する。重いバックエンドや有料常時稼働サービスに依存しない。
-
-3. **調査期間は「直近1〜2年」に特化する。**
-   案件によっては特許の出願公開より早期に把握できる可能性がある意匠情報を活用し、最新動向の把握に振り切る。デフォルトは **直近1年**、オプションで **過去2年（トレンド分析）**。Phase 0 ではサンプルデータに設ける `dataAsOf` を基準日とし、直近1年・2年を計算する。
-
-4. **目的は「商品化戦略・出願戦略の支援」。**
-   出力は「類似意匠の列挙」ではなく、**戦略示唆（動向・変化・ポートフォリオ・知財コメント）** であること。
-
----
+1. **現在扱うデータは意匠情報に限定する。**
+   - Web、プレスリリース、新聞、株主総会、IR、商品情報、商用データベース、社内情報は未接続とする。
+   - 将来構想を示す場合は「準備中」と明示し、現在の分析入力には含めない。
+2. **軽量な静的SPAを維持する。**
+   - GitHub Pagesで動作し、常時稼働の有料バックエンドへ依存しない。
+3. **現在版はルールベース分析で完結する。**
+   - LLM呼び出し、APIキー入力、`USE_LLM` 切替は実装しない。
+4. **対象期間は直近1年または直近2年とする。**
+   - サンプルでは `dataAsOf`、ローカル検証データではデータソースの基準日を用いる。
+   - 日付フィルタは `gazetteDate` を基準にする。
+5. **結果は参考傾向と検討材料として示す。**
+   - 根拠のない示唆を表示せず、欠損値を推測・合成しない。
+6. **公開版に実データを配備しない。**
+   - 実データ配備状態は `BLOCKED_REAL_DATA_DEPLOY` とする。
+   - 本仕様では保護API、データベース、クラウド保存先を新規実装しない。
 
 ## 3. 画面仕様
 
-単一画面のSPA。上段（または左カラム）に「分析設定パネル」、下段（または右カラム）に「分析結果エリア」。日本語UI・UTF-8。
+単一画面の日本語SPAとする。PCでは設定パネルと結果エリアを並べ、狭い画面では縦積みにする。
 
-### 3.0 ヘッダー
-- アプリ名：**AI Design Intelligence**
-- サブコピー：**意匠情報を、先行商品戦略＆知財戦略へ活用**
-- 常時表示ラベル：**デモ用サンプルデータ**、**ルールベース分析**
+### 3.0 ヘッダーと冒頭
 
-### 3.1 分析設定パネル
+- 製品名: **KIRIKO Design Signals**
+- 主メッセージ: **意匠情報から、市場・企業・商品化領域の先行シグナルを捉える**
+- 次の意味を短く伝える。
+  - 意匠情報を俯瞰する。
+  - 市場動向、企業動向、商品化領域、デザイン変化の検討材料を得る。
+  - 結果から根拠意匠へ戻れる。
+  - 他の知財情報、商品情報、事業情報等と組み合わせて検討する。
+- 公開版が完全な架空サンプルであることを明示する。
+- ルールベース分析であることは注意事項または詳細設定で確認できるようにし、主メッセージより優先して表示しない。
+- 初期画面では、技術情報、データ読込、開発用設定、将来構想を折り畳む。
 
-**① 分析対象選択**
-- **分析範囲**（ラジオ：いずれか1つ）
-  - ○ **全意匠分類から分析（推奨）** … 市場全体の意匠動向／新商品領域／企業動向を分析
-  - ○ **企業指定分析（オプション）**
-    - 企業名入力（テキスト）＋「＋追加」ボタンで **複数企業を追加可能**
-    - 複数企業のときは **企業別に分析結果を表示**
-- **商品・事業領域**（テキスト）
-  - placeholder 例：`家電 / 映像機器 / AI・IoT / 医療機器 等`
+初期画面では次の表現を使わない。
 
-**② 対象期間**（ラジオ：いずれか1つ）
-- ○ **最新意匠動向（直近1年）※推奨**（デフォルト選択）
-- ○ 過去2年（トレンド分析）
-- 補足テキスト：「案件によっては特許の出願公開より早期に把握できる可能性がある意匠情報を活用するため、最新動向を重視」
+- 意匠が特許情報より一律に早いと断定する表現
+- 将来を予測できると受け取られる表現
+- 企業戦略を特定できると受け取られる表現
+- LLMまたは生成AIによる高度分析が実装済みと受け取られる表現
+- 法的判断、登録可能性判断、侵害判断、類否判断ができると受け取られる表現
 
-**③ 調査範囲**
-- **意匠情報（現在利用）** … セクション見出し ☑ **デモ用意匠情報**
-  - □ **物品意匠**（製品形状・外観デザイン）
-  - □ **画像意匠**（アプリ起動用GUI・操作表示・バーチャル空間画面等）
-  - □ **空間・内装意匠**（店舗・施設・空間デザイン等）
-  - ※少なくとも1つは選択必須
-- **企業公開情報（将来拡張）** … **全項目を非活性（disabled）＋「準備中」バッジ**
-  - ■ WEB情報（準備中）
-  - ■ 企業プレスリリース（準備中）
-  - ■ 新聞情報（準備中）
-  - ■ 株主総会情報・事業方針（準備中）
-- 補足テキスト：「現在版ではデモ用意匠情報を中心にルールベース分析」
+### 3.1 6段階の操作
 
-**④ 分析目的（複数選択可・チェックボックス）**
-- □ 市場・商品トレンド分析
-- □ 企業動向分析
-- □ 競合意匠動向
-- □ DX商品開発動向分析
-- □ デザイン変化分析
-- □ 画像意匠（UI）分析
-- □ 意匠ポートフォリオ分析
-- □ 出願戦略検討
+画面の表示順序とJSX / DOM順序を次の1から6に一致させる。CSSの `order` 等による見た目だけの並べ替えを行わない。冒頭に番号を表示する場合も、この6段階以外の番号体系を併存させない。
 
-**⑤ 出力部門選択（複数選択可・チェックボックス）**
-- □ 経営企画 / □ 商品企画 / □ 技術企画 / □ 研究開発 / □ デザイン部門 / □ 知財部門
-- ※選択部門に応じて、結果の言い回し・強調点を寄せる（例：知財部門→知財戦略コメントを厚く、デザイン部門→デザイン変化を厚く）
+#### 1. 分析対象を決める
 
-**［AI分析開始］ボタン** … 押下で結果エリアにローディング→結果表示。
+いずれか1つを選択する。
 
-**バリデーション**
-- 企業指定分析を選択している場合、企業が0件ならエラー。
-- 意匠種別が0件ならエラー。
-- 分析目的が0件ならエラー。
-- 出力部門が0件ならエラー。
-- エラーがある場合は「AI分析開始」を実行せず、該当箇所に日本語で理由を表示する。
+- **市場全体**
+- **特定業界**
+- **特定企業**
+  - 企業名入力と「＋追加」で複数企業を指定できる。
+  - データ内の企業候補からも選択できる。
 
-### 3.2 分析結果エリア
+#### 2. 見たい領域を決める
 
-選択した分析範囲で出し分ける。
+次の選択肢と、その他の自由入力を用意する。
 
-**企業別分析カード**（企業A、企業B … の単位で繰り返し）
-- **意匠動向**：最近の意匠展開領域 ／ 形状変化 ／ デザイン方向
-- **DX商品開発動向**：画像意匠の増加領域 ／ デジタルサービス展開 ／ AI・IoT関連傾向
-- **デザイン変化分析**：大型化／小型化 ／ 薄型化 ／ 操作性変化 ／ UI変化
-- **意匠ポートフォリオ分析**：集中領域 ／ 強化領域 ／ 未開拓領域
-- **AI知財戦略コメント**：
-  - 今後検討すべき **意匠保護領域**
-  - 意匠出願戦略の方向性
-  - 特許出願検討への参考情報
-  - 商標保護検討への参考情報
-  - 著作権保護検討への参考情報
-- 各分析示唆には、文章だけでなく **evidenceIds**、**metric**、**confidence** を持たせる。
-- （透明性のため）**参照した意匠ID** を併記する。
+- 家電
+- 映像機器
+- IoT
+- 医療機器
+- 住宅設備
+- モビリティ
+- その他の入力
 
-**市場全体ビュー**（「全意匠分類から分析」選択時のみ）
-- 市場・商品トレンド ／ 新商品領域 ／ 企業動向
-- 各示唆には evidenceIds、metric、confidence を持たせる。
+特定業界では領域を必須とする。市場全体と特定企業では任意に絞り込める。
 
-### 3.3 フッター（アプリの考え方）
-> 意匠を検索するだけではなく、意匠情報から企業のDX商品開発・市場変化・競合動向を読み、商品戦略・企画戦略・知財戦略へ活用するAI分析アプリ。
+#### 3. 対象となる意匠情報を決める
 
-### 3.4 注意表示（常時）
-- 出力は **デモ用サンプルデータ** と **ルールベース分析** による参考情報であり、法的助言ではない旨を画面下部に明記。
-- 画面内に **デモ用サンプルデータ**、**ルールベース分析** の表示を常設し、実データ・LLM生成と誤認されないようにする。
+- 物品意匠
+- 画像意匠
+- 空間意匠
+- 全対象
 
----
+分析目的から合理的に設定できる場合は自動設定する。利用者は必要に応じて手動変更でき、自動設定中か手動変更済みかを画面で判別できるようにする。少なくとも1種別を必須とする。
 
-## 4. データモデル（TypeScript 型として定義）
+#### 4. 対象期間を決める
 
-> 実装の中核となる型。`DesignDataSource` と `AnalysisEngine` のインターフェースは `AGENTS.md` を参照。
+- **現状把握: 直近1年**
+- **傾向把握: 直近2年**
+
+#### 5. 分析目的を選ぶ
+
+初回画面では次の平易な目的を中心に表示する。
+
+- 市場動向
+- 商品化領域
+- 企業動向
+- デザイン変化
+- 画像意匠の動向
+
+内部の詳細目的が必要な場合は詳細設定側へ置く。少なくとも1つを必須とする。
+
+出力部門は初回の必須入力にしない。分析目的から自動設定するか、詳細設定内で任意に変更できるようにする。出力部門が0件でも分析を実行できる。
+
+#### 6. 結果と根拠を確認する
+
+- 推奨デモ条件を1クリックで設定できるプリセットを用意する。
+- 任意条件へ変更できる。
+- 詳細設定を開かなくても架空サンプルによる分析を完了できる。
+- 実行ボタンは **「分析を開始」** と表示する。「AI分析開始」は表示しない。
+- 分析中の状態を表示し、完了後は結果領域へフォーカスを移す。
+
+### 3.2 バリデーション
+
+- 特定企業で企業が0件の場合はエラー。
+- 特定業界で領域が未指定の場合はエラー。
+- 意匠種別が0件の場合はエラー。
+- 分析目的が0件の場合はエラー。
+- 出力部門は必須にしない。
+- エラーがある場合は分析を実行せず、該当箇所に日本語で理由を表示してフォーカスできるようにする。
+
+### 3.3 結果画面
+
+分析完了直後は、次の順で表示する。
+
+1. **今回の分析対象意匠数**
+2. **注目トレンド**
+3. **商品化領域のヒント**
+4. **企業動向**
+5. **必要に応じたデザイン変化・画像意匠等の追加分析**
+
+各結果は次を満たす。
+
+- 断定ではなく、参考傾向・検討材料として表現する。
+- 分析対象意匠数、検出意匠数、該当意匠数等の平易な件数を表示する。
+- 件数自体をクリックすると、その結果に対応する根拠意匠一覧へ移動する。
+- 同じ目的の「確認する」「根拠意匠を見る」ボタンを重複配置しない。
+- 0件の場合は、企業、領域、期間、意匠種別を見直せる安全な案内を表示する。
+- 根拠がない示唆を表示しない。
+- `evidenceIds` は既存の `DesignRecord.id` だけを使い、表示都合で別IDを生成しない。
+- 表示した件数と、絞り込まれた根拠意匠数を一致させる。
+- `confidence` は内部の分析データとして保持できるが、ユーザー向け画面には表示しない。
+
+企業、分類、物品名、意匠種別等のランキングも件数自体を操作可能にし、対応する既存レコードIDで根拠一覧を絞り込む。
+
+### 3.4 根拠意匠一覧
+
+取得できている範囲で次を表示する。
+
+- 企業名
+- 物品名または画像の用途
+- 意匠分類
+- 登録番号
+- 出願番号
+- 公報番号
+- 公報発行日
+- 意匠種別
+- 情報源
+- 意匠の説明
+- 図面情報
+
+取得できていない値は「未取得」等として扱い、推測・合成して公式情報のように表示しない。図面画像本体や外部リンクが未接続の場合は、その状態を明示する。技術フィールド名や開発用情報は折り畳み内へ置く。
+
+### 3.5 用語
+
+| 初期画面で避ける表現 | 使用する表現 |
+| --- | --- |
+| 競合や市場の意匠 | 意匠情報 |
+| 見つける | ヒントを得る、把握する |
+| 調査範囲 | 分析対象、対象となる意匠情報、意匠種別 |
+| 公開情報 | 意匠情報 |
+| 信頼度 | ユーザー向け画面では非表示 |
+| 根拠となる数値 | 分析対象意匠数、検出意匠数、該当意匠数 |
+| 図面メタデータ | 図面情報 |
+| AI分析開始 | 分析を開始 |
+
+### 3.6 注意表示
+
+- 公開版は完全な架空サンプルである。
+- ローカル検証データはFile APIで手動選択し、ブラウザのメモリ上だけで扱う。
+- 分析方式はルールベースである。
+- 出力は参考情報であり、法的助言ではない。
+- 図面画像本体と外部リンクは未接続である。
+- 実データ配備状態は `BLOCKED_REAL_DATA_DEPLOY` である。
+
+## 4. データモデル
+
+実装上の単一の真実は `src/domain/types.ts` とする。主要な契約は次のとおり。
 
 ```ts
-type DesignKind = 'article' | 'image' | 'interior';   // 物品 / 画像 / 内装
-type Period = 'last_1y' | 'last_2y';                   // 直近1年 / 過去2年
-type AnalysisPurpose =
-  | 'market_trend' | 'company_trend' | 'competitor_design' | 'dx_dev'
-  | 'design_change' | 'ui_design' | 'portfolio' | 'filing_strategy';
-type Department =
-  | 'mgmt_planning' | 'product_planning' | 'tech_planning'
-  | 'rnd' | 'design' | 'ip';
+type DesignKind = 'article' | 'image' | 'interior';
+type Period = 'last_1y' | 'last_2y';
 
-interface SampleDesignDataset {
-  dataAsOf: string;               // サンプルデータの基準日(ISO)。直近1年/2年計算はこの日付を基準にする
-  records: DesignRecord[];
-}
-
-// 画面入力 → 分析リクエスト
 interface AnalysisRequest {
   scope:
     | { mode: 'all_classes' }
+    | { mode: 'industry'; industry: string }
     | { mode: 'companies'; companies: string[] };
-  productDomain?: string;          // 商品・事業領域（自由入力）
-  period: Period;                  // 既定: 'last_1y'
-  designKinds: DesignKind[];       // article/image/interior から1つ以上
-  purposes: AnalysisPurpose[];     // 1つ以上
-  departments: Department[];       // 1つ以上
-  // 注: WEB/プレス/新聞/株主総会は「準備中」につきリクエストに含めない
+  productDomain?: string;
+  period: Period;
+  designKinds: DesignKind[];
+  purposes: AnalysisPurpose[];
+  departments: Department[]; // 0件を許可。自動設定または詳細設定の任意項目
+  includeUnresolvedApplicants?: boolean;
 }
 
-// 意匠1件（Phase 0 はサンプルデータ。実画像は使わない）
 interface DesignRecord {
   id: string;
-  registrationNumber?: string;     // 意匠登録番号
-  applicationNumber?: string;      // 出願番号
-  gazetteNumber?: string;          // 公報番号
-  gazetteDate: string;             // 公報発行日(ISO) — 期間フィルタの対象フィールド
-  applicant: string;               // 出願人 / 企業名
-  businessDomain: string;          // 事業領域
+  sourceUpdateDate?: string;
+  registrationNumber?: string;
+  applicationNumber?: string;
+  gazetteNumber?: string;
+  gazetteDate: string;
+  applicant: string;
+  businessDomain: string;
   designKind: DesignKind;
-  articleName: string;             // 物品名 / 用途
-  designClass: string;             // 意匠分類（日本意匠分類 or ロカルノ）
-  classLabel?: string;             // 分類の和名
-  keywords: string[];              // 分析用キーワード
-  designFeatures: string[];        // 形状・UI・空間などの特徴
-  summary?: string;                // 創作の要点等（任意）
-  imageRef?: string;               // 図のプレースホルダ参照（実画像は不可）
-  sourceLabel: string;             // 例: デモ用意匠情報
-  isSample: true;                  // サンプルデータ明示フラグ（Phase 0）
-}
-
-interface InsightMetric {
-  label: string;                   // 例: 対象件数、画像意匠比率、増加件数
-  value: number;
-  unit?: string;                   // 例: 件、%
-  comparison?: string;             // 例: dataAsOf基準の直近1年
+  articleName: string;
+  designClass: string;
+  classLabel?: string;
+  keywords: string[];
+  designFeatures: string[];
+  designDescription?: string;
+  articleDescription?: string;
+  summary?: string;
+  sourceLabel: string;
+  isSample: boolean;
+  gazetteDrawingKeys?: GazetteDrawingKeys | null;
 }
 
 interface AnalysisInsight {
+  title: string;
   text: string;
-  evidenceIds: string[];           // 根拠にした DesignRecord.id
+  evidenceIds: string[];
   metric: InsightMetric;
-  confidence: 'low' | 'medium' | 'high';
-}
-
-// 分析結果
-interface CompanyAnalysis {
-  company: string;
-  designTrend:  { domains: AnalysisInsight; shapeChange: AnalysisInsight; designDirection: AnalysisInsight };
-  dxDevTrend:   { imageDesignGrowth: AnalysisInsight; digitalService: AnalysisInsight; aiIotTrend: AnalysisInsight };
-  designChange: { sizeTrend: AnalysisInsight; thinning: AnalysisInsight; usability: AnalysisInsight; uiChange: AnalysisInsight };
-  portfolio:    { focusAreas: AnalysisInsight; strengthening: AnalysisInsight; whitespace: AnalysisInsight };
-  ipStrategy: {
-    designProtectionAreas: AnalysisInsight; // 検討すべき意匠保護領域
-    designFilingDirection: AnalysisInsight; // 意匠出願戦略の方向性
-    patentReference: AnalysisInsight;       // 特許出願検討への参考
-    trademarkReference: AnalysisInsight;    // 商標保護検討への参考
-    copyrightReference: AnalysisInsight;    // 著作権保護検討への参考
-  };
-}
-
-interface MarketAnalysis {
-  trends: AnalysisInsight;
-  emergingDomains: AnalysisInsight;
-  companyMoves: AnalysisInsight;
+  confidence: 'low' | 'medium' | 'high'; // 内部用。ユーザー向けには非表示
 }
 
 interface AnalysisResult {
   request: AnalysisRequest;
   dataAsOf: string;
-  market?: MarketAnalysis;         // scope=all_classes のとき
-  companies: CompanyAnalysis[];    // scope=companies、または全分類時の主要企業
-  generatedBy: 'rules' | 'llm';
-  disclaimer: string;              // サンプル/参考情報である旨
+  market?: MarketAnalysis;
+  companies: CompanyAnalysis[];
+  generatedBy: 'rules' | 'llm'; // 現在版は常に 'rules'
+  disclaimer: string;
 }
 ```
 
----
+### evidenceIds の条件
 
-## 5. サンプルデータ要件（Phase 0）
+- 各表示件数に対応する全レコードIDを保持し、画面上の件数と根拠意匠数を一致させる。
+- 存在しないIDはローカル読込後のサニタイズで除外し、警告する。
+- メトリクスが0件または根拠IDが0件の示唆はユーザー向けに表示しない。
 
-- `src/data/sample-designs.json` に `dataAsOf` と `records` を持つ `SampleDesignDataset` を投入。
-- `dataAsOf` はサンプルデータの基準日であり、直近1年・2年の期間計算は実行日ではなく `dataAsOf` を基準にする。
-- `records` は **30〜60件**。
-- カバレッジ：3種別（物品／画像／内装）をすべて含み、例として **家電・映像機器 / AI・IoT / 医療機器** の3領域程度。
-- 企業は **3〜5社**（実在社名を避け「企業A／企業B…」等の明示サンプル名を推奨）。
-- `gazetteDate` は `dataAsOf` から見て **直近約24か月**に分布させ、期間フィルタ（1年/2年）の差が出るようにする。
-- 図（imageRef）は **実製品画像を使わない**。簡易プレースホルダ or 自作の抽象図のみ（著作権・権利関係の回避）。
-- 全レコードに `businessDomain`、`keywords`、`designFeatures`、`gazetteNumber`、`sourceLabel`、`isSample: true` を持たせる。
-- `sourceLabel` は Phase 0 では **デモ用意匠情報** とする。
+## 5. データ要件と境界
 
----
+### 5.1 公開サンプル
 
-## 6. フェーズ計画
+- `src/data/sample-designs.json` に `dataAsOf` と架空の `records` を持つ。
+- `dataAsOf` より後の日付を含めない。
+- 直近1年・2年の切替で結果が変わり、推奨プリセットが0件にならない分布にする。
+- 物品、画像、空間の3種別と、初回画面で選べる主要領域をカバーする。
+- 企業名、登録番号、出願番号、公報番号、図面情報を含む全項目を架空と明示する。
+- 実在企業名、実在番号、公報原本、実在画像、ローカルパス、埋め込み画像を含めない。
 
-- **Phase 0（今回のゴール／MVP・ルールベースデモ再構築）**
-  - 上記UIを完全実装。`SampleDesignDataSource` ＋ `RuleBasedAnalysisEngine` で **無料・オフライン・静的** に最後まで動く。
-  - Phase 0 では LLM連携、APIキー入力、`USE_LLM` による切替を実装しない。
-  - `AnalysisEngine` インターフェースだけを将来拡張点として残す。
-  - `AnalysisResult.generatedBy` は Phase 0 では常に `'rules'`。
-  - GitHub Pages にデプロイ可能な状態。完了条件は `AGENTS.md` の Definition of Done を参照。
-- **Phase 1（実データ・後日）**
-  - `JpoBulkDataSource`：特許庁の **特許情報標準データ／一括ダウンロード** から意匠公報を取り込み、分類・企業・公報発行日で横断検索可能な軽量データを生成する。
-  - Phase 1 の一括データ処理はブラウザ内で行わず、オフライン処理またはビルド処理で軽量データを生成し、静的サイトから読み込む構成にする。
-  - `JpoApiEnricher`：取得済み出願番号を **特許情報取得API**（要・利用者登録、日次アクセス上限あり）で補完する場合に検討する。
-  - 注意点・制約は `GOTCHAS.md` を参照。
-- **Phase 2（将来拡張）**
-  - WEB／プレス／新聞／株主総会のデータソース（**準備中の項目を活性化**）。利用許諾・著作権の整理が前提。
-  - LLM連携は、コスト・キー管理・利用規約・安全な出力検証の方針が固まってから検討する。
+### 5.2 ローカルJSON限定検証
+
+- 利用承認されたGit管理外JSONだけをFile APIで手動選択する。
+- ブラウザのメモリ上だけで扱い、localStorage、IndexedDB、`public`、`dist`、リポジトリへ保存しない。
+- 実値をIssue、PR、コミット、CIログ、Preview、スクリーンショットへ記載しない。
+- デモ終了後の保存・削除方針を別途確認する。
+- 公開Preview、Production、公開ビルドへ実データを含めない。
+- 実データ配備状態は `BLOCKED_REAL_DATA_DEPLOY` のままとする。
+
+## 6. 現在版と将来構想
+
+### 現在版
+
+- 架空サンプルデータによる公開デモ
+- Git管理外ローカルJSONによる限定検証
+- ルールベース分析
+- 企業、分類、物品名、意匠種別等の集計
+- 結果とランキングから根拠意匠への遷移
+- 取得済みの公報・図面情報の表示
+
+### 将来構想
+
+- LLMによる高度分析
+- プレスリリース、IR、Web商品情報との連携
+- 商用データベース、社内情報との連携
+- 図面画像の表示・高度解析
+- 継続的な自動監視
+- 承認済み実データの安全な配信方式
+
+将来構想を実装済みの機能として表示しない。着手にはデータ利用条件、著作権、費用、セキュリティ、認証、監査、運用、削除手順の合意を必要とする。
+
+## 7. 現在版で実装しないもの
+
+- Backend Contract Adapter
+- Backendリポジトリ、Contract version、API、DB migrationの変更
+- GCP、Cloud Run、Cloud SQL、Cloud Storage、IAM、secretsの変更
+- 実データのGit commit、Preview配備、Production配備
+- JPOサイトの自動取得またはスクレイピング
+- LLM分析
+- 外部情報連携
+- 図面画像配信
+- 法的判断、登録可能性判断、侵害判断、類否判断
+- リポジトリ名、Vercelプロジェクト名、ドメインの変更
+
+## 8. 5分デモ文書
+
+初回提案の標準導線は次の文書と画面を一致させる。
+
+- `docs/demo/5min-demo-guide.md`
+- `docs/demo/presentation-script.md`
+- `docs/demo/current-vs-future.md`
+
+顧客固有の名称、日程、未公開情報、実データの具体値をpublic repositoryへ記載しない。

@@ -157,6 +157,13 @@ describe('LocalJpoJsonDataSource', () => {
     const withoutUnresolved = await source.query({ ...baseRequest, includeUnresolvedApplicants: false });
     expect(withoutUnresolved.map((record) => record.id)).toEqual(['local-001']);
 
+    const industryRecords = await source.query({
+      ...baseRequest,
+      scope: { mode: 'industry', industry: '操作画面' },
+      productDomain: '操作画面',
+    });
+    expect(industryRecords.map((record) => record.id)).toEqual(['local-001']);
+
     const sampleOriginSelector = await source.query({
       ...baseRequest,
       scope: {

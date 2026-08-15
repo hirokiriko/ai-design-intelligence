@@ -19,7 +19,7 @@ describe('validateRequest', () => {
     expect(errors.companies).toBeDefined();
   });
 
-  it('requires design kinds, purposes, and departments', () => {
+  it('requires design kinds and purposes while keeping departments optional', () => {
     const errors = validateRequest({
       ...validRequest,
       designKinds: [],
@@ -29,7 +29,19 @@ describe('validateRequest', () => {
 
     expect(errors.designKinds).toBeDefined();
     expect(errors.purposes).toBeDefined();
-    expect(errors.departments).toBeDefined();
+    expect(errors.departments).toBeUndefined();
+  });
+
+  it('requires a product domain only for industry scope', () => {
+    const missingIndustry = validateRequest({
+      ...validRequest,
+      scope: { mode: 'industry', industry: '' },
+      productDomain: '',
+    });
+    const marketWide = validateRequest({ ...validRequest, scope: { mode: 'all_classes' }, productDomain: '' });
+
+    expect(missingIndustry.productDomain).toBeDefined();
+    expect(marketWide.productDomain).toBeUndefined();
   });
 });
 

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const DEFAULT_TARGET_DIRS = ['src/data', 'public', 'fixtures', 'dist'];
-export const DEFAULT_TARGETS = ['src', 'public', 'fixtures', 'dist', 'README.md', '.env.example', 'index.html'];
+export const DEFAULT_TARGETS = ['src', 'public', 'fixtures', 'dist', 'docs/demo', 'README.md', '.env.example', 'index.html'];
 const joinToken = (...parts) => parts.join('');
 const tokenPattern = (...parts) => new RegExp(joinToken(...parts).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 export const FORBIDDEN_NAME_PATTERNS = [
@@ -121,7 +121,7 @@ export function findRealDataMatches({
           }
         }
       }
-      if (isPublicBuildFile(relativePath)) {
+      if (isPublicSurfaceFile(relativePath)) {
         for (const { label, pattern } of PUBLIC_BUILD_ONLY_CONTENT_PATTERNS) {
           if (pattern.test(text)) {
             matches.push(`${relativePath} (${label})`);
@@ -138,8 +138,13 @@ function shouldSkip(relativePath) {
   return EXCLUDED_FILE_PATTERNS.some((pattern) => pattern.test(relativePath));
 }
 
-function isPublicBuildFile(relativePath) {
-  return relativePath === 'dist' || relativePath.startsWith('dist/');
+function isPublicSurfaceFile(relativePath) {
+  return (
+    relativePath === 'dist' ||
+    relativePath.startsWith('dist/') ||
+    relativePath === 'docs/demo' ||
+    relativePath.startsWith('docs/demo/')
+  );
 }
 
 function isFixtureFile(relativePath) {

@@ -10,6 +10,11 @@ import { RuleBasedAnalysisEngine } from '../../analysis/RuleBasedAnalysisEngine'
 import { projectLocalJpoDesignRecord } from '../../analysis/projectLegacyDesignRecord';
 import { loadDesignJsonText } from '../../data/DesignJsonFileLoader';
 import { ResultsArea } from './ResultsArea';
+import {
+  evidenceInteractionReducer,
+  focusEvidenceSection,
+  INITIAL_EVIDENCE_INTERACTION_STATE,
+} from './evidenceInteraction';
 
 const request: AnalysisRequest = {
   scope: { mode: 'all_classes' },
@@ -211,6 +216,42 @@ const demoShowcaseRecords: DemoShowcaseRecord[] = [
 ];
 
 describe('ResultsArea gazette drawing metadata display', () => {
+  it('filters count evidence and restores section focus after clearing the selection', () => {
+    let interaction = evidenceInteractionReducer(INITIAL_EVIDENCE_INTERACTION_STATE, {
+      type: 'select',
+      result,
+      label: '対象意匠件数',
+      ids: ['fixture-with-keys', 'fixture-with-keys', 'fixture-without-keys'],
+      highlightedId: null,
+    });
+
+    expect(interaction.selection?.ids).toEqual(['fixture-with-keys', 'fixture-without-keys']);
+    expect(interaction.expandedResult).toBe(result);
+
+    let focusCount = 0;
+    let scrollCount = 0;
+    const evidenceSection = {
+      focus: () => {
+        focusCount += 1;
+      },
+      scrollIntoView: () => {
+        scrollCount += 1;
+      },
+    } as Pick<HTMLElement, 'focus' | 'scrollIntoView'>;
+
+    focusEvidenceSection(evidenceSection, interaction.selection, interaction.restoreFocus);
+    expect({ focusCount, scrollCount }).toEqual({ focusCount: 1, scrollCount: 1 });
+
+    interaction = evidenceInteractionReducer(interaction, { type: 'clear' });
+    expect(interaction.selection).toBeNull();
+    expect(interaction.restoreFocus).toBe(true);
+
+    focusEvidenceSection(evidenceSection, interaction.selection, interaction.restoreFocus);
+    interaction = evidenceInteractionReducer(interaction, { type: 'focus_restored' });
+    expect({ focusCount, scrollCount }).toEqual({ focusCount: 2, scrollCount: 1 });
+    expect(interaction.restoreFocus).toBe(false);
+  });
+
   it('renders only allowed gazetteDrawingKeys fields and no image body, URL, or local full path', () => {
     const html = renderToStaticMarkup(
       createElement(ResultsArea, {
@@ -234,9 +275,13 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('重要な示唆');
     expect(html).toContain('データ基準日 2026-06-23');
     expect(html).toContain('ルールベース分析');
-    expect(html).toContain('信頼度：低');
+    expect(html).not.toContain('信頼度：');
     expect(html).toContain('選択した目的別の詳細分析を見る');
+    expect(html).toContain('data-testid="analysis-record-count-button"');
     expect(html.match(/data-testid="priority-insight"/g)).toHaveLength(3);
+    expect(html.match(/data-testid="priority-evidence-button"/g)).toHaveLength(3);
+    expect(html.match(/data-testid="insight-evidence-button"/g)).toHaveLength(3);
+    expect(html).toContain('tabindex="-1"');
     expect(html).not.toContain('generatedBy:');
     expect(html).toContain('公報・図面メタデータあり');
     expect(html).toContain('図面メタデータあり：2件中1件');
@@ -245,6 +290,8 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('registrationAndApplication');
     expect(html).toContain('sample-drawing-fixture-001.png');
     expect(html).toContain('sample-publication-meta-fixture-001.xml');
+    expect(html).toContain('代表候補は未選定です。');
+    expect(html).not.toContain('>いいえ</td>');
     expect(html).toContain('月次DesignRecord側のgazetteDateと公報XML側のgazetteDateが一致していません');
     expect(html).toContain('この意匠には、まだ公報・図面メタデータが接続されていません。');
     expect(html).not.toMatch(/https?:\/\//i);
@@ -313,16 +360,34 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('quarantined');
     expect(html).toContain('gazetteDate欠損');
     expect(html).toContain('意匠種別unknown');
+    expect(html).toContain('未解決applicant');
+    expect(html).toContain('未解決right holder');
     expect(html).toContain('id="evidence-kds_fixture_alpha"');
     expect(html).toContain('id="evidence-kds_fixture_gamma"');
     expect(html).not.toContain('id="evidence-kds_fixture_delta"');
     expect(html).toContain('stable id');
     expect(html).toContain('架空アルファ意匠研究所');
     expect(html).toContain('right holders');
-    expect(html).toContain('FIXTURE-SCHEME-A / FIXTURE-CLASS-A1 / 架空分類アルファ主分類 / primary');
+    expect(html).toContain('名称解決済み');
+    expect(html).toContain('名称未解決');
+    expect(html).toContain('ambiguous_match');
+    expect(html).toContain('missing_master');
+    expect(html).toContain('主分類');
+    expect(html).toContain('補助分類');
+    expect(html).toContain('data-classification-role="primary"');
+    expect(html).toContain('data-classification-role="supplemental"');
+    expect(html).toContain('FIXTURE-SCHEME-A / FIXTURE-CLASS-A1 / 架空分類アルファ主分類');
+    expect(html).toContain('quality');
+    expect(html).toContain('analysis disposition');
+    expect(html).toContain('accepted');
+    expect(html).toContain('quality notices');
     expect(html).toContain('FIXTURE-GAZETTE-ALPHA');
+    expect(html).toContain('publicationDocumentId');
+    expect(html).toContain('order 1:');
+    expect(html).toContain('代表候補');
     expect(html).toContain('publicationはnullです。別フィールドから補完していません。');
     expect(html).not.toContain('sourceRecordLocator');
+    expect(html).not.toContain('sourceDocumentRef');
     expect(html).not.toContain('FIXTURE-RUN-ALPHA');
     expect(html).not.toContain('fixture:artifact:alpha');
     expect(html).not.toContain('fixture:record:alpha');
@@ -331,6 +396,64 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).not.toMatch(/[A-Za-z]:\\/);
     expect(html).not.toMatch(/^data:/im);
     expect(html).not.toContain('<img');
+  });
+
+  it('keeps no-primary classifications supplemental and leaves all-false representative candidates unselected', () => {
+    const fixturePath = path.resolve('fixtures', 'backend-contract-v0.1.0', 'design-export-fictional.json');
+    const routed = loadDesignJsonText(fs.readFileSync(fixturePath, 'utf8'), 'design-export-fictional.json');
+    expect(routed.kind).toBe('backend_contract');
+    if (routed.kind !== 'backend_contract' || !routed.result.ok) {
+      throw new Error('The fictional Backend Contract fixture must be accepted.');
+    }
+    const template = routed.result.records.find(
+      (record) => record.adapterDisposition.status === 'accepted' && record.classifications.length > 1 && record.drawings.length > 0,
+    );
+    if (!template) throw new Error('The fixture must contain an accepted multi-classification record with drawings.');
+    const backendContract = {
+      ...routed.result,
+      records: routed.result.records.map((record) =>
+        record.id === template.id
+          ? {
+              ...record,
+              classifications: record.classifications.map((classification) => ({ ...classification, isPrimary: false })),
+              drawings: record.drawings.map((drawing) => ({ ...drawing, isRepresentativeCandidate: false })),
+            }
+          : record,
+      ),
+    };
+    const noPrimaryResult: AnalysisResult = {
+      ...result,
+      market: {
+        trends: { ...result.market!.trends, evidenceIds: [template.id], metric: { label: '対象意匠件数', value: 1, unit: '件' } },
+        emergingDomains: { ...result.market!.emergingDomains, evidenceIds: [], metric: { label: '画像意匠件数', value: 0, unit: '件' } },
+        companyMoves: { ...result.market!.companyMoves, evidenceIds: [], metric: { label: '対象企業数', value: 0, unit: '社' } },
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: noPrimaryResult,
+        analysisRecords: routed.result.analysisRecords,
+        allRecords: [],
+        backendContract,
+        dataMode: 'backend',
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: false,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+      }),
+    );
+
+    expect(html).toContain('主分類は未選定です。先頭の分類を主分類として扱っていません。');
+    expect(html.match(/data-classification-role="supplemental"/g)).toHaveLength(template.classifications.length);
+    expect(html).not.toContain('data-classification-role="primary"');
+    expect(html).toContain('代表候補は未選定です。');
+    expect(html).not.toContain('data-representative-candidate="true"');
+    expect(html).not.toContain('>いいえ</td>');
   });
 
   it('keeps valid Backend record fragments and tuple-based row identities distinct', () => {

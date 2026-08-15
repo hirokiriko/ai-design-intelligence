@@ -137,7 +137,7 @@ export class LocalJpoJsonDataSource implements DesignDataSource {
       .filter((record) => includeUnresolvedApplicants || (record.unresolvedApplicants ?? []).length === 0)
       .filter(
         (record) =>
-          req.scope.mode === 'all_classes' ||
+          req.scope.mode !== 'companies' ||
           companySelectors.some((selector) =>
             record.companyMemberships.some((membership) => companySelectorMatchesMembership(selector, membership)),
           ),

@@ -29,6 +29,7 @@ export interface SampleDesignDataset {
 export interface AnalysisRequest {
   scope:
     | { mode: 'all_classes' }
+    | { mode: 'industry'; industry: string }
     | { mode: 'companies'; companySelectors: CompanySelector[] };
   productDomain?: string;
   period: Period;
@@ -280,6 +281,7 @@ export interface AnalysisResult {
 
 export interface ValidationErrors {
   companies?: string;
+  productDomain?: string;
   designKinds?: string;
   purposes?: string;
   departments?: string;

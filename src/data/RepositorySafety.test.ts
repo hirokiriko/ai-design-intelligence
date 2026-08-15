@@ -97,6 +97,13 @@ describe('repository fixture safety', () => {
     expectFixtureScanToFail('unsafe-fixture.json', content);
   });
 
+  it('applies public-surface-only patterns to demo documentation', () => {
+    expectPublicSurfaceScanToFail(
+      path.join('docs', 'demo', 'unsafe-guide.md'),
+      ['Soft', 'Bank'].join(''),
+    );
+  });
+
   it('keeps the committed contract fixture fictional and public-safe', () => {
     const fixture = readFixture();
     const serialized = JSON.stringify(fixture);
@@ -276,6 +283,21 @@ function expectFixtureScanToFail(fileName: string, content: string): void {
   try {
     fs.mkdirSync(fixtureDirectory, { recursive: true });
     fs.writeFileSync(path.join(fixtureDirectory, fileName), content, 'utf8');
+    expect(() =>
+      execFileSync(process.execPath, [safetyScript, '--root', tempRoot], { stdio: 'pipe' }),
+    ).toThrow();
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+}
+
+function expectPublicSurfaceScanToFail(relativePath: string, content: string): void {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'repository-public-surface-safety-'));
+  const targetPath = path.join(tempRoot, relativePath);
+
+  try {
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, content, 'utf8');
     expect(() =>
       execFileSync(process.execPath, [safetyScript, '--root', tempRoot], { stdio: 'pipe' }),
     ).toThrow();

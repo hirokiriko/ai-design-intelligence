@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { RuleBasedAnalysisEngine } from './analysis/RuleBasedAnalysisEngine';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
 import { ResultsArea } from './components/ResultsArea/ResultsArea';
+import { DataUsageBanner } from './components/common/DataUsageBanner';
 import { ALL_DESIGN_KINDS } from './domain/labels';
 import type { AnalysisPurpose, AnalysisRequest, AnalysisResult, DesignRecord, HosoeAnalysisPack, ValidationErrors } from './domain/types';
 import {
@@ -311,23 +312,13 @@ export default function App() {
           </div>
         </div>
         {localJpoState.status === 'backend_loaded' ? (
-          <div className="border-t border-line bg-sky-50">
-            <div className="mx-auto max-w-7xl px-4 py-3 text-sm leading-6 text-sky-900">
-              Backend Contract 0.1.0の公開用DTOを使用中です。検証済みのanalysis-ready subsetだけをブラウザのメモリ上で分析します。
-            </div>
-          </div>
-        ) : localJpoState.status === 'loaded' ? (
-          <div className="border-t border-line bg-teal-50">
-            <div className="mx-auto max-w-7xl px-4 py-3 text-sm leading-6 text-accent">
-              ローカル検証データを使用中です。データはブラウザのメモリ上だけで扱い、公開ビルドには含めません。
-            </div>
-          </div>
+          <DataUsageBanner
+            mode="backend"
+            acceptedCount={localJpoState.adapted.summary.acceptedCount}
+            analysisCutoff={localJpoState.adapted.meta.analysisCutoff}
+          />
         ) : (
-          <div className="border-t border-amber-200 bg-amber-50">
-            <div className="mx-auto max-w-7xl px-4 py-3 text-sm leading-6 text-caution">
-              サンプルデータ版です。表示される企業・意匠情報はすべて架空で、実在企業・実在公報ではありません。
-            </div>
-          </div>
+          <DataUsageBanner mode={localJpoState.status === 'loaded' ? 'legacy' : 'sample'} />
         )}
       </header>
 

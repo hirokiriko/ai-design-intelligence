@@ -24,7 +24,31 @@ describe('App primary task flow', () => {
     expect(html).toContain('分析を開始');
     expect(html).toContain('分析すると得られること');
     expect(html).toContain('tabindex="-1"');
-    expect(html.indexOf('1. 分析対象を決める')).toBeLessThan(html.indexOf('詳細設定・データ情報'));
+    const formalStepLabels = [
+      '1. 分析対象を決める',
+      '2. 見たい領域を決める',
+      '3. 対象となる意匠情報を決める',
+      '4. 対象期間を決める',
+      '5. 分析目的を選ぶ',
+      '6. 結果と根拠を確認する',
+    ];
+    const formalStepSequence = Array.from(
+      html.matchAll(/1\. 分析対象を決める|2\. 見たい領域を決める|3\. 対象となる意匠情報を決める|4\. 対象期間を決める|5\. 分析目的を選ぶ|6\. 結果と根拠を確認する/g),
+      (match) => match[0],
+    );
+    expect(formalStepSequence).toEqual(formalStepLabels);
+    expect(html.indexOf(formalStepLabels[0])).toBeLessThan(html.indexOf('詳細設定・データ情報'));
+
+    const overviewFlow = html.match(/<ul aria-label="分析の流れ"[\s\S]*?<\/ul>/)?.[0] ?? '';
+    expect(overviewFlow).not.toBe('');
+    expect(overviewFlow).not.toMatch(/>\s*[123]\s*</);
+
+    const header = html.match(/<header\b[\s\S]*?<\/header>/)?.[0] ?? '';
+    expect(header).not.toBe('');
+    ['デモ用サンプルデータ', 'ルールベース分析', '外部データ未接続'].forEach((label) => {
+      expect(header).not.toContain(label);
+      expect(html).toContain(label);
+    });
     expect(html).not.toMatch(/<details[^>]*\bopen(?:=|>)/i);
     expect(html).not.toMatch(/https?:\/\//i);
     expect(html).not.toMatch(/[A-Za-z]:\\/);

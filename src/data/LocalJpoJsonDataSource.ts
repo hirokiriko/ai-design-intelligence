@@ -381,7 +381,7 @@ export function sanitizeAnalysisEvidenceIds(
 
   if (result.market) {
     sanitize(result.market.trends, '市場・商品トレンド');
-    sanitize(result.market.emergingDomains, '新商品領域');
+    sanitize(result.market.emergingDomains, '商品化領域のヒント');
     sanitize(result.market.companyMoves, '企業動向');
   }
 

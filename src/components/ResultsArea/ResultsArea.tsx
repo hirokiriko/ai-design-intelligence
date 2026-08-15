@@ -75,7 +75,7 @@ const DEMO_SCENARIOS: Record<DemoScenarioKind, { label: string; steps: DemoScena
     steps: [
       { label: 'データ件数を見る', href: '#overview', description: 'まず、公開サンプルまたはローカル検証データとして読み込んだ件数とデータ範囲を確認します。' },
       { label: '企業別・分類別・物品名ランキングを見る', href: '#rankings', description: '次に、公開意匠情報を企業別、分類別、物品名別に俯瞰します。' },
-      { label: 'AI分析結果を見る', href: '#ai-analysis', description: 'ルールベース参考分析で、参考傾向と検討材料を確認します。' },
+      { label: '分析結果を見る', href: '#ai-analysis', description: 'ルールベース参考分析で、参考傾向と検討材料を確認します。' },
       { label: '根拠意匠IDを開く', href: '#evidence-details', description: 'Insightから根拠となる意匠IDへ戻れることを見せます。' },
       { label: '公報・図面メタデータを見る', href: '#evidence-details', description: '一部レコードで、図面名や画像ファイル名などのメタデータを確認します。' },
     ],
@@ -177,7 +177,6 @@ export function ResultsArea({
               </p>
             ) : null}
           </div>
-          <Badge tone="accent">ルールベース分析</Badge>
         </div>
 
         {isRunning ? <p className="mt-6 rounded-md bg-slate-50 p-4 font-semibold text-muted">分析中...</p> : null}
@@ -513,7 +512,7 @@ function insightsForPurpose(result: AnalysisResult, purpose: AnalysisPurpose): P
 
   if (purpose === 'market_trend' && result.market) {
     add('市場・商品トレンド', result.market.trends);
-    add('新商品領域', result.market.emergingDomains);
+    add('商品化領域のヒント', result.market.emergingDomains);
     add('企業動向', result.market.companyMoves);
   }
 
@@ -567,7 +566,7 @@ function DemoNavigation() {
   const items = [
     ['概要', '#overview'],
     ['ランキング', '#rankings'],
-    ['AI分析結果', '#ai-analysis'],
+    ['分析結果', '#ai-analysis'],
     ['デモ候補', '#demo-candidates'],
     ['根拠意匠詳細', '#evidence-details'],
     ['注意事項', '#notices'],
@@ -605,7 +604,7 @@ function DemoReadinessPanel({
     ? '次に、公開サンプルデータの読み込み状態を確認してください。'
     : !result
       ? '次に、「分析を開始」を押してください。'
-      : 'デモ準備は整っています。ランキング、AI分析結果、デモ候補、根拠意匠詳細の順で説明できます。';
+      : 'デモ準備は整っています。ランキング、分析結果、デモ候補、根拠意匠詳細の順で説明できます。';
 
   return (
     <section className="rounded-lg border border-teal-200 bg-white p-5 shadow-soft">
@@ -806,7 +805,7 @@ function ExternalDemoGuide({
           <ol className="mt-3 space-y-2 text-sm leading-6 text-ink">
             <li>① 月次プレビューの件数を見る</li>
             <li>② 企業別・分類別・物品名別ランキングを見る</li>
-            <li>③ AI分析結果を見る</li>
+            <li>③ 分析結果を見る</li>
             <li>④ 根拠意匠IDを開く</li>
             <li>⑤ 公報・図面メタデータを見る</li>
             <li>⑥ 未接続・未解決の課題を確認する</li>
@@ -835,7 +834,7 @@ function ExternalDemoGuide({
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-ink">
             <li>公開意匠情報から、企業各社や特定他社がどの領域に着目しているか、商品開発傾向・デザイン変化・出願活動の兆候を読むための参考情報にします。</li>
             <li>企業別、分類別、物品名別に公開意匠情報を俯瞰し、検討材料として確認できます。</li>
-            <li>AI分析結果だけでなく、根拠となる意匠IDに戻れる点が特徴です。</li>
+            <li>分析結果だけでなく、根拠となる意匠IDに戻れる点が特徴です。</li>
             <li>一部の意匠では、図面名・画像ファイル名などの公報メタデータまで確認できます。</li>
             <li>社外秘情報を入力せず、公開意匠情報を主対象に分析できます。必要に応じて、特許出願公開、企業IR、プレスリリース等の一般公開情報との照合も検討できます。</li>
           </ul>
@@ -852,12 +851,14 @@ function ExternalDemoGuide({
           </ul>
         </div>
       </div>
-      <DemoSecurityPanel />
+      <DemoSecurityPanel isPublicSample={isPublicSample} />
       <ul className="mt-4 grid gap-2 text-sm leading-6 text-caution md:grid-cols-2">
         <li className="rounded-md border border-amber-200 bg-amber-50 p-3">分析結果は参考情報であり、法的助言ではありません。</li>
         <li className="rounded-md border border-amber-200 bg-amber-50 p-3">現時点では図面画像本体や外部リンクは表示していません。</li>
         <li className="rounded-md border border-amber-200 bg-amber-50 p-3">図面画像表示や外部リンクは、著作権・利用条件確認後に検討します。</li>
-        <li className="rounded-md border border-amber-200 bg-amber-50 p-3">この画面は画面共有用のローカル検証版です。</li>
+        <li className="rounded-md border border-amber-200 bg-amber-50 p-3">
+          {isPublicSample ? 'この画面は公開URL用の架空サンプルデータ版です。' : 'この画面は画面共有用のローカル検証版です。'}
+        </li>
       </ul>
     </section>
   );
@@ -871,12 +872,12 @@ function PublicSampleDemoNotice() {
   );
 }
 
-function DemoSecurityPanel() {
+function DemoSecurityPanel({ isPublicSample }: { isPublicSample: boolean }) {
   return (
     <div className="mt-4 rounded-md border border-slate-200 bg-white p-4">
       <h3 className="text-sm font-bold text-ink">セキュリティ・共有前提</h3>
       <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-ink">
-        <li>現在はローカル検証版です。</li>
+        <li>{isPublicSample ? '現在は公開URL用の架空サンプルデータ版です。' : '現在はローカル検証版です。'}</li>
         <li>実データは公開ビルドに含まれていません。</li>
         <li>先方の社外秘情報を入力する必要はありません。</li>
         <li>分析対象は公開意匠情報です。</li>
@@ -965,7 +966,7 @@ function BackendContractSummaryPanel({ contract }: { contract: BackendContractAd
         <div>
           <h2 className="text-base font-bold text-ink">Backend Contractデータ概要</h2>
           <p className="mt-1 text-sm leading-6 text-muted">
-            Contract 0.1.0をデータセット単位で検証し、受理したレコードだけを分析境界へ渡しています。
+            File APIで選択したContract 0.1.0 JSONをブラウザのメモリ上でデータセット単位に検証し、受理したレコードだけを分析境界へ渡しています。
           </p>
         </div>
         <Badge tone="accent">検証済みsafe subset</Badge>
@@ -1329,7 +1330,7 @@ function MarketView({
         onSelectEvidence={onSelectEvidence}
         insights={[
           ['市場・商品トレンド', market.trends],
-          ['新商品領域', market.emergingDomains],
+          ['商品化領域のヒント', market.emergingDomains],
           ['企業動向', market.companyMoves],
         ]}
       />
@@ -1412,7 +1413,7 @@ function CompanyView({
       ) : null}
       {purposes.includes('filing_strategy') ? (
         <ResultGroup
-          title="AI知財戦略コメント"
+          title="知財戦略の検討材料"
           allRecords={allRecords}
           externalDemoMode={externalDemoMode}
           onSelectEvidence={onSelectEvidence}
@@ -1574,7 +1575,7 @@ function InsightView({
                 <span>
                   <span className="block font-bold">図面メタデータありの根拠だけ表示</span>
                   <span className="block font-normal leading-5 text-sky-900">
-                    図面名・画像ファイル名が確認できる根拠意匠に絞ります。公開サンプル版では架空メタデータです。
+                    図面名・画像ファイル名が確認できる根拠意匠に絞ります。
                   </span>
                 </span>
               </label>

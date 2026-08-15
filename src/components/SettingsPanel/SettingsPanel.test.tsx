@@ -56,6 +56,10 @@ describe('SettingsPanel external information wording', () => {
     expect(html).toContain('分析を開始');
     expect(html).toContain('6. 結果と根拠を確認する');
     expect(html).toContain('外部データ未接続');
+    const dataDetailsIndex = html.indexOf('詳細設定・データ情報');
+    ['デモ用サンプルデータ', 'ルールベース分析', '外部データ未接続'].forEach((label) => {
+      expect(html.indexOf(label)).toBeGreaterThan(dataDetailsIndex);
+    });
     expect(html).not.toMatch(/<details[^>]*\bopen(?:=|>)/i);
     expect(html).toContain('ローカル分析パックJSONを読み込む（開発用）');
     expect(html).toContain('未読込');

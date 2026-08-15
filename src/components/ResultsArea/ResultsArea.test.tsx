@@ -274,9 +274,11 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('今回わかったこと');
     expect(html).toContain('重要な示唆');
     expect(html).toContain('データ基準日 2026-06-23');
-    expect(html).toContain('ルールベース分析');
+    expect(html).not.toContain('ルールベース分析');
     expect(html).not.toContain('信頼度：');
     expect(html).toContain('選択した目的別の詳細分析を見る');
+    expect(html).toContain('商品化領域のヒント');
+    expect(html).not.toContain('新商品領域');
     expect(html).toContain('data-testid="analysis-record-count-button"');
     expect(html.match(/data-testid="priority-insight"/g)).toHaveLength(3);
     expect(html.match(/data-testid="priority-evidence-button"/g)).toHaveLength(3);
@@ -349,6 +351,12 @@ describe('ResultsArea gazette drawing metadata display', () => {
     );
 
     expect(html).toContain('Backend Contractデータ概要');
+    expect(html).toContain('File APIで選択したContract 0.1.0 JSONをブラウザのメモリ上でデータセット単位に検証');
+    expect(html).not.toContain('現在は公開URL用の架空サンプルデータ版です。');
+    expect(html).not.toContain('この画面は公開URL用の架空サンプルデータ版です。');
+    expect(html).not.toContain('現在はローカル検証版です。');
+    expect(html).not.toContain('この画面は画面共有用のローカル検証版です。');
+    expect(html).not.toContain('公開サンプル版では架空メタデータです。');
     expect(html).toContain('contract version');
     expect(html).toContain('0.1.0');
     expect(html).toContain('analysis cutoff');
@@ -573,6 +581,11 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('実データ検証版の到達点');
     expect(html).toContain('現在の未接続・改善予定');
     expect(html).toContain('セキュリティ・共有前提');
+    expect(html).toContain('現在はローカル検証版です。');
+    expect(html).toContain('この画面は画面共有用のローカル検証版です。');
+    expect(html).not.toContain('現在は公開URL用の架空サンプルデータ版です。');
+    expect(html).not.toContain('この画面は公開URL用の架空サンプルデータ版です。');
+    expect(html).not.toContain('公開サンプル版では架空メタデータです。');
     expect(html).toContain('先方の社外秘情報を入力する必要はありません。');
     expect(html).toContain('商用導入時は、社内環境・閉域環境・セキュアなクラウド構成を相談可能です。');
     expect(html).toContain('デモナビ');
@@ -639,6 +652,13 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('公開サンプルデータから自動抽出した、架空メタデータを説明しやすい意匠です。');
     expect(html).toContain('公開URL版のデータは架空データで、実在企業・実在公報ではありません。');
     expect(html).toContain('セキュリティ・共有前提');
+    expect(html).toContain('現在は公開URL用の架空サンプルデータ版です。');
+    expect(html).toContain('この画面は公開URL用の架空サンプルデータ版です。');
+    expect(html).not.toContain('現在はローカル検証版です。');
+    expect(html).not.toContain('この画面は画面共有用のローカル検証版です。');
+    ['AI分析結果を見る', 'AI分析結果', 'AI分析結果だけでなく', 'AI知財戦略コメント'].forEach((phrase) => {
+      expect(html).not.toContain(phrase);
+    });
     expect(html).not.toContain('細江');
     expect(html).not.toContain('6社比較ビュー');
     expect(html).not.toContain('Soft' + 'Bank');
@@ -667,7 +687,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         mode: 'companies',
         companySelectors: [companySelectorFromMembership(legacyAnalysisRecords[0].companyMemberships[0])],
       },
-      purposes: ['dx_dev'],
+      purposes: ['dx_dev', 'filing_strategy'],
     };
     const purposeResult = await new RuleBasedAnalysisEngine().analyze(
       purposeRequest,
@@ -677,6 +697,8 @@ describe('ResultsArea gazette drawing metadata display', () => {
     const company = purposeResult.companies[0];
     company.designTrend.domains.evidenceIds = ['fixture-without-keys'];
     company.designTrend.domains.metric.value = 1;
+    company.dxDevTrend.aiIotTrend.evidenceIds = ['fixture-with-keys'];
+    company.dxDevTrend.aiIotTrend.metric.value = 1;
 
     const html = renderToStaticMarkup(
       createElement(ResultsArea, {
@@ -697,6 +719,8 @@ describe('ResultsArea gazette drawing metadata display', () => {
     );
 
     expect(html).toContain('DX商品開発動向');
+    expect(html).toContain('AI・IoT関連傾向');
+    expect(html).toContain('知財戦略の検討材料');
     expect(html).not.toContain('意匠ポートフォリオ分析');
     expect(html).not.toContain('AI知財戦略コメント');
     expect(html).toContain('id="evidence-fixture-with-keys"');

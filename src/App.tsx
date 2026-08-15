@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { RuleBasedAnalysisEngine } from './analysis/RuleBasedAnalysisEngine';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
 import { ResultsArea } from './components/ResultsArea/ResultsArea';
-import { Badge } from './components/common/Badge';
-import { ALL_DESIGN_KINDS, STATUS_BADGES } from './domain/labels';
+import { ALL_DESIGN_KINDS } from './domain/labels';
 import type { AnalysisPurpose, AnalysisRequest, AnalysisResult, DesignRecord, HosoeAnalysisPack, ValidationErrors } from './domain/types';
 import {
   companySelectorKey,
@@ -103,12 +102,6 @@ export default function App() {
     [dataSource, localJpoState.status],
   );
   const companyOptions = useMemo(() => buildCompanyOptions(allAnalysisRecords), [allAnalysisRecords]);
-  const headerBadges =
-    localJpoState.status === 'backend_loaded'
-      ? ['Backend Contract 0.1.0', 'ルールベース分析', 'File API読込']
-      : localJpoState.status === 'loaded'
-        ? ['ローカル実データJSON（開発用）', 'ルールベース分析', 'File API読込']
-        : STATUS_BADGES;
 
   useEffect(() => {
     if (!ENABLE_LOCAL_ANALYSIS_PACK) return;
@@ -311,17 +304,10 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="border-b border-line bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mx-auto max-w-7xl px-4 py-4">
           <div>
             <h1 className="text-2xl font-bold tracking-normal text-ink">KIRIKO Design Signals</h1>
             <p className="mt-1 text-sm text-muted">意匠情報から、市場・企業・商品化領域の先行シグナルを捉える</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {headerBadges.map((badge, index) => (
-              <Badge key={badge} tone={index === 1 ? 'accent' : index === 2 ? 'warning' : 'neutral'}>
-                {badge}
-              </Badge>
-            ))}
           </div>
         </div>
         {localJpoState.status === 'backend_loaded' ? (
@@ -356,20 +342,20 @@ export default function App() {
               意匠情報を俯瞰し、市場動向・企業動向・商品化領域・デザイン変化の検討材料を得ます。結果の件数から根拠意匠へ戻り、他の知財情報、商品情報、事業情報等と組み合わせて検討できます。
             </p>
           </div>
-          <ol aria-label="分析の流れ" className="grid gap-3 rounded-xl border border-teal-200 bg-white p-4 shadow-soft sm:grid-cols-3 lg:grid-cols-1">
+          <ul aria-label="分析の流れ" className="grid gap-3 rounded-xl border border-teal-200 bg-white p-4 shadow-soft sm:grid-cols-3 lg:grid-cols-1">
             <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">1</span>
+              <span aria-hidden="true" className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
               <div><strong className="block text-sm text-ink">対象を決める</strong><span className="text-xs leading-5 text-muted">市場・業界・企業を選択</span></div>
             </li>
             <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">2</span>
+              <span aria-hidden="true" className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
               <div><strong className="block text-sm text-ink">見たい領域を決める</strong><span className="text-xs leading-5 text-muted">領域・意匠情報・期間を設定</span></div>
             </li>
             <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">3</span>
+              <span aria-hidden="true" className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
               <div><strong className="block text-sm text-ink">結果と根拠を確認する</strong><span className="text-xs leading-5 text-muted">件数から該当する根拠意匠へ</span></div>
             </li>
-          </ol>
+          </ul>
         </div>
       </section>
 

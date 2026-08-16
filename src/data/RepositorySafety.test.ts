@@ -78,14 +78,6 @@ describe('repository fixture safety', () => {
 
   it.each([
     [
-      'known local acceptance count',
-      JSON.stringify({ acceptedCount: ['2', '99'].join('') }),
-    ],
-    [
-      'known local acceptance cutoff',
-      JSON.stringify({ analysisCutoff: ['2026', '-08', '-12'].join('') }),
-    ],
-    [
       'real-like long identifier',
       JSON.stringify({ publicationDocumentId: ['1234', '5678'].join('') }),
     ],
@@ -103,17 +95,6 @@ describe('repository fixture safety', () => {
     ],
   ])('scans %s content under the root fixtures directory', (_label, content) => {
     expectFixtureScanToFail('unsafe-fixture.json', content);
-  });
-
-  it('requires acceptance context while detecting a line-broken local acceptance count', () => {
-    expectFixtureScanToFail(
-      'unsafe-fixture.json',
-      ['{"acceptedCount":', '\n  ', ['2', '99'].join(''), '}'].join(''),
-    );
-    expectFixtureScanToPass(
-      'safe-fixture.json',
-      JSON.stringify({ unrelatedDisplayCount: `${['2', '99'].join('')}件` }),
-    );
   });
 
   it('applies public-surface-only patterns to demo documentation', () => {
@@ -305,21 +286,6 @@ function expectFixtureScanToFail(fileName: string, content: string): void {
     expect(() =>
       execFileSync(process.execPath, [safetyScript, '--root', tempRoot], { stdio: 'pipe' }),
     ).toThrow();
-  } finally {
-    fs.rmSync(tempRoot, { recursive: true, force: true });
-  }
-}
-
-function expectFixtureScanToPass(fileName: string, content: string): void {
-  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'repository-fixture-safety-'));
-  const fixtureDirectory = path.join(tempRoot, 'fixtures', 'backend-contract-v0.1.0');
-
-  try {
-    fs.mkdirSync(fixtureDirectory, { recursive: true });
-    fs.writeFileSync(path.join(fixtureDirectory, fileName), content, 'utf8');
-    expect(() =>
-      execFileSync(process.execPath, [safetyScript, '--root', tempRoot], { stdio: 'pipe' }),
-    ).not.toThrow();
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }

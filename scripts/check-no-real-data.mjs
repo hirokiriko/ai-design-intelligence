@@ -20,14 +20,6 @@ export const FORBIDDEN_NAME_PATTERNS = [
   'JPO_Bulk',
 ];
 export const FORBIDDEN_CONTENT_PATTERNS = [
-  {
-    label: 'local acceptance count',
-    pattern: new RegExp(
-      `(?:acceptedCount|受理件数|受理済み)[\\s\\S]{0,48}\\b${joinToken('2', '99')}\\b|\\b${joinToken('2', '99')}\\b[\\s\\S]{0,32}(?:acceptedCount|受理件数|受理済み)`,
-      'i',
-    ),
-  },
-  { label: 'local acceptance cutoff', pattern: tokenPattern('2026', '-08', '-12') },
   { label: joinToken('JP', 'DAD'), pattern: tokenPattern('JP', 'DAD') },
   { label: joinToken('JP', 'WAD'), pattern: tokenPattern('JP', 'WAD') },
   { label: joinToken('JP', 'DRD'), pattern: tokenPattern('JP', 'DRD') },

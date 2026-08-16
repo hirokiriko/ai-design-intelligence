@@ -1,11 +1,13 @@
 import type { AnalysisRequest } from './types';
 
 export interface DemoPreset {
-  id: 'market' | 'image';
+  id: 'market' | 'image' | 'backend_all';
   label: string;
   description: string;
   request: AnalysisRequest;
 }
+
+export type DemoPresetDataMode = 'sample' | 'legacy' | 'backend';
 
 export const DEMO_PRESETS: DemoPreset[] = [
   {
@@ -37,3 +39,60 @@ export const DEMO_PRESETS: DemoPreset[] = [
     },
   },
 ];
+
+export const BACKEND_CONTRACT_DEMO_PRESET: DemoPreset = {
+  id: 'backend_all',
+  label: 'Backend推奨：受理レコード全体',
+  description: '商品・事業領域を固定せず、直近2年の受理レコードを把握',
+  request: {
+    scope: { mode: 'all_classes' },
+    productDomain: '',
+    designKinds: ['article', 'image', 'interior'],
+    period: 'last_2y',
+    purposes: ['market_trend', 'competitor_design'],
+    departments: ['mgmt_planning', 'product_planning'],
+    includeUnresolvedApplicants: true,
+  },
+};
+
+export function getDemoPresetsForDataMode(dataMode: DemoPresetDataMode): readonly DemoPreset[] {
+  return dataMode === 'backend' ? [BACKEND_CONTRACT_DEMO_PRESET] : DEMO_PRESETS;
+}
+
+export function createDemoPresetRequest(preset: DemoPreset): AnalysisRequest {
+  return {
+    ...preset.request,
+    scope: cloneScope(preset.request.scope),
+    designKinds: [...preset.request.designKinds],
+    purposes: [...preset.request.purposes],
+    departments: [...preset.request.departments],
+  };
+}
+
+export function createBackendContractDemoRequest(): AnalysisRequest {
+  return createDemoPresetRequest(BACKEND_CONTRACT_DEMO_PRESET);
+}
+
+export function createRequestForDataMode(
+  currentRequest: AnalysisRequest,
+  dataMode: DemoPresetDataMode,
+): AnalysisRequest {
+  return dataMode === 'backend'
+    ? createBackendContractDemoRequest()
+    : { ...currentRequest, scope: { mode: 'all_classes' } };
+}
+
+export function clearProductDomainFilter(request: AnalysisRequest): AnalysisRequest {
+  return {
+    ...request,
+    productDomain: '',
+    scope: request.scope.mode === 'industry' ? { mode: 'all_classes' } : cloneScope(request.scope),
+  };
+}
+
+function cloneScope(scope: AnalysisRequest['scope']): AnalysisRequest['scope'] {
+  if (scope.mode === 'companies') {
+    return { mode: 'companies', companySelectors: [...scope.companySelectors] };
+  }
+  return { ...scope };
+}

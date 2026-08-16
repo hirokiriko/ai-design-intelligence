@@ -11,6 +11,7 @@ export interface EvidenceInteractionState {
   selection: EvidenceSelection | null;
   expandedResult: AnalysisResult | null;
   restoreFocus: boolean;
+  listRevision: number;
 }
 
 export type EvidenceInteractionAction =
@@ -30,6 +31,7 @@ export const INITIAL_EVIDENCE_INTERACTION_STATE: EvidenceInteractionState = {
   selection: null,
   expandedResult: null,
   restoreFocus: false,
+  listRevision: 0,
 };
 
 export function evidenceInteractionReducer(
@@ -43,9 +45,14 @@ export function evidenceInteractionReducer(
         selection: { result: action.result, label: action.label, ids: [...new Set(action.ids)] },
         expandedResult: action.result,
         restoreFocus: false,
+        listRevision: state.listRevision + 1,
       };
     case 'clear':
-      return { ...state, highlightedEvidenceId: null, selection: null, restoreFocus: true };
+      return {
+        ...INITIAL_EVIDENCE_INTERACTION_STATE,
+        restoreFocus: true,
+        listRevision: state.listRevision + 1,
+      };
     case 'toggle_expanded':
       return { ...state, expandedResult: state.expandedResult === action.result ? null : action.result };
     case 'focus_restored':
@@ -60,5 +67,5 @@ export function focusEvidenceSection(
 ): void {
   if (!activeSelection && !restoreFocus) return;
   section?.focus({ preventScroll: true });
-  if (activeSelection) section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  section?.scrollIntoView({ behavior: activeSelection ? 'smooth' : 'auto', block: 'start' });
 }

@@ -58,6 +58,9 @@ describe('SettingsPanel external information wording', () => {
 
     expect(html).toContain('詳細設定・データ情報');
     expect(html).toContain('分析条件を決める');
+    expect(html).toContain('プリセットA：家電・映像機器');
+    expect(html).toContain('プリセットB：画像意匠');
+    expect(html).not.toContain('Backend推奨：受理レコード全体');
     expect(html).toContain('分析を開始');
     expect(html).toContain('6. 結果と根拠を確認する');
     expect(html).toContain('外部データ未接続');
@@ -164,6 +167,10 @@ describe('SettingsPanel external information wording', () => {
     expect(approvalControl(approvedHtml)).toContain('checked=""');
 
     for (const html of [fictionalHtml, unclassifiedHtml, approvedHtml]) {
+      expect(html).toContain('Backend推奨：受理レコード全体');
+      expect(html).toContain('商品・事業領域を固定せず、直近2年の受理レコードを把握');
+      expect(html).not.toContain('プリセットA：家電・映像機器');
+      expect(html).not.toContain('プリセットB：画像意匠');
       expect(html).toContain('ローカルJSONを読み込む');
       expect(html).not.toContain('ローカル実データJSONを読み込む');
     }

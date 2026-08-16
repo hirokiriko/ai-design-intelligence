@@ -17,7 +17,11 @@ import type { DemoShowcaseLoadFailure, DemoShowcaseLoadSuccess } from '../../dat
 import type { HosoeAnalysisPackLoadFailure, HosoeAnalysisPackLoadSuccess } from '../../data/HosoeAnalysisPackDataSource';
 import type { BackendContractAdapterSuccess } from '../../data/BackendContractDataSource';
 import type { BackendContractDataClassification } from '../../data/BackendContractDataClassification';
-import { DEMO_PRESETS } from '../../domain/presets';
+import {
+  createDemoPresetRequest,
+  getDemoPresetsForDataMode,
+  type DemoPreset,
+} from '../../domain/presets';
 import { getDesignKindSelectionStatus, resolveDesignKinds } from '../../domain/selection';
 import { Badge } from '../common/Badge';
 
@@ -104,6 +108,7 @@ export function SettingsPanel({
   const selectedCompanyKeys = new Set(companySelectors.map(companySelectorKey));
   const availableCompanyOptions = companyOptions.filter((company) => !selectedCompanyKeys.has(companySelectorKey(company)));
   const [designKindsManuallyChanged, setDesignKindsManuallyChanged] = useState(false);
+  const demoPresets = getDemoPresetsForDataMode(localJpoState.status === 'backend_loaded' ? 'backend' : 'sample');
 
   const changeProductDomain = (productDomain: string) => {
     onRequestChange({
@@ -123,10 +128,9 @@ export function SettingsPanel({
     });
   };
 
-  const applyPreset = (preset: 'market' | 'image') => {
+  const applyPreset = (preset: DemoPreset) => {
     setDesignKindsManuallyChanged(false);
-    const selectedPreset = DEMO_PRESETS.find((candidate) => candidate.id === preset);
-    if (selectedPreset) onRequestChange({ ...selectedPreset.request });
+    onRequestChange(createDemoPresetRequest(preset));
   };
 
   return (
@@ -144,12 +148,12 @@ export function SettingsPanel({
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {DEMO_PRESETS.map((preset) => (
+          {demoPresets.map((preset) => (
             <button
               key={preset.id}
               type="button"
-              className={`rounded-lg border p-3 text-left text-sm ${preset.id === 'market' ? 'border-teal-200 bg-teal-50' : 'border-sky-200 bg-sky-50'}`}
-              onClick={() => applyPreset(preset.id)}
+              className={`rounded-lg border p-3 text-left text-sm ${preset.id === 'image' ? 'border-sky-200 bg-sky-50' : 'border-teal-200 bg-teal-50'}`}
+              onClick={() => applyPreset(preset)}
             >
               <span className="block font-bold text-ink">{preset.label}</span>
               <span className="mt-1 block leading-5 text-muted">{preset.description}</span>
@@ -296,6 +300,7 @@ export function SettingsPanel({
             <label className="mt-3 block text-sm font-semibold text-ink">
               その他の領域を入力
               <input
+                id="product-domain-input"
                 className="mt-2 w-full rounded-md border border-line px-3 py-2"
                 value={request.productDomain ?? ''}
                 placeholder="例：ウェアラブル機器"

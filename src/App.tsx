@@ -11,6 +11,7 @@ import {
   type CompanySelector,
 } from './domain/analysisRecords';
 import { validateRequest } from './domain/validation';
+import { clearProductDomainFilter, createRequestForDataMode } from './domain/presets';
 import { buildCompanyOptions } from './analysis/buildCompanyOptions';
 import { normalizeLocalCompanyKey } from './analysis/projectLegacyDesignRecord';
 import { SampleDesignDataSource } from './data/SampleDesignDataSource';
@@ -135,6 +136,17 @@ export default function App() {
     setAnalysisWarnings([]);
   };
 
+  const clearProductDomain = () => {
+    setRequest((current) => clearProductDomainFilter(current));
+    setErrors({});
+    clearAnalysisResult();
+    window.requestAnimationFrame(() => {
+      const input = document.getElementById('product-domain-input');
+      input?.focus({ preventScroll: true });
+      input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
+
   const addCompany = (suggestedSelectorKey?: string) => {
     const inputLabel = companyInput.trim();
     const option = suggestedSelectorKey
@@ -209,6 +221,7 @@ export default function App() {
   const handleLocalJsonFile = async (file: File | null) => {
     if (!file) return;
 
+    setErrors({});
     setResult(null);
     setAnalysisRecords([]);
     setAnalysisWarnings([]);
@@ -251,7 +264,13 @@ export default function App() {
         },
       });
     }
-    setRequest((current) => ({ ...current, scope: { mode: 'all_classes' } }));
+    const loadedDataMode =
+      routed.kind === 'backend_contract' && routed.result.ok
+        ? 'backend'
+        : routed.kind === 'legacy' && routed.result.ok
+          ? 'legacy'
+          : 'sample';
+    setRequest((current) => createRequestForDataMode(current, loadedDataMode));
     setCompanyInput('');
   };
 
@@ -373,6 +392,7 @@ export default function App() {
 
       <div className="mx-auto grid max-w-7xl gap-5 px-4 py-6 lg:grid-cols-[410px_minmax(0,1fr)] lg:items-start">
         <SettingsPanel
+          key={dataMode}
           request={request}
           companyInput={companyInput}
           companyOptions={companyOptions}
@@ -423,6 +443,7 @@ export default function App() {
             analysisWarnings={analysisWarnings}
             externalDemoMode={externalDemoMode}
             demoShowcaseRecords={demoShowcaseState.status === 'loaded' ? demoShowcaseState.load.records : []}
+            onClearProductDomain={clearProductDomain}
             localAnalysisPackPanel={
               ENABLE_LOCAL_ANALYSIS_PACK && hosoeAnalysisPackState.status === 'loaded' && LocalAnalysisPackPanel ? (
                 <LocalAnalysisPackPanel pack={hosoeAnalysisPackState.load.pack} />

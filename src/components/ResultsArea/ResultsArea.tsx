@@ -37,6 +37,7 @@ interface ResultsAreaProps {
   externalDemoMode: boolean;
   demoShowcaseRecords: DemoShowcaseRecord[];
   localAnalysisPackPanel: ReactNode | null;
+  onClearProductDomain: () => void;
 }
 
 type DemoScenarioKind = 'three_min' | 'ten_min';
@@ -68,6 +69,7 @@ type EvidenceRecordItem =
   | { kind: 'backend'; record: BackendRecordViewModel };
 
 const INITIAL_EVIDENCE_LIMIT = 8;
+const INITIAL_DRAWING_LIMIT = 3;
 
 const DEMO_SCENARIOS: Record<DemoScenarioKind, { label: string; steps: DemoScenarioStep[] }> = {
   three_min: {
@@ -109,6 +111,7 @@ export function ResultsArea({
   externalDemoMode,
   demoShowcaseRecords,
   localAnalysisPackPanel,
+  onClearProductDomain,
 }: ResultsAreaProps) {
   const [presenterMode, setPresenterMode] = useState(true);
   const [demoScenario, setDemoScenario] = useState<DemoScenarioKind>('three_min');
@@ -118,7 +121,12 @@ export function ResultsArea({
     INITIAL_EVIDENCE_INTERACTION_STATE,
   );
   const evidenceSectionRef = useRef<HTMLElement>(null);
-  const { highlightedEvidenceId, selection: evidenceSelection, expandedResult: expandedEvidenceResult } = evidenceInteraction;
+  const {
+    highlightedEvidenceId,
+    selection: evidenceSelection,
+    expandedResult: expandedEvidenceResult,
+    listRevision,
+  } = evidenceInteraction;
   const activeScenario = DEMO_SCENARIOS[demoScenario];
   const activeStepIndex = Math.min(presenterStepIndex, activeScenario.steps.length - 1);
   const isPresenterMode = externalDemoMode && presenterMode;
@@ -181,7 +189,14 @@ export function ResultsArea({
 
         {isRunning ? <p className="mt-6 rounded-md bg-slate-50 p-4 font-semibold text-muted">分析中...</p> : null}
         {!isRunning && !result ? <AnalysisStartGuide /> : null}
-        {result ? <ExecutiveSummary result={result} records={analysisRecords} onSelectEvidence={selectEvidence} /> : null}
+        {result ? (
+          <ExecutiveSummary
+            result={result}
+            records={analysisRecords}
+            onSelectEvidence={selectEvidence}
+            onClearProductDomain={onClearProductDomain}
+          />
+        ) : null}
 
         {result ? (
           <details className="mt-6 rounded-lg border border-line bg-panel p-4">
@@ -241,21 +256,35 @@ export function ResultsArea({
         <section
           ref={evidenceSectionRef}
           id="evidence-details"
+          aria-labelledby="evidence-details-heading"
           className="scroll-mt-6 rounded-lg border border-line bg-white p-5 shadow-soft focus:outline-none"
           tabIndex={-1}
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-ink">根拠意匠を確認</h2>
+              <h2 id="evidence-details-heading" className="text-base font-bold text-ink">根拠意匠を確認</h2>
               <p className="mt-1 text-sm text-muted" role="status" aria-live="polite">
                 {activeEvidenceSelection
-                  ? `「${activeEvidenceSelection.label}」に対応する根拠意匠${evidenceRecords.length}件に絞り込んでいます。`
-                  : `分析結果の根拠となった意匠${evidenceRecords.length}件を表示しています。`}
+                  ? `「${activeEvidenceSelection.label}」の対象となる根拠意匠${evidenceRecords.length}件を表示しています。`
+                  : evidenceRecords.length > INITIAL_EVIDENCE_LIMIT
+                    ? `分析結果全体の根拠意匠${evidenceRecords.length}件／まず先頭${INITIAL_EVIDENCE_LIMIT}件を表示しています。`
+                    : `分析結果全体の根拠意匠${evidenceRecords.length}件を表示しています。`}
               </p>
             </div>
-            <Badge tone="accent">{evidenceRecords.length}件</Badge>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Badge tone="accent">{evidenceRecords.length}件</Badge>
+              {activeEvidenceSelection ? (
+                <button
+                  type="button"
+                  className="rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  onClick={clearEvidenceSelection}
+                >
+                  根拠意匠の絞り込みを解除
+                </button>
+              ) : null}
+            </div>
           </div>
-          <div className="mt-4 grid gap-3">
+          <div key={listRevision} className="mt-4 grid gap-3" data-testid="evidence-record-list">
             {visibleEvidenceRecords.map((item) =>
               item.kind === 'backend' ? (
                 <BackendEvidenceRecord key={item.record.id} record={item.record} forceOpen={highlightedEvidenceId === item.record.id} />
@@ -270,15 +299,6 @@ export function ResultsArea({
               ),
             )}
           </div>
-          {activeEvidenceSelection ? (
-            <button
-              type="button"
-              className="mt-3 rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-ink"
-              onClick={clearEvidenceSelection}
-            >
-              絞り込みを解除
-            </button>
-          ) : null}
           {!activeEvidenceSelection && evidenceRecords.length > INITIAL_EVIDENCE_LIMIT ? (
             <button
               type="button"
@@ -394,18 +414,31 @@ function ExecutiveSummary({
   result,
   records,
   onSelectEvidence,
+  onClearProductDomain,
 }: {
   result: AnalysisResult;
   records: AnalysisReadyDesignRecord[];
   onSelectEvidence: (label: string, ids: string[]) => void;
+  onClearProductDomain: () => void;
 }) {
   const priorityInsights = buildPrimaryInsights(result);
   const acceptedIds = new Set(records.map((record) => record.id));
   if (records.length === 0 || priorityInsights.length === 0) {
     return (
-      <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-caution" role="status">
-        <p className="font-bold">{records.length === 0 ? 'この条件に一致する意匠はありません。' : '根拠付きの示唆を表示できませんでした。'}</p>
-        <p className="mt-1">企業名、商品・事業領域、期間、意匠種別を見直して、もう一度分析してください。</p>
+      <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-caution">
+        <div role="status">
+          <p className="font-bold">{records.length === 0 ? 'この条件に一致する意匠はありません。' : '根拠付きの示唆を表示できませんでした。'}</p>
+          <p className="mt-1">企業名、商品・事業領域、期間、意匠種別を見直して、もう一度分析してください。</p>
+        </div>
+        {records.length === 0 && result.request.productDomain?.trim() ? (
+          <button
+            type="button"
+            className="mt-3 rounded-md border border-amber-300 bg-white px-3 py-2 font-semibold text-caution focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            onClick={onClearProductDomain}
+          >
+            商品・事業領域の指定を解除
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -1602,11 +1635,16 @@ function BackendEvidenceRecord({
   record: BackendRecordViewModel;
   forceOpen: boolean;
 }) {
-  const applicantLabel = backendPartyListValue(record.applicants);
-  const rightHolderLabel = backendPartyListValue(record.rightHolders);
+  const applicantLabel = backendPartyNameListValue(record.applicants);
+  const rightHolderLabel = backendPartyNameListValue(record.rightHolders);
+  const companyLabel = applicantLabel !== '-' ? applicantLabel : rightHolderLabel;
   const designTypeLabel = record.designType === 'unknown' ? '不明' : DESIGN_KIND_LABELS[record.designType];
   const hasPrimaryClassification = record.classifications.some((classification) => classification.isPrimary);
   const hasRepresentativeCandidate = record.drawings.some((drawing) => drawing.isRepresentativeCandidate);
+  const customerClassificationLabel = backendCustomerClassificationValue(record.classifications);
+  const visibleDrawings = record.drawings.slice(0, INITIAL_DRAWING_LIMIT);
+  const remainingDrawings = record.drawings.slice(INITIAL_DRAWING_LIMIT);
+  const description = record.description ?? record.articleDescription ?? '-';
 
   return (
     <details id={evidenceDomId(record.id)} className="scroll-mt-24 rounded-md border border-sky-200 bg-sky-50/40 p-4" open={forceOpen || undefined}>
@@ -1614,123 +1652,172 @@ function BackendEvidenceRecord({
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h3 className="readable-text font-bold text-ink">
-              {record.id} / {record.articleName ?? '物品名未設定'}
+              {record.articleName ?? '物品名・画像の用途 未取得'}
             </h3>
             <p className="readable-text mt-1 text-sm text-muted">
-              {applicantLabel} / {designTypeLabel}
+              {companyLabel} / {designTypeLabel}
             </p>
           </div>
-          <Badge tone={record.quality.state === 'pass' ? 'accent' : 'warning'}>{record.quality.state}</Badge>
         </div>
       </summary>
       <div className="mt-4 space-y-3">
-        <section className="rounded-md border border-line bg-white p-4">
-          <h4 className="text-sm font-bold text-ink">基本情報</h4>
+        <section className="rounded-md border border-line bg-white p-4" data-testid="backend-customer-details">
+          <h4 className="text-sm font-bold text-ink">意匠情報</h4>
           <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
-            <Detail label="stable id" value={record.id} />
-            <Detail label="物品名" value={record.articleName ?? '-'} />
+            <Detail label="企業名" value={companyLabel} />
+            <Detail label="物品名・画像の用途" value={record.articleName ?? '-'} />
             <Detail label="意匠種別" value={designTypeLabel} />
-            <Detail label="gazetteDate" value={record.gazetteDate ?? '-'} />
-            <Detail label="applicationNumber" value={record.applicationNumber ?? '-'} />
-            <Detail label="registrationNumber" value={record.registrationNumber ?? '-'} />
-            <Detail label="applicationDate" value={record.applicationDate ?? '-'} />
-            <Detail label="registrationDate" value={record.registrationDate ?? '-'} />
-            <Detail label="applicants" value={applicantLabel} />
-            <Detail label="right holders" value={rightHolderLabel} />
-            <Detail label="未解決applicant" value={backendUnresolvedSummary(record.unresolved.applicants)} />
-            <Detail label="未解決right holder" value={backendUnresolvedSummary(record.unresolved.rightHolders)} />
-            <Detail label="quality" value={record.quality.state} />
-            <Detail
-              label="analysis disposition"
-              value={
-                record.adapterDisposition.status === 'accepted'
-                  ? 'accepted'
-                  : `excluded: ${record.adapterDisposition.exclusionReasons.join(', ')}`
-              }
-            />
+            <Detail label="意匠分類" value={customerClassificationLabel} />
+            <Detail label="出願番号" value={record.applicationNumber ?? '-'} />
+            <Detail label="登録番号" value={record.registrationNumber ?? '-'} />
+            <Detail label="公報番号" value={record.publication?.gazetteNumber ?? '-'} />
+            <Detail label="公報発行日" value={record.publication?.issueDate ?? '-'} />
+          </dl>
+          <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+            <Detail label="意匠の説明" value={description} />
+            <Detail label="取得済み図面" value={`${formatCount(record.drawings.length)}件`} />
           </dl>
         </section>
 
         <section className="rounded-md border border-line bg-white p-4">
-          <h4 className="text-sm font-bold text-ink">分類</h4>
-          {!hasPrimaryClassification ? (
-            <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-muted">
-              主分類は未選定です。先頭の分類を主分類として扱っていません。
-            </p>
-          ) : null}
-          <ul className="mt-3 space-y-2 text-sm text-ink">
-            {record.classifications.map((classification) => (
-              <li
-                key={classificationMembershipKey(classification)}
-                className="rounded-md bg-panel px-3 py-2"
-                data-classification-role={classification.isPrimary ? 'primary' : 'supplemental'}
-              >
-                <Badge tone={classification.isPrimary ? 'accent' : 'neutral'}>
-                  {classification.isPrimary ? '主分類' : '補助分類'}
-                </Badge>{' '}
-                {classification.scheme} / {classification.code} / {classification.label ?? 'label未設定'}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="rounded-md border border-line bg-white p-4">
-          <h4 className="text-sm font-bold text-ink">publication</h4>
-          {record.publication ? (
-            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
-              <Detail label="gazetteNumber" value={record.publication.gazetteNumber ?? '-'} />
-              <Detail label="publicationDocumentId" value={record.publication.publicationDocumentId ?? '-'} />
-              <Detail label="issueDate" value={record.publication.issueDate ?? '-'} />
-            </dl>
-          ) : (
-            <p className="mt-2 text-sm text-muted">publicationはnullです。別フィールドから補完していません。</p>
-          )}
-        </section>
-
-        <section className="rounded-md border border-line bg-white p-4">
-          <h4 className="text-sm font-bold text-ink">drawings</h4>
+          <h4 className="text-sm font-bold text-ink">取得済みの図面情報</h4>
           {record.drawings.length > 0 ? (
             <>
-              {!hasRepresentativeCandidate ? (
-                <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-muted">
-                  代表候補は未選定です。候補フラグがない図面を自動的に代表へ昇格していません。
-                </p>
-              ) : null}
               <ol className="mt-3 space-y-2 text-sm text-ink">
-                {record.drawings.map((drawing) => (
-                  <li
-                    key={drawing.order}
-                    className="rounded-md bg-panel px-3 py-2"
-                    data-representative-candidate={drawing.isRepresentativeCandidate ? 'true' : undefined}
-                  >
-                    order {drawing.order}: {drawing.drawingId} / {drawing.label ?? 'label未設定'} / {drawing.fileName ?? 'fileName未設定'} /{' '}
-                    {drawing.mediaType ?? 'mediaType未設定'}
-                    {drawing.isRepresentativeCandidate ? ' / 代表候補' : ''}
+                {visibleDrawings.map((drawing) => (
+                  <li key={drawing.order} className="rounded-md bg-panel px-3 py-2">
+                    {drawing.label ?? '図面名未取得'}
                   </li>
                 ))}
               </ol>
+              {remainingDrawings.length > 0 ? (
+                <details className="mt-3 rounded-md border border-line bg-panel p-3">
+                  <summary className="cursor-pointer text-sm font-semibold text-ink">
+                    残り{formatCount(remainingDrawings.length)}件の図面名を見る
+                  </summary>
+                  <ol className="mt-3 space-y-2 text-sm text-ink">
+                    {remainingDrawings.map((drawing) => (
+                      <li key={drawing.order} className="rounded-md bg-white px-3 py-2">
+                        {drawing.label ?? '図面名未取得'}
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              ) : null}
             </>
           ) : (
-            <p className="mt-2 text-sm text-muted">図面メタデータはありません。</p>
+            <p className="mt-2 text-sm text-muted">取得済みの図面情報はありません。</p>
           )}
-          <p className="mt-3 text-xs leading-5 text-muted">図面画像、外部URL、source document参照は表示していません。</p>
+          <p className="mt-3 text-xs leading-5 text-muted">図面画像本体と外部リンクは表示していません。</p>
         </section>
 
-        {record.quality.findings.length > 0 || record.quality.duplicateCandidates.length > 0 ? (
-          <section className="rounded-md border border-amber-200 bg-amber-50 p-4">
-            <h4 className="text-sm font-bold text-caution">quality notices</h4>
-            {record.quality.findings.length > 0 ? (
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-caution">
-                {record.quality.findings.map((finding, index) => (
-                  <li key={`${finding.code}:${index}`}>{finding.code} / {finding.severity}</li>
+        <details className="rounded-md border border-slate-300 bg-slate-50 p-4" data-testid="backend-technical-details">
+          <summary className="cursor-pointer text-sm font-bold text-ink">技術・検証情報</summary>
+          <div className="mt-4 space-y-3">
+            <section className="rounded-md border border-line bg-white p-4">
+              <h4 className="text-sm font-bold text-ink">内部状態</h4>
+              <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+                <Detail label="stable id" value={record.id} />
+                <Detail label="quality" value={record.quality.state} />
+                <Detail
+                  label="analysis disposition"
+                  value={
+                    record.adapterDisposition.status === 'accepted'
+                      ? 'accepted'
+                      : `excluded: ${record.adapterDisposition.exclusionReasons.join(', ')}`
+                  }
+                />
+                <Detail label="gazetteDate" value={record.gazetteDate ?? '-'} />
+                <Detail label="applicationDate" value={record.applicationDate ?? '-'} />
+                <Detail label="registrationDate" value={record.registrationDate ?? '-'} />
+                <Detail label="applicant resolution" value={backendPartyTechnicalValue(record.applicants)} />
+                <Detail label="right holder resolution" value={backendPartyTechnicalValue(record.rightHolders)} />
+                <Detail label="未解決applicant" value={backendUnresolvedSummary(record.unresolved.applicants)} />
+                <Detail label="未解決right holder" value={backendUnresolvedSummary(record.unresolved.rightHolders)} />
+              </dl>
+            </section>
+
+            <section className="rounded-md border border-line bg-white p-4">
+              <h4 className="text-sm font-bold text-ink">分類の取得値</h4>
+              {!hasPrimaryClassification ? (
+                <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-muted">
+                  主分類は未選定です。先頭の分類を主分類として扱っていません。
+                </p>
+              ) : null}
+              <ul className="mt-3 space-y-2 text-sm text-ink">
+                {record.classifications.map((classification) => (
+                  <li
+                    key={classificationMembershipKey(classification)}
+                    className="rounded-md bg-panel px-3 py-2"
+                    data-classification-role={classification.isPrimary ? 'primary' : 'supplemental'}
+                  >
+                    <Badge tone={classification.isPrimary ? 'accent' : 'neutral'}>
+                      {classification.isPrimary ? '主分類' : '補助分類'}
+                    </Badge>{' '}
+                    {classification.scheme} / {classification.code} / {classification.label ?? 'label未設定'}
+                  </li>
                 ))}
               </ul>
+            </section>
+
+            <section className="rounded-md border border-line bg-white p-4">
+              <h4 className="text-sm font-bold text-ink">publicationの取得値</h4>
+              {record.publication ? (
+                <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+                  <Detail label="gazetteNumber" value={record.publication.gazetteNumber ?? '-'} />
+                  <Detail label="publicationDocumentId" value={record.publication.publicationDocumentId ?? '-'} />
+                  <Detail label="issueDate" value={record.publication.issueDate ?? '-'} />
+                </dl>
+              ) : (
+                <p className="mt-2 text-sm text-muted">publicationはnullです。別フィールドから補完していません。</p>
+              )}
+            </section>
+
+            <section className="rounded-md border border-line bg-white p-4">
+              <h4 className="text-sm font-bold text-ink">drawingの取得値</h4>
+              {record.drawings.length > 0 ? (
+                <>
+                  {!hasRepresentativeCandidate ? (
+                    <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-muted">
+                      代表候補は未選定です。候補フラグがない図面を自動的に代表へ昇格していません。
+                    </p>
+                  ) : null}
+                  <ol className="mt-3 space-y-2 text-sm text-ink">
+                    {record.drawings.map((drawing) => (
+                      <li
+                        key={drawing.order}
+                        className="rounded-md bg-panel px-3 py-2"
+                        data-representative-candidate={drawing.isRepresentativeCandidate ? 'true' : undefined}
+                      >
+                        order {drawing.order}: {drawing.drawingId} / {drawing.label ?? 'label未設定'} / {drawing.fileName ?? 'fileName未設定'} /{' '}
+                        {drawing.mediaType ?? 'mediaType未設定'}
+                        {drawing.isRepresentativeCandidate ? ' / 代表候補' : ''}
+                      </li>
+                    ))}
+                  </ol>
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-muted">図面メタデータはありません。</p>
+              )}
+            </section>
+
+            {record.quality.findings.length > 0 || record.quality.duplicateCandidates.length > 0 ? (
+              <section className="rounded-md border border-amber-200 bg-amber-50 p-4">
+                <h4 className="text-sm font-bold text-caution">quality notices</h4>
+                {record.quality.findings.length > 0 ? (
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-caution">
+                    {record.quality.findings.map((finding, index) => (
+                      <li key={`${finding.code}:${index}`}>{finding.code} / {finding.severity}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {record.quality.duplicateCandidates.length > 0 ? (
+                  <p className="mt-2 text-sm text-caution">duplicate candidates: {record.quality.duplicateCandidates.join(', ')}</p>
+                ) : null}
+              </section>
             ) : null}
-            {record.quality.duplicateCandidates.length > 0 ? (
-              <p className="mt-2 text-sm text-caution">duplicate candidates: {record.quality.duplicateCandidates.join(', ')}</p>
-            ) : null}
-          </section>
-        ) : null}
+          </div>
+        </details>
       </div>
     </details>
   );
@@ -2102,7 +2189,14 @@ function partyListValue(values?: string[]): string {
   return labels && labels.length > 0 ? labels.join('、') : '-';
 }
 
-function backendPartyListValue(parties: BackendRecordViewModel['applicants']): string {
+function backendPartyNameListValue(parties: BackendRecordViewModel['applicants']): string {
+  if (parties.length === 0) return '-';
+  return parties
+    .map((party) => party.displayName ?? party.normalizedNameCandidate ?? party.rawName ?? '名称未設定')
+    .join('、');
+}
+
+function backendPartyTechnicalValue(parties: BackendRecordViewModel['applicants']): string {
   if (parties.length === 0) return '-';
   return parties
     .map((party) => {
@@ -2111,6 +2205,13 @@ function backendPartyListValue(parties: BackendRecordViewModel['applicants']): s
       return `${name}（${status}）`;
     })
     .join('、');
+}
+
+function backendCustomerClassificationValue(classifications: BackendRecordViewModel['classifications']): string {
+  const labels = classifications
+    .map((classification) => classification.label?.trim())
+    .filter((label): label is string => Boolean(label));
+  return labels.length > 0 ? [...new Set(labels)].join('、') : '分類名未取得';
 }
 
 function backendUnresolvedSummary(items: BackendRecordViewModel['unresolved']['applicants']): string {

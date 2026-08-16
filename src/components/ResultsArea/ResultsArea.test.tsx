@@ -216,17 +216,19 @@ const demoShowcaseRecords: DemoShowcaseRecord[] = [
 ];
 
 describe('ResultsArea gazette drawing metadata display', () => {
-  it('filters count evidence and restores section focus after clearing the selection', () => {
+  it('fully resets evidence state and restores the list top before another selection', () => {
     let interaction = evidenceInteractionReducer(INITIAL_EVIDENCE_INTERACTION_STATE, {
       type: 'select',
       result,
       label: '対象意匠件数',
       ids: ['fixture-with-keys', 'fixture-with-keys', 'fixture-without-keys'],
-      highlightedId: null,
+      highlightedId: 'fixture-with-keys',
     });
 
     expect(interaction.selection?.ids).toEqual(['fixture-with-keys', 'fixture-without-keys']);
+    expect(interaction.highlightedEvidenceId).toBe('fixture-with-keys');
     expect(interaction.expandedResult).toBe(result);
+    expect(interaction.listRevision).toBe(1);
 
     let focusCount = 0;
     let scrollCount = 0;
@@ -244,12 +246,27 @@ describe('ResultsArea gazette drawing metadata display', () => {
 
     interaction = evidenceInteractionReducer(interaction, { type: 'clear' });
     expect(interaction.selection).toBeNull();
+    expect(interaction.highlightedEvidenceId).toBeNull();
+    expect(interaction.expandedResult).toBeNull();
     expect(interaction.restoreFocus).toBe(true);
+    expect(interaction.listRevision).toBe(2);
 
     focusEvidenceSection(evidenceSection, interaction.selection, interaction.restoreFocus);
     interaction = evidenceInteractionReducer(interaction, { type: 'focus_restored' });
-    expect({ focusCount, scrollCount }).toEqual({ focusCount: 2, scrollCount: 1 });
+    expect({ focusCount, scrollCount }).toEqual({ focusCount: 2, scrollCount: 2 });
     expect(interaction.restoreFocus).toBe(false);
+
+    interaction = evidenceInteractionReducer(interaction, {
+      type: 'select',
+      result,
+      label: '画像意匠件数',
+      ids: ['fixture-without-keys'],
+      highlightedId: 'fixture-without-keys',
+    });
+    expect(interaction.selection).toMatchObject({ label: '画像意匠件数', ids: ['fixture-without-keys'] });
+    expect(interaction.highlightedEvidenceId).toBe('fixture-without-keys');
+    expect(interaction.expandedResult).toBe(result);
+    expect(interaction.listRevision).toBe(3);
   });
 
   it('renders only allowed gazetteDrawingKeys fields and no image body, URL, or local full path', () => {
@@ -268,6 +285,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
       }),
     );
 
@@ -302,7 +320,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).not.toContain('<img');
   });
 
-  it('renders the Backend Contract summary and dedicated evidence without provenance', () => {
+  it('renders customer-first Backend evidence with collapsed technical details and hidden provenance', () => {
     const fixturePath = path.resolve('fixtures', 'backend-contract-v0.1.0', 'design-export-fictional.json');
     const routed = loadDesignJsonText(fs.readFileSync(fixturePath, 'utf8'), 'design-export-fictional.json');
     expect(routed.kind).toBe('backend_contract');
@@ -347,6 +365,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: true,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
       }),
     );
 
@@ -373,9 +392,23 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('id="evidence-kds_fixture_alpha"');
     expect(html).toContain('id="evidence-kds_fixture_gamma"');
     expect(html).not.toContain('id="evidence-kds_fixture_delta"');
+    expect(html).toContain('data-testid="backend-customer-details"');
+    expect(html).toContain('物品名・画像の用途');
+    expect(html).toContain('企業名');
+    expect(html).toContain('意匠分類');
+    expect(html).toContain('出願番号');
+    expect(html).toContain('登録番号');
+    expect(html).toContain('公報番号');
+    expect(html).toContain('公報発行日');
+    expect(html).toContain('取得済み図面');
+    expect(html).toContain('data-testid="backend-technical-details"');
+    expect(html).toContain('技術・検証情報');
+    const technicalDetailsTag = html.match(/<details[^>]*data-testid="backend-technical-details"[^>]*>/)?.[0];
+    expect(technicalDetailsTag).toBeDefined();
+    expect(technicalDetailsTag).not.toMatch(/\bopen(?:=|>)/i);
     expect(html).toContain('stable id');
     expect(html).toContain('架空アルファ意匠研究所');
-    expect(html).toContain('right holders');
+    expect(html).toContain('right holder resolution');
     expect(html).toContain('名称解決済み');
     expect(html).toContain('名称未解決');
     expect(html).toContain('ambiguous_match');
@@ -400,6 +433,10 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).not.toContain('fixture:artifact:alpha');
     expect(html).not.toContain('fixture:record:alpha');
     expect(html).not.toContain('fixture-parser-0.1.0');
+    expect(html.indexOf('data-testid="backend-customer-details"')).toBeLessThan(
+      html.indexOf('data-testid="backend-technical-details"'),
+    );
+    expect(html.indexOf('data-testid="backend-technical-details"')).toBeLessThan(html.indexOf('stable id'));
     expect(html).not.toMatch(/https?:\/\//i);
     expect(html).not.toMatch(/[A-Za-z]:\\/);
     expect(html).not.toMatch(/^data:/im);
@@ -453,6 +490,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
       }),
     );
 
@@ -520,6 +558,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
       }),
     );
 
@@ -556,6 +595,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: true,
         demoShowcaseRecords,
         localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
       }),
     );
 
@@ -636,6 +676,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: true,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
       }),
     );
 
@@ -715,6 +756,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
       }),
     );
 
@@ -749,6 +791,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
       }),
     );
 
@@ -787,17 +830,21 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
       }),
     );
 
     expect(html.match(/id="evidence-bulk-evidence-/g)).toHaveLength(8);
+    expect(html).toContain('分析結果全体の根拠意匠9件／まず先頭8件を表示しています。');
     expect(html).toContain('残り1件の根拠意匠を表示');
     expect(html).not.toContain('id="evidence-bulk-evidence-9"');
   });
 
   it('explains how to recover when no records match the selected conditions', () => {
+    const emptyRequest = { ...request, productDomain: '架空の限定領域' };
     const emptyResult: AnalysisResult = {
       ...result,
+      request: emptyRequest,
       market: {
         trends: { ...result.market!.trends, evidenceIds: [], metric: { label: '対象意匠件数', value: 0, unit: '件' } },
         emergingDomains: { ...result.market!.emergingDomains, evidenceIds: [], metric: { label: '画像意匠件数', value: 0, unit: '件' } },
@@ -806,7 +853,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
     };
     const html = renderToStaticMarkup(
       createElement(ResultsArea, {
-        request,
+        request: emptyRequest,
         result: emptyResult,
         analysisRecords: [],
         allRecords: publicSampleRecords,
@@ -819,11 +866,13 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
       }),
     );
 
     expect(html).toContain('この条件に一致する意匠はありません。');
     expect(html).toContain('企業名、商品・事業領域、期間、意匠種別を見直して');
+    expect(html).toContain('商品・事業領域の指定を解除');
     expect(html).toContain('role="status"');
   });
 });

@@ -1,8 +1,12 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { AnalysisRequest } from '../../domain/types';
 import { getDesignKindSelectionStatus, resolveDesignKinds } from '../../domain/selection';
+import type { BackendContractAdapterSuccess } from '../../data/BackendContractDataSource';
+import { loadDesignJsonText, loadDesignJsonValue } from '../../data/DesignJsonFileLoader';
 import { SettingsPanel } from './SettingsPanel';
 
 const request: AnalysisRequest = {
@@ -42,6 +46,7 @@ describe('SettingsPanel external information wording', () => {
         onRemoveCompany: vi.fn(),
         onAnalyze: vi.fn(),
         onLocalJsonFile: vi.fn(),
+        onApprovedPublicDesignDemoChange: vi.fn(),
         onResetToSampleData: vi.fn(),
         onExternalDemoModeChange: vi.fn(),
         onDemoShowcaseFile: vi.fn(),
@@ -115,6 +120,7 @@ describe('SettingsPanel external information wording', () => {
         onRemoveCompany: vi.fn(),
         onAnalyze: vi.fn(),
         onLocalJsonFile: vi.fn(),
+        onApprovedPublicDesignDemoChange: vi.fn(),
         onResetToSampleData: vi.fn(),
         onExternalDemoModeChange: vi.fn(),
         onDemoShowcaseFile: vi.fn(),
@@ -133,6 +139,34 @@ describe('SettingsPanel external information wording', () => {
     expect(html).not.toContain('専門家レビュー');
     expect(html).not.toContain(['strict', 'PrefixW'].join(''));
     expect(html).not.toContain(['dTermWIncluded', 'Candidate'].join(''));
+  });
+
+  it('shows an auditable, non-persistent classification control for Backend Contracts', () => {
+    const fixtureContract = loadContractFixture();
+    const testContract = loadContractFixture('TEST-CONTRACT-PUBLIC-SAFE-V1');
+    const fictionalHtml = renderBackendSettings(fixtureContract, 'fictional_contract_fixture');
+    const unclassifiedHtml = renderBackendSettings(testContract, 'unclassified_contract');
+    const approvedHtml = renderBackendSettings(testContract, 'approved_public_design_demo');
+
+    expect(fictionalHtml).toContain('架空Contract検証データ');
+    expect(fictionalHtml).toContain('fictional_contract_fixture');
+    expect(fictionalHtml).toContain('架空Contract fixtureとして固定');
+    expect(fictionalHtml).not.toContain('承認済み公開意匠デモデータとして表示する');
+
+    expect(unclassifiedHtml).toContain('未分類Contract検証データ');
+    expect(unclassifiedHtml).toContain('unclassified_contract');
+    expect(unclassifiedHtml).toContain('承認済み公開意匠デモデータとして表示する');
+    expect(unclassifiedHtml).toContain('別ファイルの選択や再読込では引き継ぎません');
+    expect(approvalControl(unclassifiedHtml)).not.toContain('checked=""');
+
+    expect(approvedHtml).toContain('承認済み公開意匠実データ');
+    expect(approvedHtml).toContain('approved_public_design_demo');
+    expect(approvalControl(approvedHtml)).toContain('checked=""');
+
+    for (const html of [fictionalHtml, unclassifiedHtml, approvedHtml]) {
+      expect(html).toContain('ローカルJSONを読み込む');
+      expect(html).not.toContain('ローカル実データJSONを読み込む');
+    }
   });
 
   it('offers companies from the active dataset and exposes validation errors accessibly', () => {
@@ -167,6 +201,7 @@ describe('SettingsPanel external information wording', () => {
         onRemoveCompany: vi.fn(),
         onAnalyze: vi.fn(),
         onLocalJsonFile: vi.fn(),
+        onApprovedPublicDesignDemoChange: vi.fn(),
         onResetToSampleData: vi.fn(),
         onExternalDemoModeChange: vi.fn(),
         onDemoShowcaseFile: vi.fn(),
@@ -185,3 +220,56 @@ describe('SettingsPanel external information wording', () => {
     expect(html).toContain('tabindex="-1"');
   });
 });
+
+function loadContractFixture(exportId?: string): BackendContractAdapterSuccess {
+  const fixturePath = path.resolve('fixtures', 'backend-contract-v0.1.0', 'design-export-fictional.json');
+  const fixtureText = fs.readFileSync(fixturePath, 'utf8');
+  const routed = exportId
+    ? loadDesignJsonValue({ ...(JSON.parse(fixtureText) as Record<string, unknown>), exportId }, 'contract-test.json')
+    : loadDesignJsonText(fixtureText, 'design-export-fictional.json');
+  if (routed.kind !== 'backend_contract' || !routed.result.ok) {
+    throw new Error('Expected a valid Backend Contract test input.');
+  }
+  return routed.result;
+}
+
+function renderBackendSettings(
+  adapted: BackendContractAdapterSuccess,
+  classification: 'fictional_contract_fixture' | 'approved_public_design_demo' | 'unclassified_contract',
+): string {
+  return renderToStaticMarkup(
+    createElement(SettingsPanel, {
+      request,
+      companyInput: '',
+      errors: {},
+      isRunning: false,
+      localJpoState: { status: 'backend_loaded', fileName: 'contract-test.json', adapted, classification },
+      enableLocalAnalysisPack: false,
+      externalDemoMode: true,
+      demoShowcaseState: { status: 'empty', warnings: [], errors: [] },
+      hosoeAnalysisPackState: { status: 'empty', warnings: [], errors: [] },
+      onRequestChange: vi.fn(),
+      onCompanyInputChange: vi.fn(),
+      onAddCompany: vi.fn(),
+      onRemoveCompany: vi.fn(),
+      onAnalyze: vi.fn(),
+      onLocalJsonFile: vi.fn(),
+      onApprovedPublicDesignDemoChange: vi.fn(),
+      onResetToSampleData: vi.fn(),
+      onExternalDemoModeChange: vi.fn(),
+      onDemoShowcaseFile: vi.fn(),
+      onClearDemoShowcase: vi.fn(),
+      onHosoeAnalysisPackFile: vi.fn(),
+      onClearHosoeAnalysisPack: vi.fn(),
+    }),
+  );
+}
+
+function approvalControl(html: string): string {
+  const marker = '承認済み公開意匠デモデータとして表示する';
+  const markerIndex = html.indexOf(marker);
+  if (markerIndex === -1) return '';
+  const startIndex = html.lastIndexOf('<label', markerIndex);
+  const endIndex = html.indexOf('</label>', markerIndex);
+  return startIndex === -1 || endIndex === -1 ? '' : html.slice(startIndex, endIndex + '</label>'.length);
+}

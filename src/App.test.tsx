@@ -4,6 +4,19 @@ import { describe, expect, it } from 'vitest';
 import App from './App';
 
 describe('App primary task flow', () => {
+  it('starts every fresh mount in sample mode without a persisted Contract classification', () => {
+    const firstMount = renderToStaticMarkup(createElement(App));
+    const reloadedMount = renderToStaticMarkup(createElement(App));
+
+    for (const html of [firstMount, reloadedMount]) {
+      expect(html).toContain('サンプルデータ版です。');
+      expect(html).not.toContain('公開意匠実データを使用中');
+      expect(html).not.toContain('fictional_contract_fixture');
+      expect(html).not.toContain('approved_public_design_demo');
+      expect(html).not.toContain('unclassified_contract');
+    }
+  });
+
   it('explains the product, six-step flow, and sample-data boundary before analysis', () => {
     const html = renderToStaticMarkup(createElement(App));
 

@@ -54,6 +54,14 @@
 
 File APIで選択したJSONはブラウザのメモリ上だけで扱います。localStorage、IndexedDB、`public`、`dist`、リポジトリへ保存しません。
 
+Backend Contractの適合確認とデータ利用承認は別の境界です。読込成功だけで実データとは判定せず、画面表示は次の3分類を使います。
+
+- `fictional_contract_fixture`: `meta.exportId` が `FIXTURE-` 名前空間の完全架空fixture。ローカル承認より優先し、実データ用表示へ変更しません。
+- `approved_public_design_demo`: 非fixture Contractについて、利用者が正式runの利用承認をローカル画面で明示確認した場合だけ選択します。
+- `unclassified_contract`: それ以外の有効なContractの既定値。実データとは断定しません。
+
+ローカル承認はファイルごとのブラウザメモリ状態であり、別ファイルの選択や再読込へ引き継ぎません。個別の実データexport ID、hash、ファイル名、ローカルpathはコードや公開GitHubへ固定しません。
+
 ## Backend Contract 0.1.0の安全境界
 
 - `contractVersion` はexact `0.1.0`だけを受理します。
@@ -76,7 +84,7 @@ File APIで選択したJSONはブラウザのメモリ上だけで扱います�
 - 図面画像本体と外部リンクが未接続であることを画面で明示する
 - 分析結果は参考情報であり、法的助言、類否判断、侵害判断、登録可能性判断ではない
 
-限定ローカル検証は、利用承認済みJSONを利用者がFile APIで手動選択した場合だけ行います。安全な配信経路、認証、監査、削除手順が未整備のため、実データ配備状態は `BLOCKED_REAL_DATA_DEPLOY` です。Preview確認はProductionへの反映や昇格を意味しません。
+限定ローカル検証は、利用承認済みJSONを利用者がFile APIで手動選択し、画面上でも承認済み分類を明示した場合だけ行います。安全な配信経路、認証、監査、削除手順が未整備のため、実データ配備状態は `BLOCKED_REAL_DATA_DEPLOY` です。Preview確認はProductionへの反映や昇格を意味しません。
 
 ## 5分デモ
 

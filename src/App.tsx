@@ -27,6 +27,10 @@ import {
 } from './data/BackendContractDataSource';
 import { loadDesignJsonText } from './data/DesignJsonFileLoader';
 import {
+  classifyBackendContractData,
+  type BackendContractDataClassification,
+} from './data/BackendContractDataClassification';
+import {
   loadDemoShowcaseJson,
   type DemoShowcaseLoadFailure,
   type DemoShowcaseLoadSuccess,
@@ -54,6 +58,7 @@ type LocalJpoState =
       fileName: string;
       adapted: BackendContractAdapterSuccess;
       dataSource: BackendContractDataSource;
+      classification: BackendContractDataClassification;
     }
   | { status: 'error'; failure: LocalJpoLoadFailure };
 
@@ -233,6 +238,7 @@ export default function App() {
         fileName: file.name,
         adapted: routed.result,
         dataSource: new BackendContractDataSource(routed.result),
+        classification: classifyBackendContractData({ exportId: routed.result.meta.exportId }),
       });
     } else {
       setLocalJpoState({
@@ -247,6 +253,20 @@ export default function App() {
     }
     setRequest((current) => ({ ...current, scope: { mode: 'all_classes' } }));
     setCompanyInput('');
+  };
+
+  const handleApprovedPublicDesignDemoChange = (approved: boolean) => {
+    setLocalJpoState((current) => {
+      if (current.status !== 'backend_loaded') return current;
+
+      return {
+        ...current,
+        classification: classifyBackendContractData({
+          exportId: current.adapted.meta.exportId,
+          approvedPublicDesignDemo: approved,
+        }),
+      };
+    });
   };
 
   const handleDemoShowcaseFile = async (file: File | null) => {
@@ -314,6 +334,7 @@ export default function App() {
         {localJpoState.status === 'backend_loaded' ? (
           <DataUsageBanner
             mode="backend"
+            classification={localJpoState.classification}
             acceptedCount={localJpoState.adapted.summary.acceptedCount}
             analysisCutoff={localJpoState.adapted.meta.analysisCutoff}
           />
@@ -371,6 +392,7 @@ export default function App() {
           localJpoState={localJpoState}
           enableLocalAnalysisPack={ENABLE_LOCAL_ANALYSIS_PACK}
           onLocalJsonFile={handleLocalJsonFile}
+          onApprovedPublicDesignDemoChange={handleApprovedPublicDesignDemoChange}
           onResetToSampleData={resetToSampleData}
           externalDemoMode={externalDemoMode}
           onExternalDemoModeChange={setExternalDemoMode}

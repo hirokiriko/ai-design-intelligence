@@ -16,6 +16,7 @@ import type { LocalJpoLoadFailure, LocalJpoLoadSuccess } from '../../data/LocalJ
 import type { DemoShowcaseLoadFailure, DemoShowcaseLoadSuccess } from '../../data/DemoShowcaseDataSource';
 import type { HosoeAnalysisPackLoadFailure, HosoeAnalysisPackLoadSuccess } from '../../data/HosoeAnalysisPackDataSource';
 import type { BackendContractAdapterSuccess } from '../../data/BackendContractDataSource';
+import type { BackendContractDataClassification } from '../../data/BackendContractDataClassification';
 import { DEMO_PRESETS } from '../../domain/presets';
 import { getDesignKindSelectionStatus, resolveDesignKinds } from '../../domain/selection';
 import { Badge } from '../common/Badge';
@@ -24,7 +25,12 @@ type LocalJpoPanelState =
   | { status: 'sample'; warnings: string[]; errors: string[] }
   | { status: 'loading'; fileName: string; warnings: string[]; errors: string[] }
   | { status: 'loaded'; load: LocalJpoLoadSuccess }
-  | { status: 'backend_loaded'; fileName: string; adapted: BackendContractAdapterSuccess }
+  | {
+      status: 'backend_loaded';
+      fileName: string;
+      adapted: BackendContractAdapterSuccess;
+      classification: BackendContractDataClassification;
+    }
   | { status: 'error'; failure: LocalJpoLoadFailure };
 
 type DemoShowcasePanelState =
@@ -58,6 +64,7 @@ interface SettingsPanelProps {
   onRemoveCompany: (selectorKey: string) => void;
   onAnalyze: () => void;
   onLocalJsonFile: (file: File | null) => void;
+  onApprovedPublicDesignDemoChange: (approved: boolean) => void;
   onResetToSampleData: () => void;
   onExternalDemoModeChange: (enabled: boolean) => void;
   onDemoShowcaseFile: (file: File | null) => void;
@@ -85,6 +92,7 @@ export function SettingsPanel({
   onRemoveCompany,
   onAnalyze,
   onLocalJsonFile,
+  onApprovedPublicDesignDemoChange,
   onResetToSampleData,
   onExternalDemoModeChange,
   onDemoShowcaseFile,
@@ -421,7 +429,7 @@ export function SettingsPanel({
             </div>
             <Badge tone={localJpoState.status === 'loaded' ? 'warning' : localJpoState.status === 'backend_loaded' ? 'accent' : 'neutral'}>
               {localJpoState.status === 'backend_loaded'
-                ? 'Contractデータ利用中'
+                ? backendClassificationLabel(localJpoState.classification)
                 : localJpoState.status === 'loaded'
                   ? 'ローカルデータ利用中'
                   : 'サンプルデータ利用中'}
@@ -445,6 +453,11 @@ export function SettingsPanel({
           </Badge>
           <Badge tone="accent">ルールベース分析</Badge>
           <Badge tone="warning">{localJpoState.status === 'sample' ? '外部データ未接続' : 'File API・メモリ内のみ'}</Badge>
+          {localJpoState.status === 'backend_loaded' ? (
+            <Badge tone={localJpoState.classification === 'approved_public_design_demo' ? 'accent' : 'warning'}>
+              {backendClassificationLabel(localJpoState.classification)}
+            </Badge>
+          ) : null}
         </div>
       </section>
 
@@ -475,9 +488,9 @@ export function SettingsPanel({
       <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-bold text-ink">ローカル実データJSONを読み込む{externalDemoMode ? '' : '（開発用）'}</h2>
+            <h2 className="text-base font-bold text-ink">ローカルJSONを読み込む{externalDemoMode ? '' : '（開発用）'}</h2>
             <p className="mt-1 text-sm leading-6 text-muted">
-              実データはローカルファイルとして読み込まれ、リポジトリやブラウザ永続領域には保存されません。
+              選択したJSONはブラウザのメモリ上だけで扱い、リポジトリやブラウザ永続領域には保存しません。
             </p>
           </div>
           <Badge tone={localJpoState.status === 'error' ? 'warning' : localJpoState.status === 'loaded' || localJpoState.status === 'backend_loaded' ? 'accent' : 'neutral'}>
@@ -548,7 +561,9 @@ export function SettingsPanel({
           <div className="mt-4 rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
             <div className="font-bold">Backend Contract読込済み</div>
             <div className="readable-text mt-1 font-semibold">{localJpoState.fileName}</div>
+            <div className="mt-2 font-semibold">{backendClassificationLabel(localJpoState.classification)}</div>
             <dl className="mt-2 grid gap-1 sm:grid-cols-2">
+              <div><dt className="inline font-semibold">data classification: </dt><dd className="inline">{localJpoState.classification}</dd></div>
               <div><dt className="inline font-semibold">contract version: </dt><dd className="inline">{localJpoState.adapted.meta.contractVersion}</dd></div>
               <div><dt className="inline font-semibold">analysis cutoff: </dt><dd className="inline">{localJpoState.adapted.meta.analysisCutoff}</dd></div>
               <div><dt className="inline font-semibold">total / accepted / excluded: </dt><dd className="inline">{localJpoState.adapted.summary.totalRecordCount} / {localJpoState.adapted.summary.acceptedCount} / {localJpoState.adapted.summary.excludedCount}</dd></div>
@@ -556,6 +571,26 @@ export function SettingsPanel({
               <div><dt className="inline font-semibold">missing gazetteDate: </dt><dd className="inline">{localJpoState.adapted.summary.missingGazetteDateCount}</dd></div>
               <div><dt className="inline font-semibold">unknown design type: </dt><dd className="inline">{localJpoState.adapted.summary.unknownDesignTypeCount}</dd></div>
             </dl>
+            {localJpoState.classification === 'fictional_contract_fixture' ? (
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                `FIXTURE-`名前空間は架空Contract fixtureとして固定し、実データ用表示へ変更しません。
+              </div>
+            ) : (
+              <label className="mt-3 flex items-start gap-3 rounded-md border border-sky-200 bg-white p-3 text-xs leading-5 text-sky-950">
+                <input
+                  className="mt-1"
+                  type="checkbox"
+                  checked={localJpoState.classification === 'approved_public_design_demo'}
+                  onChange={(event) => onApprovedPublicDesignDemoChange(event.currentTarget.checked)}
+                />
+                <span>
+                  <span className="block font-semibold">承認済み公開意匠デモデータとして表示する</span>
+                  <span className="text-muted">
+                    利用承認を確認できた正式Contractに限り選択してください。この選択はメモリ内だけで保持し、別ファイルの選択や再読込では引き継ぎません。
+                  </span>
+                </span>
+              </label>
+            )}
             <button
               className="mt-3 rounded-md border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-900"
               type="button"
@@ -774,6 +809,17 @@ export function SettingsPanel({
       ) : null}
     </aside>
   );
+}
+
+function backendClassificationLabel(classification: BackendContractDataClassification): string {
+  switch (classification) {
+    case 'fictional_contract_fixture':
+      return '架空Contract検証データ';
+    case 'approved_public_design_demo':
+      return '承認済み公開意匠実データ';
+    case 'unclassified_contract':
+      return '未分類Contract検証データ';
+  }
 }
 
 function CheckRow({ checked, label, onChange }: { checked: boolean; label: string; onChange: () => void }) {

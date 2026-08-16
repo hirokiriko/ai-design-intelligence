@@ -7,6 +7,7 @@ import type { AnalysisRequest } from '../../domain/types';
 import { getDesignKindSelectionStatus, resolveDesignKinds } from '../../domain/selection';
 import type { BackendContractAdapterSuccess } from '../../data/BackendContractDataSource';
 import { loadDesignJsonText, loadDesignJsonValue } from '../../data/DesignJsonFileLoader';
+import type { BackendContractAcquisition } from '../../domain/backendContractAcquisition';
 import { SettingsPanel } from './SettingsPanel';
 
 const request: AnalysisRequest = {
@@ -176,6 +177,31 @@ describe('SettingsPanel external information wording', () => {
     }
   });
 
+  it('removes every local acquisition control from authenticated trial markup', () => {
+    const contract = loadContractFixture('TEST-AUTHENTICATED-TRIAL-PUBLIC-SAFE-V1');
+    const html = renderBackendSettings(contract, 'approved_public_design_demo', 'authenticated_trial');
+
+    expect(html).toContain('Backend Contract自動取得済み');
+    expect(html).toContain('認証済みセッションで同一オリジンから取得');
+    expect(html).toContain('contract version');
+    expect(html).toContain('analysis cutoff');
+    expect(html).toContain('total / accepted / excluded');
+    expect(html).not.toMatch(/<input[^>]+type="file"/i);
+    expect(html).not.toContain('承認済み公開意匠デモデータとして表示する');
+    expect(html).not.toContain('利用承認');
+    expect(html).not.toContain('File API');
+    expect(html).not.toContain('手動選択');
+    expect(html).not.toContain('サンプルデータに戻す');
+    expect(html).not.toContain('ローカルJSONを読み込む');
+    expect(html).not.toContain('デモ候補JSONを読み込む');
+    expect(html).not.toContain('ローカル分析パックJSONを読み込む');
+    expect(html).not.toContain('contract-test.json');
+    expect(html).not.toContain('承認');
+    expect(html).not.toContain('ファイル');
+    expect(html).not.toContain('手動');
+    expect(html).not.toContain('サンプル');
+  });
+
   it('offers companies from the active dataset and exposes validation errors accessibly', () => {
     const html = renderToStaticMarkup(
       createElement(SettingsPanel, {
@@ -243,6 +269,7 @@ function loadContractFixture(exportId?: string): BackendContractAdapterSuccess {
 function renderBackendSettings(
   adapted: BackendContractAdapterSuccess,
   classification: 'fictional_contract_fixture' | 'approved_public_design_demo' | 'unclassified_contract',
+  backendContractAcquisition?: BackendContractAcquisition,
 ): string {
   return renderToStaticMarkup(
     createElement(SettingsPanel, {
@@ -251,6 +278,7 @@ function renderBackendSettings(
       errors: {},
       isRunning: false,
       localJpoState: { status: 'backend_loaded', fileName: 'contract-test.json', adapted, classification },
+      backendContractAcquisition,
       enableLocalAnalysisPack: false,
       externalDemoMode: true,
       demoShowcaseState: { status: 'empty', warnings: [], errors: [] },

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { RuleBasedAnalysisEngine } from './analysis/RuleBasedAnalysisEngine';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
 import { ResultsArea } from './components/ResultsArea/ResultsArea';
@@ -11,10 +11,16 @@ import {
   type CompanySelector,
 } from './domain/analysisRecords';
 import { validateRequest } from './domain/validation';
-import { clearProductDomainFilter, createRequestForDataMode } from './domain/presets';
+import {
+  clearProductDomainFilter,
+  createBackendContractDemoRequest,
+  createRequestForDataMode,
+} from './domain/presets';
+import type { BackendContractAcquisition } from './domain/backendContractAcquisition';
 import { buildCompanyOptions } from './analysis/buildCompanyOptions';
 import { normalizeLocalCompanyKey } from './analysis/projectLegacyDesignRecord';
 import { SampleDesignDataSource } from './data/SampleDesignDataSource';
+import { readPublicAppConfig } from './config/PublicAppConfig';
 import {
   sanitizeAnalysisEvidenceIds,
   type LocalJpoDataPeriodKind,
@@ -31,6 +37,11 @@ import {
   classifyBackendContractData,
   type BackendContractDataClassification,
 } from './data/BackendContractDataClassification';
+import {
+  loadTrialBackendContract,
+  type TrialBackendContractErrorCode,
+  type TrialBackendContractLoadResult,
+} from './data/TrialBackendContractLoader';
 import {
   loadDemoShowcaseJson,
   type DemoShowcaseLoadFailure,
@@ -80,16 +91,114 @@ type HosoeAnalysisPackState =
 
 type LocalAnalysisPackPanelComponent = ComponentType<{ pack: HosoeAnalysisPack }>;
 
+type TrialBootstrapState =
+  | { status: 'loading' }
+  | { status: 'configuration_error'; message: string }
+  | { status: 'error'; code: TrialBackendContractErrorCode; message: string };
+
+type TrialModeAppProps = {
+  loadContract?: () => Promise<TrialBackendContractLoadResult>;
+};
+
+type AnalysisWorkspaceProps = {
+  initialBackendContract?: BackendContractAdapterSuccess;
+  backendContractAcquisition?: BackendContractAcquisition;
+};
+
 export default function App() {
-  const sampleDataSource = useMemo(() => new SampleDesignDataSource(), []);
+  const publicConfig = readPublicAppConfig();
+
+  if (!publicConfig.ok) {
+    return (
+      <TrialBootstrapPanel
+        state={{ status: 'configuration_error', message: publicConfig.message }}
+      />
+    );
+  }
+
+  return publicConfig.config.mode === 'trial' ? <TrialModeApp /> : <AnalysisWorkspace />;
+}
+
+export function TrialModeApp({ loadContract = loadTrialBackendContract }: TrialModeAppProps) {
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<
+    | TrialBootstrapState
+    | { status: 'loaded'; adapted: BackendContractAdapterSuccess }
+  >({ status: 'loading' });
+
+  useEffect(() => {
+    let active = true;
+
+    void loadContract()
+      .then((result) => {
+        if (!active) return;
+        setState(
+          result.ok
+            ? { status: 'loaded', adapted: result.adapted }
+            : { status: 'error', code: result.code, message: result.message },
+        );
+      })
+      .catch(() => {
+        if (!active) return;
+        setState({
+          status: 'error',
+          code: 'unavailable',
+          message: '限定試用データを読み込めませんでした。時間をおいて再試行してください。',
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [attempt, loadContract]);
+
+  if (state.status === 'loaded') {
+    return (
+      <AnalysisWorkspace
+        initialBackendContract={state.adapted}
+        backendContractAcquisition="authenticated_trial"
+      />
+    );
+  }
+
+  return (
+    <TrialBootstrapPanel
+      state={state}
+      onRetry={
+        state.status === 'error' && canRetryTrialError(state.code)
+          ? () => {
+              setState({ status: 'loading' });
+              setAttempt((current) => current + 1);
+            }
+          : undefined
+      }
+    />
+  );
+}
+
+export function AnalysisWorkspace({
+  initialBackendContract,
+  backendContractAcquisition = 'manual_file',
+}: AnalysisWorkspaceProps = {}) {
+  const sampleDataSource = useMemo(
+    () => (initialBackendContract ? null : new SampleDesignDataSource()),
+    [initialBackendContract],
+  );
   const analysisEngine = useMemo(() => new RuleBasedAnalysisEngine(), []);
-  const [request, setRequest] = useState<AnalysisRequest>(initialRequest);
+  const [request, setRequest] = useState<AnalysisRequest>(() =>
+    initialBackendContract ? createBackendContractDemoRequest() : initialRequest,
+  );
+  const [settingsRevision, setSettingsRevision] = useState(0);
   const [companyInput, setCompanyInput] = useState('');
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [analysisRecords, setAnalysisRecords] = useState<AnalysisReadyDesignRecord[]>([]);
-  const [localJpoState, setLocalJpoState] = useState<LocalJpoState>({ status: 'sample', warnings: [], errors: [] });
+  const [localJpoState, setLocalJpoState] = useState<LocalJpoState>(() =>
+    initialBackendContract
+      ? createInitialBackendState(initialBackendContract, backendContractAcquisition)
+      : { status: 'sample', warnings: [], errors: [] },
+  );
   const [demoShowcaseState, setDemoShowcaseState] = useState<DemoShowcaseState>({ status: 'empty', warnings: [], errors: [] });
   const [hosoeAnalysisPackState, setHosoeAnalysisPackState] = useState<HosoeAnalysisPackState>({ status: 'empty', warnings: [], errors: [] });
   const [localAnalysisPackPanel, setLocalAnalysisPackPanel] = useState<LocalAnalysisPackPanelComponent | null>(null);
@@ -101,7 +210,7 @@ export default function App() {
       ? localJpoState.dataSource
       : localJpoState.status === 'loaded'
         ? localJpoState.load.dataSource
-        : sampleDataSource;
+        : sampleDataSource as SampleDesignDataSource;
   const dataMode = localJpoState.status === 'backend_loaded' ? 'backend' : localJpoState.status === 'loaded' ? 'legacy' : 'sample';
   const allAnalysisRecords = useMemo(() => dataSource.getAllRecords(), [dataSource]);
   const legacyViewRecords = useMemo<DesignRecord[]>(
@@ -111,12 +220,15 @@ export default function App() {
   const companyOptions = useMemo(() => buildCompanyOptions(allAnalysisRecords), [allAnalysisRecords]);
 
   useEffect(() => {
-    if (!ENABLE_LOCAL_ANALYSIS_PACK) return;
+    if (
+      backendContractAcquisition === 'authenticated_trial' ||
+      !ENABLE_LOCAL_ANALYSIS_PACK
+    ) return;
 
     void import('./local-analysis-pack/HosoeAnalysisPackPanel').then((module) => {
       setLocalAnalysisPackPanel(() => module.HosoeAnalysisPackPanel);
     });
-  }, []);
+  }, [backendContractAcquisition]);
 
   useEffect(() => {
     if (!result) return;
@@ -138,6 +250,19 @@ export default function App() {
 
   const clearProductDomain = () => {
     setRequest((current) => clearProductDomainFilter(current));
+    setErrors({});
+    clearAnalysisResult();
+    window.requestAnimationFrame(() => {
+      const input = document.getElementById('product-domain-input');
+      input?.focus({ preventScroll: true });
+      input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
+
+  const resetAnalysisFilters = () => {
+    setRequest(createBackendContractDemoRequest());
+    setSettingsRevision((current) => current + 1);
+    setCompanyInput('');
     setErrors({});
     clearAnalysisResult();
     window.requestAnimationFrame(() => {
@@ -219,7 +344,7 @@ export default function App() {
   };
 
   const handleLocalJsonFile = async (file: File | null) => {
-    if (!file) return;
+    if (!file || backendContractAcquisition === 'authenticated_trial') return;
 
     setErrors({});
     setResult(null);
@@ -275,6 +400,8 @@ export default function App() {
   };
 
   const handleApprovedPublicDesignDemoChange = (approved: boolean) => {
+    if (backendContractAcquisition === 'authenticated_trial') return;
+
     setLocalJpoState((current) => {
       if (current.status !== 'backend_loaded') return current;
 
@@ -289,7 +416,7 @@ export default function App() {
   };
 
   const handleDemoShowcaseFile = async (file: File | null) => {
-    if (!file) return;
+    if (!file || backendContractAcquisition === 'authenticated_trial') return;
 
     setDemoShowcaseState({ status: 'loading', fileName: file.name, warnings: [], errors: [] });
     try {
@@ -311,7 +438,11 @@ export default function App() {
   };
 
   const handleHosoeAnalysisPackFile = async (file: File | null) => {
-    if (!file || !ENABLE_LOCAL_ANALYSIS_PACK) return;
+    if (
+      !file ||
+      backendContractAcquisition === 'authenticated_trial' ||
+      !ENABLE_LOCAL_ANALYSIS_PACK
+    ) return;
 
     setHosoeAnalysisPackState({ status: 'loading', fileName: file.name, warnings: [], errors: [] });
     try {
@@ -334,6 +465,8 @@ export default function App() {
   };
 
   const resetToSampleData = () => {
+    if (backendContractAcquisition === 'authenticated_trial') return;
+
     setLocalJpoState({ status: 'sample', warnings: [], errors: [] });
     setRequest((current) => ({ ...current, scope: { mode: 'all_classes' } }));
     setCompanyInput('');
@@ -356,6 +489,7 @@ export default function App() {
             classification={localJpoState.classification}
             acceptedCount={localJpoState.adapted.summary.acceptedCount}
             analysisCutoff={localJpoState.adapted.meta.analysisCutoff}
+            acquisition={backendContractAcquisition}
           />
         ) : (
           <DataUsageBanner mode={localJpoState.status === 'loaded' ? 'legacy' : 'sample'} />
@@ -392,7 +526,7 @@ export default function App() {
 
       <div className="mx-auto grid max-w-7xl gap-5 px-4 py-6 lg:grid-cols-[410px_minmax(0,1fr)] lg:items-start">
         <SettingsPanel
-          key={dataMode}
+          key={`${dataMode}:${settingsRevision}`}
           request={request}
           companyInput={companyInput}
           companyOptions={companyOptions}
@@ -410,7 +544,11 @@ export default function App() {
           onRemoveCompany={removeCompany}
           onAnalyze={analyze}
           localJpoState={localJpoState}
-          enableLocalAnalysisPack={ENABLE_LOCAL_ANALYSIS_PACK}
+          backendContractAcquisition={backendContractAcquisition}
+          enableLocalAnalysisPack={
+            ENABLE_LOCAL_ANALYSIS_PACK &&
+            backendContractAcquisition !== 'authenticated_trial'
+          }
           onLocalJsonFile={handleLocalJsonFile}
           onApprovedPublicDesignDemoChange={handleApprovedPublicDesignDemoChange}
           onResetToSampleData={resetToSampleData}
@@ -430,6 +568,7 @@ export default function App() {
             analysisRecords={analysisRecords}
             allRecords={legacyViewRecords}
             backendContract={localJpoState.status === 'backend_loaded' ? localJpoState.adapted : null}
+            backendContractAcquisition={backendContractAcquisition}
             dataMode={dataMode}
             isRunning={isRunning}
             localJpoSummary={localJpoState.status === 'loaded' ? localJpoState.load.summary : null}
@@ -444,8 +583,16 @@ export default function App() {
             externalDemoMode={externalDemoMode}
             demoShowcaseRecords={demoShowcaseState.status === 'loaded' ? demoShowcaseState.load.records : []}
             onClearProductDomain={clearProductDomain}
+            onResetAnalysisFilters={
+              backendContractAcquisition === 'authenticated_trial'
+                ? resetAnalysisFilters
+                : undefined
+            }
             localAnalysisPackPanel={
-              ENABLE_LOCAL_ANALYSIS_PACK && hosoeAnalysisPackState.status === 'loaded' && LocalAnalysisPackPanel ? (
+              backendContractAcquisition !== 'authenticated_trial' &&
+              ENABLE_LOCAL_ANALYSIS_PACK &&
+              hosoeAnalysisPackState.status === 'loaded' &&
+              LocalAnalysisPackPanel ? (
                 <LocalAnalysisPackPanel pack={hosoeAnalysisPackState.load.pack} />
               ) : null
             }
@@ -458,13 +605,114 @@ export default function App() {
           {dataMode === 'sample'
             ? '出力はデモ用サンプルデータとルールベース分析による参考情報です。'
             : dataMode === 'backend'
-              ? '出力は手動選択したBackend Contract JSONの受理レコードをブラウザのメモリ上でルールベース分析した参考情報です。'
+              ? backendContractAcquisition === 'authenticated_trial'
+                ? '出力は認証後に自動取得したBackend Contractの受理レコードを、この表示中だけブラウザのメモリ上でルールベース分析した参考情報です。再読込時はContractを再取得します。'
+                : '出力は手動選択したBackend Contract JSONの受理レコードをブラウザのメモリ上でルールベース分析した参考情報です。'
               : '出力は手動選択したローカルJSONをブラウザのメモリ上でルールベース分析した参考情報です。'}{' '}
-          法的助言ではありません。リモートBackend API、DB、LLM、J-PlatPat Web UIの自動取得、WEB・新聞・プレス等の外部データ取得は接続していません。
+          {backendContractAcquisition === 'authenticated_trial'
+            ? '法的助言ではありません。FrontendからDB、LLM、J-PlatPat Web UI、WEB・新聞・プレス等へ直接接続していません。'
+            : '法的助言ではありません。リモートBackend API、DB、LLM、J-PlatPat Web UIの自動取得、WEB・新聞・プレス等の外部データ取得は接続していません。'}
         </div>
       </footer>
     </div>
   );
+}
+
+function createInitialBackendState(
+  adapted: BackendContractAdapterSuccess,
+  acquisition: BackendContractAcquisition,
+): Extract<LocalJpoState, { status: 'backend_loaded' }> {
+  return {
+    status: 'backend_loaded',
+    fileName: acquisition === 'authenticated_trial' ? '認証済みBackend Contract' : 'Backend Contract',
+    adapted,
+    dataSource: new BackendContractDataSource(adapted),
+    classification: classifyBackendContractData({
+      exportId: adapted.meta.exportId,
+      approvedPublicDesignDemo: acquisition === 'authenticated_trial',
+    }),
+  };
+}
+
+export function TrialBootstrapPanel({
+  state,
+  onRetry,
+}: {
+  state: TrialBootstrapState;
+  onRetry?: () => void;
+}) {
+  const title = trialBootstrapTitle(state);
+  const isLoading = state.status === 'loading';
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const stateKey = state.status === 'error' ? `${state.status}:${state.code}` : state.status;
+  const message = isLoading
+    ? '認証済みセッションからBackend Contractを取得し、Contract 0.1.0を検証しています。'
+    : state.message;
+
+  useEffect(() => {
+    headingRef.current?.focus({ preventScroll: true });
+  }, [stateKey]);
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      <header className="border-b border-line bg-white">
+        <div className="mx-auto max-w-4xl px-4 py-5">
+          <h1 className="text-2xl font-bold tracking-normal text-ink">KIRIKO Design Signals</h1>
+          <p className="mt-1 text-sm text-muted">認証付き限定試用</p>
+        </div>
+      </header>
+      <main className="mx-auto max-w-4xl px-4 py-10">
+        <section
+          aria-live={isLoading ? 'polite' : undefined}
+          className="rounded-xl border border-line bg-white p-6 shadow-soft"
+          role={isLoading ? 'status' : 'alert'}
+        >
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
+            Limited trial
+          </p>
+          <h2 className="mt-3 text-2xl font-bold text-ink" ref={headingRef} tabIndex={-1}>{title}</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-muted">{message}</p>
+          {isLoading ? (
+            <div className="mt-6 h-2 max-w-md overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+              <div className="h-full w-2/3 animate-pulse rounded-full bg-accent" />
+            </div>
+          ) : null}
+          {onRetry ? (
+            <button
+              className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+              onClick={onRetry}
+              type="button"
+            >
+              {state.status === 'error' && state.code === 'authentication_required'
+                ? '認証後に再読込'
+                : 'もう一度読み込む'}
+            </button>
+          ) : null}
+          <p className="mt-6 border-t border-line pt-4 text-xs leading-6 text-muted">
+            取得または検証に失敗した場合、サンプルデータへ切り替えずに停止します。Contract本文や認証情報は保存しません。
+          </p>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function trialBootstrapTitle(state: TrialBootstrapState): string {
+  if (state.status === 'loading') return '限定試用データを読み込んでいます';
+  if (state.status === 'configuration_error') return '限定試用モードの設定を確認できません';
+
+  const titles: Record<TrialBackendContractErrorCode, string> = {
+    authentication_required: '認証または利用権限の確認が必要です',
+    expired: '限定試用の利用期間が終了しました',
+    data_unavailable: '限定試用データがまだ配置されていません',
+    invalid_contract: '限定試用データを検証できません',
+    unavailable: '限定試用データを一時的に利用できません',
+  };
+  return titles[state.code];
+}
+
+function canRetryTrialError(code: TrialBackendContractErrorCode): boolean {
+  return code === 'authentication_required' || code === 'data_unavailable' || code === 'unavailable';
 }
 
 function localJpoAnalysisDisclaimer(summary: LocalJpoLoadSuccess['summary']): string {

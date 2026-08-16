@@ -10,6 +10,7 @@ import type {
   DesignRecord,
 } from '../../domain/types';
 import { classificationMembershipKey, type AnalysisReadyDesignRecord } from '../../domain/analysisRecords';
+import type { BackendContractAcquisition } from '../../domain/backendContractAcquisition';
 import { designKindSummary } from '../../analysis/RuleBasedAnalysisEngine';
 import { displayPartyLabel, type LocalJpoDatasetSummary, type RankedItem } from '../../data/LocalJpoJsonDataSource';
 import type {
@@ -29,6 +30,7 @@ interface ResultsAreaProps {
   analysisRecords: AnalysisReadyDesignRecord[];
   allRecords: DesignRecord[];
   backendContract: BackendContractAdapterSuccess | null;
+  backendContractAcquisition?: BackendContractAcquisition;
   dataMode: 'sample' | 'legacy' | 'backend';
   isRunning: boolean;
   localJpoSummary: LocalJpoDatasetSummary | null;
@@ -38,6 +40,7 @@ interface ResultsAreaProps {
   demoShowcaseRecords: DemoShowcaseRecord[];
   localAnalysisPackPanel: ReactNode | null;
   onClearProductDomain: () => void;
+  onResetAnalysisFilters?: () => void;
 }
 
 type DemoScenarioKind = 'three_min' | 'ten_min';
@@ -103,6 +106,7 @@ export function ResultsArea({
   analysisRecords,
   allRecords,
   backendContract,
+  backendContractAcquisition = 'manual_file',
   dataMode,
   isRunning,
   localJpoSummary,
@@ -112,6 +116,7 @@ export function ResultsArea({
   demoShowcaseRecords,
   localAnalysisPackPanel,
   onClearProductDomain,
+  onResetAnalysisFilters,
 }: ResultsAreaProps) {
   const [presenterMode, setPresenterMode] = useState(true);
   const [demoScenario, setDemoScenario] = useState<DemoScenarioKind>('three_min');
@@ -195,6 +200,8 @@ export function ResultsArea({
             records={analysisRecords}
             onSelectEvidence={selectEvidence}
             onClearProductDomain={onClearProductDomain}
+            onResetAnalysisFilters={onResetAnalysisFilters}
+            useTrialReset={backendContractAcquisition === 'authenticated_trial'}
           />
         ) : null}
 
@@ -322,7 +329,7 @@ export function ResultsArea({
         </summary>
         <div className="mt-4 space-y-5 border-t border-line pt-4">
           {backendContract ? (
-            <BackendContractSummaryPanel contract={backendContract} />
+            <BackendContractSummaryPanel contract={backendContract} acquisition={backendContractAcquisition} />
           ) : localJpoSummary ? (
             <LocalJpoSummaryPanel summary={localJpoSummary} externalDemoMode={externalDemoMode} demoShowcaseCount={effectiveDemoShowcaseRecords.length} />
           ) : publicSampleSummary ? (
@@ -415,11 +422,15 @@ function ExecutiveSummary({
   records,
   onSelectEvidence,
   onClearProductDomain,
+  onResetAnalysisFilters,
+  useTrialReset,
 }: {
   result: AnalysisResult;
   records: AnalysisReadyDesignRecord[];
   onSelectEvidence: (label: string, ids: string[]) => void;
   onClearProductDomain: () => void;
+  onResetAnalysisFilters?: () => void;
+  useTrialReset: boolean;
 }) {
   const priorityInsights = buildPrimaryInsights(result);
   const acceptedIds = new Set(records.map((record) => record.id));
@@ -430,7 +441,15 @@ function ExecutiveSummary({
           <p className="font-bold">{records.length === 0 ? 'この条件に一致する意匠はありません。' : '根拠付きの示唆を表示できませんでした。'}</p>
           <p className="mt-1">企業名、商品・事業領域、期間、意匠種別を見直して、もう一度分析してください。</p>
         </div>
-        {records.length === 0 && result.request.productDomain?.trim() ? (
+        {records.length === 0 && useTrialReset && onResetAnalysisFilters ? (
+          <button
+            type="button"
+            className="mt-3 rounded-md border border-amber-300 bg-white px-3 py-2 font-semibold text-caution focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            onClick={onResetAnalysisFilters}
+          >
+            推奨条件に戻す
+          </button>
+        ) : records.length === 0 && result.request.productDomain?.trim() ? (
           <button
             type="button"
             className="mt-3 rounded-md border border-amber-300 bg-white px-3 py-2 font-semibold text-caution focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -977,8 +996,15 @@ function DemoScopeItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function BackendContractSummaryPanel({ contract }: { contract: BackendContractAdapterSuccess }) {
+function BackendContractSummaryPanel({
+  contract,
+  acquisition,
+}: {
+  contract: BackendContractAdapterSuccess;
+  acquisition: BackendContractAcquisition;
+}) {
   const { meta, summary } = contract;
+  const isAuthenticatedTrial = acquisition === 'authenticated_trial';
   const primaryItems = [
     ['contract version', meta.contractVersion],
     ['analysis cutoff', meta.analysisCutoff],
@@ -999,7 +1025,9 @@ function BackendContractSummaryPanel({ contract }: { contract: BackendContractAd
         <div>
           <h2 className="text-base font-bold text-ink">Backend Contractデータ概要</h2>
           <p className="mt-1 text-sm leading-6 text-muted">
-            File APIで選択したContract 0.1.0 JSONをブラウザのメモリ上でデータセット単位に検証し、受理したレコードだけを分析境界へ渡しています。
+            {isAuthenticatedTrial
+              ? '認証後に同一オリジンから自動取得したContract 0.1.0をデータセット単位に検証し、受理したレコードだけを分析境界へ渡しています。'
+              : 'File APIで選択したContract 0.1.0 JSONをブラウザのメモリ上でデータセット単位に検証し、受理したレコードだけを分析境界へ渡しています。'}
           </p>
         </div>
         <Badge tone="accent">検証済みsafe subset</Badge>

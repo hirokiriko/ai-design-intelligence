@@ -11,12 +11,15 @@
 - `RuleBasedAnalysisEngine` による決定論的なルールベース分析
 - 公開版は完全な架空サンプルデータのみ
 - Backend Contract `0.1.0` JSONと従来JSONを、File APIで手動選択する限定検証
+- 認証後に同一originからBackend Contractを自動取得する、明示的な限定試用モード
 - 企業、分類、物品名、意匠種別等の集計
 - 結果とランキングの件数から根拠意匠一覧への絞り込み
 - 取得済みの公報・図面情報の表示
-- LLM、外部情報、リモートBackend API、DB、スクレイピングは未接続
+- LLM、外部情報、DB、スクレイピングは未接続
 
-リモートBackend APIやDBへの常時接続はありません。一方、BackendがContract `0.1.0`として出力したJSONは、ブラウザのFile APIで読み込み、検証済みのanalysis-ready subsetを分析できます。
+通常の`standard`モードにはリモートBackend APIやDBへの常時接続はありません。BackendがContract `0.1.0`として出力したJSONをブラウザのFile APIで読み込み、検証済みのanalysis-ready subsetを分析できます。
+
+限定試用の`trial`モードは、認証済みセッションで固定の同一origin pathからContractを自動取得します。取得成功前にサンプル画面へ遷移せず、失敗時もサンプルへfallbackしません。このpublic repositoryはContract配信API、実データ、credential、期限の正本を提供しません。
 
 ## 画面の流れ
 
@@ -50,7 +53,8 @@
 | 公開サンプル | アプリ同梱の架空サンプル | 公開Previewと公開ビルドで利用可能 |
 | Backend Contract | Contract `0.1.0` JSONをFile APIで手動選択 | exact-version検証後のaccepted recordsだけを分析 |
 | 従来JSON | versionを持たない従来JSONをFile APIで手動選択 | legacy変換規則を適用し、Contract失敗時のfallbackには使用しない |
-| リモートデータ | Backend API、DB、外部API | 現在版では未接続 |
+| 認証付き限定試用 | 同一originの`GET /api/trial/design-export`から自動取得 | `trial`を明示した非Production環境だけ。File API・承認UI・sample fallbackなし |
+| その他のリモートデータ | DB、外部API | 現在版では未接続 |
 
 File APIで選択したJSONはブラウザのメモリ上だけで扱います。localStorage、IndexedDB、`public`、`dist`、リポジトリへ保存しません。
 
@@ -61,6 +65,8 @@ Backend Contractの適合確認とデータ利用承認は別の境界です。�
 - `unclassified_contract`: それ以外の有効なContractの既定値。実データとは断定しません。
 
 ローカル承認はファイルごとのブラウザメモリ状態であり、別ファイルの選択や再読込へ引き継ぎません。個別の実データexport ID、hash、ファイル名、ローカルpathはコードや公開GitHubへ固定しません。
+
+`trial`モードでは、Backend側で認証・期限・配信承認を通過した非fixture Contractだけを自動的に`approved_public_design_demo`として扱います。`FIXTURE-`名前空間はこの経路でも必ず`fictional_contract_fixture`を維持します。取得したContractはブラウザメモリだけで扱い、localStorage、IndexedDB、service workerへ保存せず、再読込時に再取得します。
 
 ## Backend Contract 0.1.0の安全境界
 
@@ -76,7 +82,7 @@ Backend Contractの適合確認とデータ利用承認は別の境界です。�
 
 ## 公開版と限定ローカル検証の境界
 
-公開URLで共有する版は、架空サンプルデータだけで動作します。
+`VITE_APP_MODE`が未設定または`standard`の公開URLは、従来どおり架空サンプルデータで起動します。`trial`は認証付きの非Production限定試用環境でのみ明示的に有効化するモードです。
 
 - 実在企業名、実在登録番号、実在出願番号、公報原本、実在画像を含めない
 - 公開Preview、Production、公開ビルドへ実データを含めない
@@ -84,7 +90,9 @@ Backend Contractの適合確認とデータ利用承認は別の境界です。�
 - 図面画像本体と外部リンクが未接続であることを画面で明示する
 - 分析結果は参考情報であり、法的助言、類否判断、侵害判断、登録可能性判断ではない
 
-限定ローカル検証は、利用承認済みJSONを利用者がFile APIで手動選択し、画面上でも承認済み分類を明示した場合だけ行います。安全な配信経路、認証、監査、削除手順が未整備のため、実データ配備状態は `BLOCKED_REAL_DATA_DEPLOY` です。Preview確認はProductionへの反映や昇格を意味しません。
+限定ローカル検証は、利用承認済みJSONを利用者がFile APIで手動選択し、画面上でも承認済み分類を明示した場合だけ行います。限定試用モードはファイル選択や承認チェックを表示せず、Backend側の認証・期限・配信承認を境界として同一originから自動取得します。
+
+このrepositoryには`/api/trial/design-export`のBackend実装や実データを含めません。API未配置、認証失敗、期限切れ、Contract不正、一時障害は顧客向け状態を分けてfail closedとします。Preview確認はProductionへの反映や昇格を意味しません。
 
 ## 5分デモ
 
@@ -117,6 +125,8 @@ pnpm run dev
 Vercelは固定ロックファイルでbuildし、静的成果物を配信します。全パスはルートmiddlewareでHTTP Basic認証を必須にしています。
 
 認証値は暗号化された環境変数で管理し、リポジトリやブラウザへ公開される変数へ保存しません。認証情報を変更した後は再デプロイし、リダイレクトを追従しないHTTP検査で「未認証401・誤認証401・正しい認証200」を確認します。
+
+公開クライアント変数`VITE_APP_MODE`は`standard`または`trial`だけを受理し、未設定は`standard`です。不正値はサンプルへfallbackせず停止します。この変数にはモード名以外を設定せず、Backend URL、credential、Contract本文を`VITE_*`へ置きません。`trial`環境の有効化、Backend API接続、実データ配置、Production変更はそれぞれ別の明示承認対象です。
 
 ## 実データ混入チェック
 

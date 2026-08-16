@@ -1,7 +1,18 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import App from './App';
+import App, {
+  AnalysisWorkspace,
+  TrialBootstrapPanel,
+  TrialModeApp,
+} from './App';
+import {
+  adaptBackendDesignExport,
+  type BackendContractAdapterSuccess,
+} from './data/BackendContractDataSource';
+import type { TrialBackendContractErrorCode } from './data/TrialBackendContractLoader';
 
 describe('App primary task flow', () => {
   it('starts every fresh mount in sample mode without a persisted Contract classification', () => {
@@ -68,3 +79,120 @@ describe('App primary task flow', () => {
     expect(html).not.toContain('<img');
   });
 });
+
+describe('authenticated trial bootstrap', () => {
+  it('renders only the loading gate before the Contract request succeeds', () => {
+    const html = renderToStaticMarkup(
+      createElement(TrialModeApp, {
+        loadContract: async () => ({
+          ok: false,
+          code: 'unavailable',
+          message: '限定試用データを読み込めませんでした。',
+        }),
+      }),
+    );
+
+    expect(html).toContain('限定試用データを読み込んでいます');
+    expect(html).toContain('認証済みセッションからBackend Contractを取得');
+    expect(html).not.toContain('サンプルデータ版です。');
+    expect(html).not.toMatch(/<input\b/i);
+    expect(html).not.toContain('承認済み公開意匠デモデータとして表示する');
+  });
+
+  it('distinguishes public-safe trial failures and offers retry without exposing input UI', () => {
+    const cases: Array<[TrialBackendContractErrorCode, string, boolean]> = [
+      ['authentication_required', '認証または利用権限の確認が必要です', true],
+      ['expired', '限定試用の利用期間が終了しました', false],
+      ['data_unavailable', '限定試用データがまだ配置されていません', true],
+      ['invalid_contract', '限定試用データを検証できません', false],
+      ['unavailable', '限定試用データを一時的に利用できません', true],
+    ];
+
+    cases.forEach(([code, title, canRetry]) => {
+      const html = renderToStaticMarkup(
+        createElement(TrialBootstrapPanel, {
+          state: { status: 'error', code, message: '安全な顧客向け案内です。' },
+          onRetry: canRetry ? () => undefined : undefined,
+        }),
+      );
+
+      expect(html).toContain(title);
+      expect(html).toContain('role="alert"');
+      if (canRetry) {
+        expect(html).toContain(
+          code === 'authentication_required' ? '認証後に再読込' : 'もう一度読み込む',
+        );
+      } else {
+        expect(html).not.toContain('もう一度読み込む');
+        expect(html).not.toContain('認証後に再読込');
+      }
+      expect(html).not.toMatch(/<input\b/i);
+      expect(html).not.toContain('/api/trial/design-export');
+    });
+  });
+
+  it('fails closed on an invalid public mode without a sample workspace', () => {
+    const html = renderToStaticMarkup(
+      createElement(TrialBootstrapPanel, {
+        state: {
+          status: 'configuration_error',
+          message: '公開アプリの動作モードを確認できませんでした。',
+        },
+      }),
+    );
+
+    expect(html).toContain('限定試用モードの設定を確認できません');
+    expect(html).not.toContain('サンプルデータ版です。');
+    expect(html).not.toContain('もう一度読み込む');
+  });
+
+  it('initializes a successful trial directly in the Backend safe preset with no file or approval UI', () => {
+    const contract = loadTestContract('TEST-AUTHENTICATED-TRIAL-PUBLIC-DESIGN-V1');
+    const html = renderToStaticMarkup(
+      createElement(AnalysisWorkspace, {
+        initialBackendContract: contract,
+        backendContractAcquisition: 'authenticated_trial',
+      }),
+    );
+
+    expect(html).toContain('公開意匠実データを使用中');
+    expect(html).toContain('認証後に自動取得した週次更新差分');
+    expect(html).toContain('Backend推奨：受理レコード全体');
+    expect(html).toContain('傾向把握：直近2年');
+    expect(html).toContain('認証後に自動取得したBackend Contract');
+    expect(html).not.toMatch(/<input[^>]+type="file"/i);
+    expect(html).not.toContain('承認済み公開意匠デモデータとして表示する');
+    expect(html).not.toContain('サンプルデータに戻す');
+    expect(html).not.toContain('File API');
+    expect(html).not.toContain('手動選択');
+    expect(html).not.toContain('リモートBackend API');
+    expect(html).not.toContain('プリセットA');
+    expect(html).not.toContain('プリセットB');
+  });
+
+  it('keeps fixture classification fictional in the authenticated trial workspace', () => {
+    const fixture = loadTestContract();
+    const html = renderToStaticMarkup(
+      createElement(AnalysisWorkspace, {
+        initialBackendContract: fixture,
+        backendContractAcquisition: 'authenticated_trial',
+      }),
+    );
+
+    expect(html).toContain('架空Contract検証データを使用中');
+    expect(html).not.toContain('公開意匠実データを使用中');
+    expect(html).not.toMatch(/<input[^>]+type="file"/i);
+  });
+});
+
+function loadTestContract(exportId?: string): BackendContractAdapterSuccess {
+  const fixturePath = path.resolve(
+    'fixtures',
+    'backend-contract-v0.1.0',
+    'design-export-fictional.json',
+  );
+  const value = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as Record<string, unknown>;
+  const adapted = adaptBackendDesignExport(exportId ? { ...value, exportId } : value);
+  if (!adapted.ok) throw new Error('Expected a valid fictional Contract fixture.');
+  return adapted;
+}

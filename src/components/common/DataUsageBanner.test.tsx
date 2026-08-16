@@ -9,6 +9,7 @@ import {
   type BackendContractDataClassification,
 } from '../../data/BackendContractDataClassification';
 import { loadDesignJsonText, loadDesignJsonValue } from '../../data/DesignJsonFileLoader';
+import type { BackendContractAcquisition } from '../../domain/backendContractAcquisition';
 import { DataUsageBanner } from './DataUsageBanner';
 
 const fixturePath = path.resolve('fixtures', 'backend-contract-v0.1.0', 'design-export-fictional.json');
@@ -53,10 +54,32 @@ describe('DataUsageBanner', () => {
     expect(html).toContain('最新の法的状態や完全な市場母集団を示すものではありません');
     expect(html).toContain('ブラウザのメモリ上だけで扱い');
     expect(html).toContain('公開Preview・公開ビルドには含めません');
+    expect(html).not.toContain('法的判断の根拠には使用できません');
     expect(html).not.toContain('Backend Contract');
     expect(html).not.toContain('analysis-ready');
     expect(html).not.toContain('架空Contract検証データを使用中');
     expect(html).not.toContain('Contract検証データを使用中');
+  });
+
+  it('uses authenticated trial wording without manual acquisition or approval claims', () => {
+    const contract = loadPublicSafeTestContract('TEST-AUTHENTICATED-TRIAL-PUBLIC-DESIGN-V1');
+    const classification = classifyBackendContractData({
+      exportId: contract.meta.exportId,
+      approvedPublicDesignDemo: true,
+    });
+    const html = renderBackendBanner(contract, classification, 'authenticated_trial');
+
+    expect(html).toContain('公開意匠実データを使用中');
+    expect(html).toContain(`${new Intl.NumberFormat('ja-JP').format(contract.summary.acceptedCount)}件`);
+    expect(html).toContain(formatExpectedDate(contract.meta.analysisCutoff));
+    expect(html).toContain('認証後に自動取得した週次更新差分');
+    expect(html).toContain('日本の全意匠を網羅するものではなく');
+    expect(html).toContain('最新の法的状態や完全な市場母集団を示すものではありません');
+    expect(html).toContain('法的判断の根拠には使用できません');
+    expect(html).not.toContain('File API');
+    expect(html).not.toContain('手動');
+    expect(html).not.toContain('利用承認');
+    expect(html).not.toContain('公開Preview・公開ビルドには含めません');
   });
 
   it('keeps a valid but unclassified Contract neutral', () => {
@@ -108,6 +131,7 @@ function requireBackendContract(
 function renderBackendBanner(
   contract: BackendContractAdapterSuccess,
   classification: BackendContractDataClassification,
+  acquisition?: BackendContractAcquisition,
 ): string {
   return renderToStaticMarkup(
     createElement(DataUsageBanner, {
@@ -115,6 +139,7 @@ function renderBackendBanner(
       classification,
       acceptedCount: contract.summary.acceptedCount,
       analysisCutoff: contract.meta.analysisCutoff,
+      acquisition,
     }),
   );
 }

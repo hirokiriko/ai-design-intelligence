@@ -1,6 +1,7 @@
 import { next } from '@vercel/functions';
 
 const BASIC_AUTH_REALM = 'KIRIKO Design Signals external verification';
+const TRIAL_BACKEND_CONTRACT_PATH = '/api/trial/design-export';
 
 export const config = {
   matcher: ['/', '/:path*'],
@@ -32,7 +33,14 @@ export default function middleware(request: Request): Response {
     });
   }
 
-  return next({ headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive' } });
+  const responseHeaders: Record<string, string> = {
+    'X-Robots-Tag': 'noindex, nofollow, noarchive',
+  };
+  if (new URL(request.url).pathname === TRIAL_BACKEND_CONTRACT_PATH) {
+    responseHeaders['Cache-Control'] = 'private, no-store';
+  }
+
+  return next({ headers: responseHeaders });
 }
 
 function parseBasicAuthorization(header: string | null): { user: string; password: string } | null {

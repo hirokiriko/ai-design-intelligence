@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import trialDesignExportHandler, {
   proxyTrialDesignExport,
   type TrialBackendFetch,
+  type TrialBackendOidcTokenProvider,
   type TrialBackendProxyEnvironment,
 } from '../../api/trial/design-export';
 
@@ -9,7 +10,9 @@ const FRONTEND_URL = 'https://frontend.example.test/api/trial/design-export';
 const BACKEND_BASE_URL = 'https://backend.example.test';
 const BACKEND_ENDPOINT = `${BACKEND_BASE_URL}/v1/trial/design-export`;
 const TEST_BEARER = 'FIXTURE-SERVER-ONLY-BEARER-000001';
-const TEST_PROTECTION_BYPASS = 'FIXTURE-SERVER-ONLY-PROTECTION-BYPASS-000001';
+const TEST_OIDC_TOKEN =
+  'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL29pZGMudmVyY2VsLmNvbSIsInN1YiI6IkZJWFRVUkUifQ.RklYVFVSRS1TSUdOQVRVUkUtMDAwMDAx';
+const OIDC_TOKEN_PROVIDER: TrialBackendOidcTokenProvider = async () => TEST_OIDC_TOKEN;
 const ENVIRONMENT: TrialBackendProxyEnvironment = {
   KIRIKO_TRIAL_BACKEND_BASE_URL: BACKEND_BASE_URL,
   KIRIKO_TRIAL_BACKEND_BEARER: TEST_BEARER,
@@ -26,7 +29,7 @@ describe('trial design export server-side proxy', () => {
   it('reads Backend configuration only inside the default server handler', async () => {
     vi.stubEnv('KIRIKO_TRIAL_BACKEND_BASE_URL', BACKEND_BASE_URL);
     vi.stubEnv('KIRIKO_TRIAL_BACKEND_BEARER', TEST_BEARER);
-    vi.stubEnv('KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS', TEST_PROTECTION_BYPASS);
+    vi.stubEnv('VERCEL_OIDC_TOKEN', TEST_OIDC_TOKEN);
     const fetchMock = vi.fn(async () =>
       new Response('{"contractVersion":"0.1.0"}', {
         headers: { 'content-type': 'application/json' },
@@ -43,7 +46,7 @@ describe('trial design export server-side proxy', () => {
         headers: {
           Accept: 'application/json',
           Authorization: `Bearer ${TEST_BEARER}`,
-          'x-vercel-protection-bypass': TEST_PROTECTION_BYPASS,
+          'x-vercel-trusted-oidc-idp-token': TEST_OIDC_TOKEN,
         },
       }),
     );
@@ -62,7 +65,7 @@ describe('trial design export server-side proxy', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('omits the optional protection bypass and ignores browser credentials', async () => {
+  it('adds only server credentials to the fixed Backend endpoint', async () => {
     const fetchMock = vi.fn(async () =>
       new Response('{"contractVersion":"0.1.0"}', {
         status: 200,
@@ -74,11 +77,17 @@ describe('trial design export server-side proxy', () => {
         Authorization: 'Basic FIXTURE-BROWSER-CREDENTIAL',
         Cookie: 'session=FIXTURE-BROWSER-COOKIE',
         Origin: 'https://frontend.example.test',
-        'x-vercel-protection-bypass': 'FIXTURE-BROWSER-PROTECTION-BYPASS',
+        'x-vercel-oidc-token': 'FIXTURE-BROWSER-SOURCE-OIDC-TOKEN',
+        'x-vercel-trusted-oidc-idp-token': 'FIXTURE-BROWSER-OIDC-TOKEN',
       },
     });
 
-    const response = await proxyTrialDesignExport(request, fetchMock, ENVIRONMENT);
+    const response = await proxyTrialDesignExport(
+      request,
+      fetchMock,
+      ENVIRONMENT,
+      OIDC_TOKEN_PROVIDER,
+    );
 
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock).toHaveBeenCalledWith(BACKEND_ENDPOINT, {
@@ -88,6 +97,7 @@ describe('trial design export server-side proxy', () => {
       headers: {
         Accept: 'application/json',
         Authorization: `Bearer ${TEST_BEARER}`,
+        'x-vercel-trusted-oidc-idp-token': TEST_OIDC_TOKEN,
       },
       signal: expect.any(AbortSignal),
     });
@@ -99,7 +109,7 @@ describe('trial design export server-side proxy', () => {
     expect(await response.text()).toBe('{"contractVersion":"0.1.0"}');
   });
 
-  it('adds the exact server-only protection bypass and ignores a browser-provided value', async () => {
+  it('uses the provider OIDC token and ignores a browser-provided value', async () => {
     const fetchMock = vi.fn<TrialBackendFetch>(async () =>
       new Response('{"contractVersion":"0.1.0"}', {
         status: 200,
@@ -108,14 +118,16 @@ describe('trial design export server-side proxy', () => {
     );
     const request = new Request(FRONTEND_URL, {
       headers: {
-        'x-vercel-protection-bypass': 'FIXTURE-BROWSER-PROTECTION-BYPASS',
+        'x-vercel-trusted-oidc-idp-token': 'FIXTURE-BROWSER-OIDC-TOKEN',
       },
     });
 
-    const response = await proxyTrialDesignExport(request, fetchMock, {
-      ...ENVIRONMENT,
-      KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS: TEST_PROTECTION_BYPASS,
-    });
+    const response = await proxyTrialDesignExport(
+      request,
+      fetchMock,
+      ENVIRONMENT,
+      OIDC_TOKEN_PROVIDER,
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(BACKEND_ENDPOINT, {
       method: 'GET',
@@ -124,16 +136,16 @@ describe('trial design export server-side proxy', () => {
       headers: {
         Accept: 'application/json',
         Authorization: `Bearer ${TEST_BEARER}`,
-        'x-vercel-protection-bypass': TEST_PROTECTION_BYPASS,
+        'x-vercel-trusted-oidc-idp-token': TEST_OIDC_TOKEN,
       },
       signal: expect.any(AbortSignal),
     });
     expect(response.status).toBe(200);
-    expect(await response.text()).not.toContain(TEST_PROTECTION_BYPASS);
+    expect(await response.text()).not.toContain(TEST_OIDC_TOKEN);
     const forwardedHeaders = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
-    expect(forwardedHeaders.get('x-vercel-protection-bypass')).toBe(TEST_PROTECTION_BYPASS);
-    expect(forwardedHeaders.get('x-vercel-protection-bypass')).not.toBe(
-      'FIXTURE-BROWSER-PROTECTION-BYPASS',
+    expect(forwardedHeaders.get('x-vercel-trusted-oidc-idp-token')).toBe(TEST_OIDC_TOKEN);
+    expect(forwardedHeaders.get('x-vercel-trusted-oidc-idp-token')).not.toBe(
+      'FIXTURE-BROWSER-OIDC-TOKEN',
     );
   });
 
@@ -148,6 +160,7 @@ describe('trial design export server-side proxy', () => {
       new Request(url, { method }),
       fetchMock,
       ENVIRONMENT,
+      OIDC_TOKEN_PROVIDER,
     );
 
     expect(response.status).toBe(status);
@@ -170,17 +183,6 @@ describe('trial design export server-side proxy', () => {
       KIRIKO_TRIAL_BACKEND_BASE_URL: BACKEND_BASE_URL,
       KIRIKO_TRIAL_BACKEND_BEARER: 'too-short',
     },
-    {
-      KIRIKO_TRIAL_BACKEND_BASE_URL: BACKEND_BASE_URL,
-      KIRIKO_TRIAL_BACKEND_BEARER: TEST_BEARER,
-      KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS: 'too-short',
-    },
-    {
-      KIRIKO_TRIAL_BACKEND_BASE_URL: BACKEND_BASE_URL,
-      KIRIKO_TRIAL_BACKEND_BEARER: TEST_BEARER,
-      KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS:
-        ' FIXTURE-SERVER-ONLY-PROTECTION-BYPASS-000001',
-    },
   ] as const)('fails closed for invalid configuration %#', async (environment) => {
     const fetchMock = vi.fn<TrialBackendFetch>();
 
@@ -188,12 +190,44 @@ describe('trial design export server-side proxy', () => {
       new Request(FRONTEND_URL),
       fetchMock,
       environment,
+      OIDC_TOKEN_PROVIDER,
     );
 
     expect(response.status).toBe(503);
     expect(await response.text()).toBe('{"error":{"code":"unavailable"}}');
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { name: 'missing', provider: async () => '' },
+    {
+      name: 'throwing',
+      provider: async () => {
+        throw new Error(`FIXTURE-OIDC-PROVIDER-ERROR-${TEST_OIDC_TOKEN}`);
+      },
+    },
+    { name: 'malformed', provider: async () => 'FIXTURE-NOT-A-JWT' },
+    {
+      name: 'oversized',
+      provider: async () => `a.${'b'.repeat(16_384)}.c`,
+    },
+  ] satisfies ReadonlyArray<{ name: string; provider: TrialBackendOidcTokenProvider }>)(
+    'fails closed for a $name OIDC token before contacting Backend',
+    async ({ provider }) => {
+      const fetchMock = vi.fn<TrialBackendFetch>();
+
+      const response = await proxyTrialDesignExport(
+        new Request(FRONTEND_URL),
+        fetchMock,
+        ENVIRONMENT,
+        provider,
+      );
+
+      expect(response.status).toBe(503);
+      expect(await response.text()).toBe('{"error":{"code":"unavailable"}}');
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     [401, 'authentication_required'],
@@ -203,7 +237,7 @@ describe('trial design export server-side proxy', () => {
     [422, 'invalid_contract'],
     [503, 'unavailable'],
   ] as const)('preserves Backend %i with only the safe %s classification', async (status, code) => {
-    const confidentialBody = `FIXTURE-CONFIDENTIAL-${status}-${TEST_BEARER}`;
+    const confidentialBody = `FIXTURE-CONFIDENTIAL-${status}-${TEST_BEARER}-${TEST_OIDC_TOKEN}`;
     const fetchMock = vi.fn(async () =>
       new Response(confidentialBody, {
         status,
@@ -218,6 +252,7 @@ describe('trial design export server-side proxy', () => {
       new Request(FRONTEND_URL),
       fetchMock,
       ENVIRONMENT,
+      OIDC_TOKEN_PROVIDER,
     );
     const body = await response.text();
 
@@ -225,6 +260,7 @@ describe('trial design export server-side proxy', () => {
     expect(body).toBe(JSON.stringify({ error: { code } }));
     expect(body).not.toContain(confidentialBody);
     expect(body).not.toContain(TEST_BEARER);
+    expect(body).not.toContain(TEST_OIDC_TOKEN);
     expect(response.headers.get('location')).toBeNull();
     expect(response.headers.get('www-authenticate')).toBeNull();
     expect(response.headers.get('cache-control')).toBe('private, no-store');
@@ -240,6 +276,7 @@ describe('trial design export server-side proxy', () => {
       new Request(FRONTEND_URL),
       fetchMock,
       ENVIRONMENT,
+      OIDC_TOKEN_PROVIDER,
     );
     const body = await response.text();
 
@@ -263,6 +300,7 @@ describe('trial design export server-side proxy', () => {
       new Request(FRONTEND_URL),
       fetchMock,
       ENVIRONMENT,
+      OIDC_TOKEN_PROVIDER,
       25,
     );
     await vi.advanceTimersByTimeAsync(25);
@@ -271,6 +309,7 @@ describe('trial design export server-side proxy', () => {
 
     expect(response.status).toBe(503);
     expect(body).not.toContain(TEST_BEARER);
+    expect(body).not.toContain(TEST_OIDC_TOKEN);
   });
 
   it('keeps the timeout active while reading the Backend response body', async () => {
@@ -294,6 +333,7 @@ describe('trial design export server-side proxy', () => {
       new Request(FRONTEND_URL),
       fetchMock,
       ENVIRONMENT,
+      OIDC_TOKEN_PROVIDER,
       25,
     );
     await vi.advanceTimersByTimeAsync(25);
@@ -302,6 +342,7 @@ describe('trial design export server-side proxy', () => {
 
     expect(response.status).toBe(503);
     expect(body).not.toContain(TEST_BEARER);
+    expect(body).not.toContain(TEST_OIDC_TOKEN);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
   });
 
@@ -313,24 +354,22 @@ describe('trial design export server-side proxy', () => {
     ];
     const fetchMock = vi.fn(async () => {
       throw new Error(
-        `${BACKEND_ENDPOINT} ${TEST_BEARER} ${TEST_PROTECTION_BYPASS} FIXTURE-PRIVATE-BODY`,
+        `${BACKEND_ENDPOINT} ${TEST_BEARER} ${TEST_OIDC_TOKEN} FIXTURE-PRIVATE-BODY`,
       );
     });
 
     const response = await proxyTrialDesignExport(
       new Request(FRONTEND_URL),
       fetchMock,
-      {
-        ...ENVIRONMENT,
-        KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS: TEST_PROTECTION_BYPASS,
-      },
+      ENVIRONMENT,
+      OIDC_TOKEN_PROVIDER,
     );
     const body = await response.text();
 
     spies.forEach((spy) => expect(spy).not.toHaveBeenCalled());
     expect(body).not.toContain(BACKEND_BASE_URL);
     expect(body).not.toContain(TEST_BEARER);
-    expect(body).not.toContain(TEST_PROTECTION_BYPASS);
+    expect(body).not.toContain(TEST_OIDC_TOKEN);
     expect(body).not.toContain('FIXTURE-PRIVATE-BODY');
   });
 
@@ -346,6 +385,7 @@ describe('trial design export server-side proxy', () => {
       new Request(FRONTEND_URL),
       fetchMock,
       ENVIRONMENT,
+      OIDC_TOKEN_PROVIDER,
     );
 
     expect(response.status).toBe(422);

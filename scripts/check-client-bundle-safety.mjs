@@ -12,8 +12,13 @@ const STATIC_MARKERS = [
     value: 'KIRIKO_TRIAL_BACKEND_BEARER',
   },
   {
-    label: 'server-only Backend protection bypass environment name',
-    value: 'KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS',
+    label: 'server-only Vercel OIDC environment name',
+    value: 'VERCEL_OIDC_TOKEN',
+  },
+  { label: 'server-only Vercel OIDC request header', value: 'x-vercel-oidc-token' },
+  {
+    label: 'server-only trusted OIDC Backend header',
+    value: 'x-vercel-trusted-oidc-idp-token',
   },
   { label: 'private Backend endpoint path', value: '/v1/trial/design-export' },
 ];
@@ -35,8 +40,8 @@ export function findClientBundleSafetyMatches({ rootDir = process.cwd() } = {}) 
       value: process.env.KIRIKO_TRIAL_BACKEND_BEARER,
     },
     {
-      label: 'configured server-only Backend protection bypass value',
-      value: process.env.KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS,
+      label: 'configured server-only Vercel OIDC token value',
+      value: process.env.VERCEL_OIDC_TOKEN,
     },
   ].filter((marker) => typeof marker.value === 'string' && marker.value.length >= 8);
   const markers = [...STATIC_MARKERS, ...configuredMarkers];

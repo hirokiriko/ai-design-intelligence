@@ -20,7 +20,9 @@ describe('client bundle server-only configuration safety', () => {
   it.each([
     'KIRIKO_TRIAL_BACKEND_BASE_URL',
     'KIRIKO_TRIAL_BACKEND_BEARER',
-    'KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS',
+    'VERCEL_OIDC_TOKEN',
+    'x-vercel-oidc-token',
+    'x-vercel-trusted-oidc-idp-token',
     '/v1/trial/design-export',
   ])('rejects the server-only marker %s in dist', (marker) => {
     withTemporaryBundle(marker, (root) => {
@@ -40,9 +42,9 @@ describe('client bundle server-only configuration safety', () => {
       'configured server-only Backend Bearer value',
     ],
     [
-      'KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS',
-      'FIXTURE-CLIENT-BUNDLE-PROTECTION-BYPASS-0001',
-      'configured server-only Backend protection bypass value',
+      'VERCEL_OIDC_TOKEN',
+      'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJGSVhUVVJFLUNMSUVOVC1CVU5ETEUiLCJleHAiOjQxMDI0NDQ4MDB9.RklYVFVSRS1TSUdOQVRVUkU',
+      'configured server-only Vercel OIDC token value',
     ],
   ] as const)('rejects configured %s values without printing the value', (name, value, label) => {
     withTemporaryBundle(value, (root) => {
@@ -78,7 +80,7 @@ function runSafetyCheck(root: string, environment: Record<string, string> = {}):
       ...process.env,
       KIRIKO_TRIAL_BACKEND_BASE_URL: '',
       KIRIKO_TRIAL_BACKEND_BEARER: '',
-      KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS: '',
+      VERCEL_OIDC_TOKEN: '',
       ...environment,
     },
     stdio: 'pipe',

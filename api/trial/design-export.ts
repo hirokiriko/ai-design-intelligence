@@ -1,6 +1,9 @@
+import { getVercelOidcToken } from '@vercel/functions/oidc';
+
 const FRONTEND_TRIAL_EXPORT_PATH = '/api/trial/design-export';
 const BACKEND_TRIAL_EXPORT_PATH = '/v1/trial/design-export';
 const BACKEND_TIMEOUT_MS = 10_000;
+const MAX_TRUSTED_OIDC_TOKEN_BYTES = 16_384;
 
 const RESPONSE_HEADERS = Object.freeze({
   'Cache-Control': 'private, no-store',
@@ -12,7 +15,6 @@ const RESPONSE_HEADERS = Object.freeze({
 export interface TrialBackendProxyEnvironment {
   readonly KIRIKO_TRIAL_BACKEND_BASE_URL?: string;
   readonly KIRIKO_TRIAL_BACKEND_BEARER?: string;
-  readonly KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS?: string;
 }
 
 export type TrialBackendFetch = (
@@ -20,15 +22,21 @@ export type TrialBackendFetch = (
   init?: RequestInit,
 ) => Promise<Response>;
 
+export type TrialBackendOidcTokenProvider = () => Promise<string>;
+
 interface TrialBackendProxyConfig {
   readonly endpoint: string;
   readonly bearer: string;
-  readonly protectionBypass?: string;
 }
 
 const handler = {
   async fetch(request: Request): Promise<Response> {
-    return proxyTrialDesignExport(request, globalThis.fetch, process.env);
+    return proxyTrialDesignExport(
+      request,
+      globalThis.fetch,
+      process.env,
+      getVercelOidcToken,
+    );
   },
 };
 
@@ -38,6 +46,7 @@ export async function proxyTrialDesignExport(
   request: Request,
   fetchImplementation: TrialBackendFetch,
   environment: TrialBackendProxyEnvironment,
+  oidcTokenProvider: TrialBackendOidcTokenProvider,
   timeoutMs = BACKEND_TIMEOUT_MS,
 ): Promise<Response> {
   const requestUrl = parseUrl(request.url);
@@ -49,6 +58,16 @@ export async function proxyTrialDesignExport(
 
   const config = readProxyConfig(environment);
   if (config === null) return errorResponse(503, 'unavailable');
+
+  let trustedOidcToken: string;
+  try {
+    trustedOidcToken = await oidcTokenProvider();
+  } catch {
+    return errorResponse(503, 'unavailable');
+  }
+  if (!isValidTrustedOidcToken(trustedOidcToken)) {
+    return errorResponse(503, 'unavailable');
+  }
 
   const abortController = new AbortController();
   const abortUpstream = (): void => abortController.abort();
@@ -62,10 +81,8 @@ export async function proxyTrialDesignExport(
       const upstreamHeaders: Record<string, string> = {
         Accept: 'application/json',
         Authorization: `Bearer ${config.bearer}`,
+        'x-vercel-trusted-oidc-idp-token': trustedOidcToken,
       };
-      if (config.protectionBypass !== undefined) {
-        upstreamHeaders['x-vercel-protection-bypass'] = config.protectionBypass;
-      }
 
       upstreamResponse = await fetchImplementation(config.endpoint, {
         method: 'GET',
@@ -115,11 +132,9 @@ function readProxyConfig(
 ): TrialBackendProxyConfig | null {
   const rawBaseUrl = environment.KIRIKO_TRIAL_BACKEND_BASE_URL;
   const bearer = environment.KIRIKO_TRIAL_BACKEND_BEARER;
-  const protectionBypass = environment.KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS;
   if (typeof rawBaseUrl !== 'string' || typeof bearer !== 'string') return null;
   if (rawBaseUrl !== rawBaseUrl.trim()) return null;
   if (!isValidServerSecret(bearer)) return null;
-  if (protectionBypass !== undefined && !isValidServerSecret(protectionBypass)) return null;
 
   const baseUrl = parseUrl(rawBaseUrl);
   if (baseUrl === null || !isAllowedBackendOrigin(baseUrl)) return null;
@@ -134,11 +149,7 @@ function readProxyConfig(
   }
 
   baseUrl.pathname = BACKEND_TRIAL_EXPORT_PATH;
-  return {
-    endpoint: baseUrl.toString(),
-    bearer,
-    ...(protectionBypass === undefined ? {} : { protectionBypass }),
-  };
+  return { endpoint: baseUrl.toString(), bearer };
 }
 
 function isAllowedBackendOrigin(url: URL): boolean {
@@ -156,6 +167,15 @@ function isValidServerSecret(value: string): boolean {
       const codePoint = character.codePointAt(0) ?? 0;
       return codePoint >= 0x21 && codePoint <= 0x7e;
     })
+  );
+}
+
+function isValidTrustedOidcToken(value: string): boolean {
+  const encodedLength = new TextEncoder().encode(value).byteLength;
+  return (
+    encodedLength >= 64 &&
+    encodedLength <= MAX_TRUSTED_OIDC_TOKEN_BYTES &&
+    /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value)
   );
 }
 

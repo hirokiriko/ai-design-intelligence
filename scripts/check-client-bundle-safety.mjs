@@ -11,6 +11,10 @@ const STATIC_MARKERS = [
     label: 'server-only Backend Bearer environment name',
     value: 'KIRIKO_TRIAL_BACKEND_BEARER',
   },
+  {
+    label: 'server-only Backend protection bypass environment name',
+    value: 'KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS',
+  },
   { label: 'private Backend endpoint path', value: '/v1/trial/design-export' },
 ];
 
@@ -29,6 +33,10 @@ export function findClientBundleSafetyMatches({ rootDir = process.cwd() } = {}) 
     {
       label: 'configured server-only Backend Bearer value',
       value: process.env.KIRIKO_TRIAL_BACKEND_BEARER,
+    },
+    {
+      label: 'configured server-only Backend protection bypass value',
+      value: process.env.KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS,
     },
   ].filter((marker) => typeof marker.value === 'string' && marker.value.length >= 8);
   const markers = [...STATIC_MARKERS, ...configuredMarkers];

@@ -12,6 +12,7 @@ const RESPONSE_HEADERS = Object.freeze({
 export interface TrialBackendProxyEnvironment {
   readonly KIRIKO_TRIAL_BACKEND_BASE_URL?: string;
   readonly KIRIKO_TRIAL_BACKEND_BEARER?: string;
+  readonly KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS?: string;
 }
 
 export type TrialBackendFetch = (
@@ -22,6 +23,7 @@ export type TrialBackendFetch = (
 interface TrialBackendProxyConfig {
   readonly endpoint: string;
   readonly bearer: string;
+  readonly protectionBypass?: string;
 }
 
 const handler = {
@@ -57,14 +59,19 @@ export async function proxyTrialDesignExport(
   try {
     let upstreamResponse: Response;
     try {
+      const upstreamHeaders: Record<string, string> = {
+        Accept: 'application/json',
+        Authorization: `Bearer ${config.bearer}`,
+      };
+      if (config.protectionBypass !== undefined) {
+        upstreamHeaders['x-vercel-protection-bypass'] = config.protectionBypass;
+      }
+
       upstreamResponse = await fetchImplementation(config.endpoint, {
         method: 'GET',
         cache: 'no-store',
         redirect: 'error',
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${config.bearer}`,
-        },
+        headers: upstreamHeaders,
         signal: abortController.signal,
       });
     } catch {
@@ -108,9 +115,11 @@ function readProxyConfig(
 ): TrialBackendProxyConfig | null {
   const rawBaseUrl = environment.KIRIKO_TRIAL_BACKEND_BASE_URL;
   const bearer = environment.KIRIKO_TRIAL_BACKEND_BEARER;
+  const protectionBypass = environment.KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS;
   if (typeof rawBaseUrl !== 'string' || typeof bearer !== 'string') return null;
   if (rawBaseUrl !== rawBaseUrl.trim()) return null;
-  if (!isValidBearer(bearer)) return null;
+  if (!isValidServerSecret(bearer)) return null;
+  if (protectionBypass !== undefined && !isValidServerSecret(protectionBypass)) return null;
 
   const baseUrl = parseUrl(rawBaseUrl);
   if (baseUrl === null || !isAllowedBackendOrigin(baseUrl)) return null;
@@ -125,7 +134,11 @@ function readProxyConfig(
   }
 
   baseUrl.pathname = BACKEND_TRIAL_EXPORT_PATH;
-  return { endpoint: baseUrl.toString(), bearer };
+  return {
+    endpoint: baseUrl.toString(),
+    bearer,
+    ...(protectionBypass === undefined ? {} : { protectionBypass }),
+  };
 }
 
 function isAllowedBackendOrigin(url: URL): boolean {
@@ -134,7 +147,7 @@ function isAllowedBackendOrigin(url: URL): boolean {
   return ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
 }
 
-function isValidBearer(value: string): boolean {
+function isValidServerSecret(value: string): boolean {
   const encodedLength = new TextEncoder().encode(value).byteLength;
   return (
     encodedLength >= 32 &&

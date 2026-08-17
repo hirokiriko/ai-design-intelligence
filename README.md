@@ -129,7 +129,7 @@ Vercelは固定ロックファイルでSPAをbuildし、`api/trial/design-export
 
 公開クライアント変数`VITE_APP_MODE`は`standard`または`trial`だけを受理し、未設定は`standard`です。不正値はサンプルへfallbackせず停止します。この変数にはモード名以外を設定しません。
 
-proxyはserver-onlyの`KIRIKO_TRIAL_BACKEND_BASE_URL`と`KIRIKO_TRIAL_BACKEND_BEARER`を使用します。base URLはpath・query・fragmentを持たないHTTPS origin（ローカル検証だけloopback HTTP可）に限定し、コードで`/v1/trial/design-export`を固定します。Bearer値は32〜512 byteの表示可能ASCIIだけを受理し、browser request、client bundle、HTML、source map、response、logへ出しません。これらを`VITE_*`へ置かないでください。`trial`環境の有効化、server-only環境変数の設定、Backend runtime接続、実データ配置、Production変更はそれぞれ別の明示承認対象です。このPRではいずれのリモート環境変数も設定しません。
+proxyはserver-onlyの`KIRIKO_TRIAL_BACKEND_BASE_URL`と`KIRIKO_TRIAL_BACKEND_BEARER`を使用します。base URLはpath・query・fragmentを持たないHTTPS origin（ローカル検証だけloopback HTTP可）に限定し、コードで`/v1/trial/design-export`を固定します。Bearer値は32〜512 byteの表示可能ASCIIだけを受理します。BackendのVercel Deployment Protectionをserver-to-server通信で通過する必要がある場合だけ、任意のserver-only `KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS`を設定できます。有効な値は固定Backend requestの`x-vercel-protection-bypass`だけへ追加し、未設定時はheaderを送りません。browserが同名headerを送っても転送せず、不正な設定値はBackendへ接続せずfail closedとします。Bearerとprotection bypassはbrowser request、client bundle、HTML、source map、response、logへ出しません。これらを`VITE_*`へ置かないでください。`trial`環境の有効化、server-only環境変数の設定、Backend runtime接続、実データ配置、Production変更はそれぞれ別の明示承認対象です。このPRではいずれのリモート環境変数も設定しません。
 
 ## 実データ混入チェック
 

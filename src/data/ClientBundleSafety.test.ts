@@ -20,6 +20,7 @@ describe('client bundle server-only configuration safety', () => {
   it.each([
     'KIRIKO_TRIAL_BACKEND_BASE_URL',
     'KIRIKO_TRIAL_BACKEND_BEARER',
+    'KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS',
     '/v1/trial/design-export',
   ])('rejects the server-only marker %s in dist', (marker) => {
     withTemporaryBundle(marker, (root) => {
@@ -37,6 +38,11 @@ describe('client bundle server-only configuration safety', () => {
       'KIRIKO_TRIAL_BACKEND_BEARER',
       'FIXTURE-CLIENT-BUNDLE-SECRET-0001',
       'configured server-only Backend Bearer value',
+    ],
+    [
+      'KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS',
+      'FIXTURE-CLIENT-BUNDLE-PROTECTION-BYPASS-0001',
+      'configured server-only Backend protection bypass value',
     ],
   ] as const)('rejects configured %s values without printing the value', (name, value, label) => {
     withTemporaryBundle(value, (root) => {
@@ -72,6 +78,7 @@ function runSafetyCheck(root: string, environment: Record<string, string> = {}):
       ...process.env,
       KIRIKO_TRIAL_BACKEND_BASE_URL: '',
       KIRIKO_TRIAL_BACKEND_BEARER: '',
+      KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS: '',
       ...environment,
     },
     stdio: 'pipe',

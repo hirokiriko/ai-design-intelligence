@@ -9,6 +9,7 @@ const FRONTEND_URL = 'https://frontend.example.test/api/trial/design-export';
 const BACKEND_BASE_URL = 'https://backend.example.test';
 const BACKEND_ENDPOINT = `${BACKEND_BASE_URL}/v1/trial/design-export`;
 const TEST_BEARER = 'FIXTURE-SERVER-ONLY-BEARER-000001';
+const TEST_PROTECTION_BYPASS = 'FIXTURE-SERVER-ONLY-PROTECTION-BYPASS-000001';
 const ENVIRONMENT: TrialBackendProxyEnvironment = {
   KIRIKO_TRIAL_BACKEND_BASE_URL: BACKEND_BASE_URL,
   KIRIKO_TRIAL_BACKEND_BEARER: TEST_BEARER,
@@ -25,6 +26,7 @@ describe('trial design export server-side proxy', () => {
   it('reads Backend configuration only inside the default server handler', async () => {
     vi.stubEnv('KIRIKO_TRIAL_BACKEND_BASE_URL', BACKEND_BASE_URL);
     vi.stubEnv('KIRIKO_TRIAL_BACKEND_BEARER', TEST_BEARER);
+    vi.stubEnv('KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS', TEST_PROTECTION_BYPASS);
     const fetchMock = vi.fn(async () =>
       new Response('{"contractVersion":"0.1.0"}', {
         headers: { 'content-type': 'application/json' },
@@ -41,6 +43,7 @@ describe('trial design export server-side proxy', () => {
         headers: {
           Accept: 'application/json',
           Authorization: `Bearer ${TEST_BEARER}`,
+          'x-vercel-protection-bypass': TEST_PROTECTION_BYPASS,
         },
       }),
     );
@@ -59,7 +62,7 @@ describe('trial design export server-side proxy', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('adds only the server-side Bearer to the fixed Backend endpoint', async () => {
+  it('omits the optional protection bypass and ignores browser credentials', async () => {
     const fetchMock = vi.fn(async () =>
       new Response('{"contractVersion":"0.1.0"}', {
         status: 200,
@@ -71,6 +74,7 @@ describe('trial design export server-side proxy', () => {
         Authorization: 'Basic FIXTURE-BROWSER-CREDENTIAL',
         Cookie: 'session=FIXTURE-BROWSER-COOKIE',
         Origin: 'https://frontend.example.test',
+        'x-vercel-protection-bypass': 'FIXTURE-BROWSER-PROTECTION-BYPASS',
       },
     });
 
@@ -93,6 +97,44 @@ describe('trial design export server-side proxy', () => {
     expect(response.headers.get('x-content-type-options')).toBe('nosniff');
     expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow, noarchive');
     expect(await response.text()).toBe('{"contractVersion":"0.1.0"}');
+  });
+
+  it('adds the exact server-only protection bypass and ignores a browser-provided value', async () => {
+    const fetchMock = vi.fn<TrialBackendFetch>(async () =>
+      new Response('{"contractVersion":"0.1.0"}', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const request = new Request(FRONTEND_URL, {
+      headers: {
+        'x-vercel-protection-bypass': 'FIXTURE-BROWSER-PROTECTION-BYPASS',
+      },
+    });
+
+    const response = await proxyTrialDesignExport(request, fetchMock, {
+      ...ENVIRONMENT,
+      KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS: TEST_PROTECTION_BYPASS,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(BACKEND_ENDPOINT, {
+      method: 'GET',
+      cache: 'no-store',
+      redirect: 'error',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${TEST_BEARER}`,
+        'x-vercel-protection-bypass': TEST_PROTECTION_BYPASS,
+      },
+      signal: expect.any(AbortSignal),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.text()).not.toContain(TEST_PROTECTION_BYPASS);
+    const forwardedHeaders = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(forwardedHeaders.get('x-vercel-protection-bypass')).toBe(TEST_PROTECTION_BYPASS);
+    expect(forwardedHeaders.get('x-vercel-protection-bypass')).not.toBe(
+      'FIXTURE-BROWSER-PROTECTION-BYPASS',
+    );
   });
 
   it.each([
@@ -127,6 +169,17 @@ describe('trial design export server-side proxy', () => {
     {
       KIRIKO_TRIAL_BACKEND_BASE_URL: BACKEND_BASE_URL,
       KIRIKO_TRIAL_BACKEND_BEARER: 'too-short',
+    },
+    {
+      KIRIKO_TRIAL_BACKEND_BASE_URL: BACKEND_BASE_URL,
+      KIRIKO_TRIAL_BACKEND_BEARER: TEST_BEARER,
+      KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS: 'too-short',
+    },
+    {
+      KIRIKO_TRIAL_BACKEND_BASE_URL: BACKEND_BASE_URL,
+      KIRIKO_TRIAL_BACKEND_BEARER: TEST_BEARER,
+      KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS:
+        ' FIXTURE-SERVER-ONLY-PROTECTION-BYPASS-000001',
     },
   ] as const)('fails closed for invalid configuration %#', async (environment) => {
     const fetchMock = vi.fn<TrialBackendFetch>();
@@ -259,19 +312,25 @@ describe('trial design export server-side proxy', () => {
       vi.spyOn(console, 'error').mockImplementation(() => undefined),
     ];
     const fetchMock = vi.fn(async () => {
-      throw new Error(`${BACKEND_ENDPOINT} ${TEST_BEARER} FIXTURE-PRIVATE-BODY`);
+      throw new Error(
+        `${BACKEND_ENDPOINT} ${TEST_BEARER} ${TEST_PROTECTION_BYPASS} FIXTURE-PRIVATE-BODY`,
+      );
     });
 
     const response = await proxyTrialDesignExport(
       new Request(FRONTEND_URL),
       fetchMock,
-      ENVIRONMENT,
+      {
+        ...ENVIRONMENT,
+        KIRIKO_TRIAL_BACKEND_PROTECTION_BYPASS: TEST_PROTECTION_BYPASS,
+      },
     );
     const body = await response.text();
 
     spies.forEach((spy) => expect(spy).not.toHaveBeenCalled());
     expect(body).not.toContain(BACKEND_BASE_URL);
     expect(body).not.toContain(TEST_BEARER);
+    expect(body).not.toContain(TEST_PROTECTION_BYPASS);
     expect(body).not.toContain('FIXTURE-PRIVATE-BODY');
   });
 

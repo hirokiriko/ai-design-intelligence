@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const DEFAULT_TARGET_DIRS = ['src/data', 'public', 'fixtures', 'dist'];
-export const DEFAULT_TARGETS = ['src', 'public', 'fixtures', 'dist', 'docs/demo', 'README.md', '.env.example', 'index.html'];
+export const DEFAULT_TARGETS = ['src', 'api', 'public', 'fixtures', 'dist', 'docs/demo', 'README.md', '.env.example', 'index.html'];
 const joinToken = (...parts) => parts.join('');
 const tokenPattern = (...parts) => new RegExp(joinToken(...parts).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 export const FORBIDDEN_NAME_PATTERNS = [

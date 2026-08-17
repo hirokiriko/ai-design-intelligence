@@ -19,7 +19,7 @@
 
 通常の`standard`モードにはリモートBackend APIやDBへの常時接続はありません。BackendがContract `0.1.0`として出力したJSONをブラウザのFile APIで読み込み、検証済みのanalysis-ready subsetを分析できます。
 
-限定試用の`trial`モードは、認証済みセッションで固定の同一origin pathからContractを自動取得します。取得成功前にサンプル画面へ遷移せず、失敗時もサンプルへfallbackしません。このpublic repositoryはContract配信API、実データ、credential、期限の正本を提供しません。
+限定試用の`trial`モードは、認証済みセッションで固定の同一origin pathからContractを自動取得します。同一origin requestはVercelのserver-side proxyだけが固定のBackend endpointへ中継し、ブラウザへBackend URLやBearerを渡しません。取得成功前にサンプル画面へ遷移せず、失敗時もサンプルへfallbackしません。このpublic repositoryはBackend本体、実データ、credential、期限の正本を提供しません。
 
 ## 画面の流れ
 
@@ -92,7 +92,7 @@ Backend Contractの適合確認とデータ利用承認は別の境界です。�
 
 限定ローカル検証は、利用承認済みJSONを利用者がFile APIで手動選択し、画面上でも承認済み分類を明示した場合だけ行います。限定試用モードはファイル選択や承認チェックを表示せず、Backend側の認証・期限・配信承認を境界として同一originから自動取得します。
 
-このrepositoryには`/api/trial/design-export`のBackend実装や実データを含めません。API未配置、認証失敗、期限切れ、Contract不正、一時障害は顧客向け状態を分けてfail closedとします。Preview確認はProductionへの反映や昇格を意味しません。
+このrepositoryには`/api/trial/design-export`のserver-side proxyだけを含み、Backend本体や実データは含めません。proxyはGET・queryなし・固定pathだけを受理し、ブラウザのAuthorization、Cookie、Origin、bodyをBackendへ転送しません。Backend error bodyも顧客画面やconsoleへ転載せず、401/403、404、410、422、5xx・timeoutを安全な顧客向け状態へ分類してfail closedとします。Preview確認はProductionへの反映や昇格を意味しません。
 
 ## 5分デモ
 
@@ -117,24 +117,28 @@ pnpm run typecheck
 pnpm run test
 pnpm run check:no-real-data
 pnpm run build
+pnpm run check:client-bundle
 pnpm run dev
 ```
 
 ## Vercelデプロイと認証
 
-Vercelは固定ロックファイルでbuildし、静的成果物を配信します。全パスはルートmiddlewareでHTTP Basic認証を必須にしています。
+Vercelは固定ロックファイルでSPAをbuildし、`api/trial/design-export.ts`をNode.js Functionとして配信します。全パスはルートmiddlewareでHTTP Basic認証を必須にしており、trial proxyも同じ境界の内側です。GitHub Pages等の静的配信ではserver-side proxyがないため、`trial`モードを有効にしません。
 
 認証値は暗号化された環境変数で管理し、リポジトリやブラウザへ公開される変数へ保存しません。認証情報を変更した後は再デプロイし、リダイレクトを追従しないHTTP検査で「未認証401・誤認証401・正しい認証200」を確認します。
 
-公開クライアント変数`VITE_APP_MODE`は`standard`または`trial`だけを受理し、未設定は`standard`です。不正値はサンプルへfallbackせず停止します。この変数にはモード名以外を設定せず、Backend URL、credential、Contract本文を`VITE_*`へ置きません。`trial`環境の有効化、Backend API接続、実データ配置、Production変更はそれぞれ別の明示承認対象です。
+公開クライアント変数`VITE_APP_MODE`は`standard`または`trial`だけを受理し、未設定は`standard`です。不正値はサンプルへfallbackせず停止します。この変数にはモード名以外を設定しません。
+
+proxyはserver-onlyの`KIRIKO_TRIAL_BACKEND_BASE_URL`と`KIRIKO_TRIAL_BACKEND_BEARER`を使用します。base URLはpath・query・fragmentを持たないHTTPS origin（ローカル検証だけloopback HTTP可）に限定し、コードで`/v1/trial/design-export`を固定します。Bearer値は32〜512 byteの表示可能ASCIIだけを受理し、browser request、client bundle、HTML、source map、response、logへ出しません。これらを`VITE_*`へ置かないでください。`trial`環境の有効化、server-only環境変数の設定、Backend runtime接続、実データ配置、Production変更はそれぞれ別の明示承認対象です。このPRではいずれのリモート環境変数も設定しません。
 
 ## 実データ混入チェック
 
 ```bash
 pnpm run check:no-real-data
+pnpm run check:client-bundle
 ```
 
-buildの前後にも同じ検査を実行し、公開ビルド対象に実データ由来の内容、ローカル環境の情報、実在企業名、実在番号らしき値、公報原本由来らしき参照がないことを確認します。
+buildの前後にも実データ混入検査を実行し、公開ビルド対象に実データ由来の内容、ローカル環境の情報、実在企業名、実在番号らしき値、公報原本由来らしき参照がないことを確認します。build後はclient bundle safetyも実行し、server-only環境変数名、固定Backend path、設定済みBackend URL/Bearer値が`dist`へ入っていないことを確認します。
 
 ## 注意
 

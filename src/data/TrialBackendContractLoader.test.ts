@@ -35,6 +35,8 @@ describe('trial Backend Contract loader', () => {
     [410, 'expired'],
     [404, 'data_unavailable'],
     [403, 'authentication_required'],
+    [422, 'invalid_contract'],
+    [503, 'unavailable'],
     [408, 'unavailable'],
     [429, 'unavailable'],
     [500, 'unavailable'],

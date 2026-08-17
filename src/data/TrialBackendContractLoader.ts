@@ -97,6 +97,7 @@ function errorCodeForStatus(status: number): TrialBackendContractErrorCode {
   if (status === 401 || status === 403) return 'authentication_required';
   if (status === 410) return 'expired';
   if (status === 404) return 'data_unavailable';
+  if (status === 422) return 'invalid_contract';
   return 'unavailable';
 }
 

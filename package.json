@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check:no-real-data": "node scripts/check-no-real-data.mjs",
-    "build": "node scripts/check-no-real-data.mjs --skip-dist && tsc --noEmit && vite build"
+    "check:client-bundle": "node scripts/check-client-bundle-safety.mjs",
+    "build": "node scripts/check-no-real-data.mjs --skip-dist && tsc --noEmit && vite build && node scripts/check-no-real-data.mjs && node scripts/check-client-bundle-safety.mjs"
   },
   "dependencies": {
     "@vercel/functions": "^3.7.7",

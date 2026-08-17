@@ -1,10 +1,20 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { companySelectorFromMembership } from '../../domain/analysisRecords';
 import type { AnalysisRequest, AnalysisResult, DemoShowcaseRecord, DesignRecord } from '../../domain/types';
 import type { LocalJpoDatasetSummary } from '../../data/LocalJpoJsonDataSource';
 import { RuleBasedAnalysisEngine } from '../../analysis/RuleBasedAnalysisEngine';
+import { projectLocalJpoDesignRecord } from '../../analysis/projectLegacyDesignRecord';
+import { loadDesignJsonText } from '../../data/DesignJsonFileLoader';
 import { ResultsArea } from './ResultsArea';
+import {
+  evidenceInteractionReducer,
+  focusEvidenceSection,
+  INITIAL_EVIDENCE_INTERACTION_STATE,
+} from './evidenceInteraction';
 
 const request: AnalysisRequest = {
   scope: { mode: 'all_classes' },
@@ -75,6 +85,8 @@ const records: DesignRecord[] = [
     gazetteDrawingKeys: null,
   },
 ];
+
+const legacyAnalysisRecords = records.map(projectLocalJpoDesignRecord);
 
 const publicSampleRecords: DesignRecord[] = records.map((record, index) => ({
   ...record,
@@ -204,13 +216,68 @@ const demoShowcaseRecords: DemoShowcaseRecord[] = [
 ];
 
 describe('ResultsArea gazette drawing metadata display', () => {
+  it('fully resets evidence state and restores the list top before another selection', () => {
+    let interaction = evidenceInteractionReducer(INITIAL_EVIDENCE_INTERACTION_STATE, {
+      type: 'select',
+      result,
+      label: '対象意匠件数',
+      ids: ['fixture-with-keys', 'fixture-with-keys', 'fixture-without-keys'],
+      highlightedId: 'fixture-with-keys',
+    });
+
+    expect(interaction.selection?.ids).toEqual(['fixture-with-keys', 'fixture-without-keys']);
+    expect(interaction.highlightedEvidenceId).toBe('fixture-with-keys');
+    expect(interaction.expandedResult).toBe(result);
+    expect(interaction.listRevision).toBe(1);
+
+    let focusCount = 0;
+    let scrollCount = 0;
+    const evidenceSection = {
+      focus: () => {
+        focusCount += 1;
+      },
+      scrollIntoView: () => {
+        scrollCount += 1;
+      },
+    } as Pick<HTMLElement, 'focus' | 'scrollIntoView'>;
+
+    focusEvidenceSection(evidenceSection, interaction.selection, interaction.restoreFocus);
+    expect({ focusCount, scrollCount }).toEqual({ focusCount: 1, scrollCount: 1 });
+
+    interaction = evidenceInteractionReducer(interaction, { type: 'clear' });
+    expect(interaction.selection).toBeNull();
+    expect(interaction.highlightedEvidenceId).toBeNull();
+    expect(interaction.expandedResult).toBeNull();
+    expect(interaction.restoreFocus).toBe(true);
+    expect(interaction.listRevision).toBe(2);
+
+    focusEvidenceSection(evidenceSection, interaction.selection, interaction.restoreFocus);
+    interaction = evidenceInteractionReducer(interaction, { type: 'focus_restored' });
+    expect({ focusCount, scrollCount }).toEqual({ focusCount: 2, scrollCount: 2 });
+    expect(interaction.restoreFocus).toBe(false);
+
+    interaction = evidenceInteractionReducer(interaction, {
+      type: 'select',
+      result,
+      label: '画像意匠件数',
+      ids: ['fixture-without-keys'],
+      highlightedId: 'fixture-without-keys',
+    });
+    expect(interaction.selection).toMatchObject({ label: '画像意匠件数', ids: ['fixture-without-keys'] });
+    expect(interaction.highlightedEvidenceId).toBe('fixture-without-keys');
+    expect(interaction.expandedResult).toBe(result);
+    expect(interaction.listRevision).toBe(3);
+  });
+
   it('renders only allowed gazetteDrawingKeys fields and no image body, URL, or local full path', () => {
     const html = renderToStaticMarkup(
       createElement(ResultsArea, {
         request,
         result,
-        records,
+        analysisRecords: legacyAnalysisRecords,
         allRecords: records,
+        backendContract: null,
+        dataMode: 'legacy',
         isRunning: false,
         localJpoSummary: summary,
         localJpoWarnings: [],
@@ -218,16 +285,29 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
+        onClearProductDomain: () => undefined,
       }),
     );
 
     expect(html).toContain('今回わかったこと');
     expect(html).toContain('重要な示唆');
+    expect(html).toContain('件数の多い意匠分類・領域');
     expect(html).toContain('データ基準日 2026-06-23');
-    expect(html).toContain('ルールベース分析');
-    expect(html).toContain('信頼度：低');
+    expect(html).not.toContain('ルールベース分析');
+    expect(html).not.toContain('信頼度：');
     expect(html).toContain('選択した目的別の詳細分析を見る');
+    expect(html).toContain('商品化領域のヒント');
+    expect(html).not.toContain('新商品領域');
+    expect(html).toContain('data-testid="analysis-record-count-button"');
     expect(html.match(/data-testid="priority-insight"/g)).toHaveLength(3);
+    expect(html.match(/data-testid="priority-evidence-button"/g)).toHaveLength(3);
+    expect(html).not.toContain('根拠となる数値');
+    expect(html).not.toContain('クリックして対象意匠を確認');
+    expect(html).not.toMatch(/根拠意匠[\d,]+件を見る/);
+    expect(html).toContain('min-w-0 overflow-hidden');
+    expect(html.match(/data-testid="insight-evidence-button"/g)).toHaveLength(3);
+    expect(html).toContain('tabindex="-1"');
     expect(html).not.toContain('generatedBy:');
     expect(html).toContain('公報・図面メタデータあり');
     expect(html).toContain('図面メタデータあり：2件中1件');
@@ -236,6 +316,8 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('registrationAndApplication');
     expect(html).toContain('sample-drawing-fixture-001.png');
     expect(html).toContain('sample-publication-meta-fixture-001.xml');
+    expect(html).toContain('代表候補は未選定です。');
+    expect(html).not.toContain('>いいえ</td>');
     expect(html).toContain('月次DesignRecord側のgazetteDateと公報XML側のgazetteDateが一致していません');
     expect(html).toContain('この意匠には、まだ公報・図面メタデータが接続されていません。');
     expect(html).not.toMatch(/https?:\/\//i);
@@ -244,13 +326,350 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).not.toContain('<img');
   });
 
+  it('renders customer-first Backend evidence and exposes technical details only when requested', () => {
+    const fixturePath = path.resolve('fixtures', 'backend-contract-v0.1.0', 'design-export-fictional.json');
+    const routed = loadDesignJsonText(fs.readFileSync(fixturePath, 'utf8'), 'design-export-fictional.json');
+    expect(routed.kind).toBe('backend_contract');
+    if (routed.kind !== 'backend_contract' || !routed.result.ok) {
+      throw new Error('The fictional Backend Contract fixture must be accepted.');
+    }
+    const backendContract = routed.result;
+    const backendResult: AnalysisResult = {
+      ...result,
+      dataAsOf: backendContract.meta.analysisCutoff,
+      market: {
+        trends: {
+          ...result.market!.trends,
+          evidenceIds: ['kds_fixture_alpha', 'kds_fixture_gamma', 'kds_fixture_delta'],
+          metric: { label: '対象意匠件数', value: 2, unit: '件' },
+        },
+        emergingDomains: {
+          ...result.market!.emergingDomains,
+          evidenceIds: ['kds_fixture_beta'],
+          metric: { label: '画像意匠件数', value: 1, unit: '件' },
+        },
+        companyMoves: {
+          ...result.market!.companyMoves,
+          evidenceIds: ['kds_fixture_alpha', 'kds_fixture_beta', 'kds_fixture_gamma'],
+          metric: { label: '対象企業数', value: 3, unit: '社' },
+        },
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: backendResult,
+        analysisRecords: backendContract.analysisRecords,
+        allRecords: [],
+        backendContract,
+        dataMode: 'backend',
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: true,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
+        onClearProductDomain: () => undefined,
+      }),
+    );
+
+    expect(html).toContain('Backend Contractデータ概要');
+    expect(html).toContain('File APIで選択したContract 0.1.0 JSONをブラウザのメモリ上でデータセット単位に検証');
+    expect(html).not.toContain('現在は公開URL用の架空サンプルデータ版です。');
+    expect(html).not.toContain('この画面は公開URL用の架空サンプルデータ版です。');
+    expect(html).not.toContain('現在はローカル検証版です。');
+    expect(html).not.toContain('この画面は画面共有用のローカル検証版です。');
+    expect(html).not.toContain('公開サンプル版では架空メタデータです。');
+    expect(html).toContain('contract version');
+    expect(html).toContain('0.1.0');
+    expect(html).toContain('analysis cutoff');
+    expect(html).toContain('2026-08-10');
+    expect(html).toContain('総件数');
+    expect(html).toContain('分析対象');
+    expect(html).toContain('分析対象外');
+    expect(html).toContain('warning');
+    expect(html).toContain('quarantined');
+    expect(html).toContain('gazetteDate欠損');
+    expect(html).toContain('意匠種別unknown');
+    expect(html).toContain('未解決applicant');
+    expect(html).toContain('未解決right holder');
+    expect(html).toContain('id="evidence-kds_fixture_alpha"');
+    expect(html).toContain('id="evidence-kds_fixture_gamma"');
+    expect(html).not.toContain('id="evidence-kds_fixture_delta"');
+    expect(html).toContain('data-testid="backend-customer-details"');
+    expect(html).toContain('物品名・画像の用途');
+    expect(html).toContain('企業名');
+    expect(html).toContain('意匠分類');
+    expect(html).toContain('出願番号');
+    expect(html).toContain('登録番号');
+    expect(html).toContain('公報番号');
+    expect(html).toContain('公報発行日');
+    expect(html).toContain('取得済み図面');
+    expect(html).toContain('data-testid="backend-technical-details"');
+    expect(html).toContain('技術・検証情報');
+    const technicalDetailsTag = html.match(/<details[^>]*data-testid="backend-technical-details"[^>]*>/)?.[0];
+    expect(technicalDetailsTag).toBeDefined();
+    expect(technicalDetailsTag).toMatch(/\bopen(?:=|>)/i);
+    expect(html).toContain('stable id');
+    expect(html).toContain('架空アルファ意匠研究所');
+    expect(html).toContain('right holder resolution');
+    expect(html).toContain('名称解決済み');
+    expect(html).toContain('名称未解決');
+    expect(html).toContain('ambiguous_match');
+    expect(html).toContain('missing_master');
+    expect(html).toContain('主分類');
+    expect(html).toContain('補助分類');
+    expect(html).toContain('data-classification-role="primary"');
+    expect(html).toContain('data-classification-role="supplemental"');
+    expect(html).toContain('FIXTURE-SCHEME-A / FIXTURE-CLASS-A1 / 架空分類アルファ主分類');
+    expect(html).toContain('quality');
+    expect(html).toContain('analysis disposition');
+    expect(html).toContain('accepted');
+    expect(html).toContain('quality notices');
+    expect(html).toContain('FIXTURE-GAZETTE-ALPHA');
+    expect(html).toContain('publicationDocumentId');
+    expect(html).toContain('order 1:');
+    expect(html).toContain('代表候補');
+    expect(html).toContain('publicationはnullです。別フィールドから補完していません。');
+    expect(html).not.toContain('sourceRecordLocator');
+    expect(html).not.toContain('sourceDocumentRef');
+    expect(html).not.toContain('FIXTURE-RUN-ALPHA');
+    expect(html).not.toContain('fixture:artifact:alpha');
+    expect(html).not.toContain('fixture:record:alpha');
+    expect(html).not.toContain('fixture-parser-0.1.0');
+    expect(html.indexOf('data-testid="backend-customer-details"')).toBeLessThan(
+      html.indexOf('data-testid="backend-technical-details"'),
+    );
+    expect(html.indexOf('data-testid="backend-technical-details"')).toBeLessThan(html.indexOf('stable id'));
+    expect(html).not.toMatch(/https?:\/\//i);
+    expect(html).not.toMatch(/[A-Za-z]:\\/);
+    expect(html).not.toMatch(/^data:/im);
+    expect(html).not.toContain('<img');
+  });
+
+  it('keeps raw classification schemes and Backend terms out of the initial customer markup', () => {
+    const fixturePath = path.resolve('fixtures', 'backend-contract-v0.1.0', 'design-export-fictional.json');
+    const routed = loadDesignJsonText(fs.readFileSync(fixturePath, 'utf8'), 'design-export-fictional.json');
+    if (routed.kind !== 'backend_contract' || !routed.result.ok) {
+      throw new Error('The fictional Backend Contract fixture must be accepted.');
+    }
+    const template = routed.result.records.find((record) => record.adapterDisposition.status === 'accepted');
+    if (!template) throw new Error('The fixture must contain an accepted record.');
+    const backendContract = {
+      ...routed.result,
+      records: routed.result.records.map((record) =>
+        record.id === template.id
+          ? {
+              ...record,
+              classifications: [
+                {
+                  scheme: 'JPO_NATIONAL_DESIGN_CLASSIFICATION',
+                  code: 'FIXTURE-CODE-A1',
+                  label: null,
+                  isPrimary: true,
+                },
+                {
+                  scheme: 'FIXTURE_SUPPLEMENTAL_CLASSIFICATION_SCHEME_WITH_A_LONG_NAME',
+                  code: 'FIXTURE-SUPPLEMENTAL-CODE',
+                  label: null,
+                  isPrimary: false,
+                },
+              ],
+            }
+          : record,
+      ),
+    };
+    const initialResult: AnalysisResult = {
+      ...result,
+      market: {
+        trends: {
+          ...result.market!.trends,
+          evidenceIds: [template.id],
+          metric: { label: '検出意匠数', value: 1, unit: '件' },
+        },
+        emergingDomains: { ...result.market!.emergingDomains, evidenceIds: [], metric: { label: '検出意匠数', value: 0, unit: '件' } },
+        companyMoves: { ...result.market!.companyMoves, evidenceIds: [], metric: { label: '検出意匠数', value: 0, unit: '件' } },
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: initialResult,
+        analysisRecords: routed.result.analysisRecords,
+        allRecords: [],
+        backendContract,
+        dataMode: 'backend',
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: true,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
+      }),
+    );
+
+    expect(html).toContain('日本意匠分類 FIXTURE-CODE-A1');
+    expect(html).toContain('技術・検証情報');
+    expect(html).toContain('data-testid="backend-technical-details"');
+    expect(html).not.toContain('JPO_NATIONAL_DESIGN_CLASSIFICATION');
+    expect(html).not.toContain('FIXTURE_SUPPLEMENTAL_CLASSIFICATION_SCHEME_WITH_A_LONG_NAME');
+    expect(html).not.toContain('FIXTURE-SUPPLEMENTAL-CODE');
+    expect(html).not.toContain('Backend Contract');
+    expect(html).not.toContain('accepted');
+    expect(html).not.toContain('excluded');
+    expect(html).not.toContain('adapter');
+    expect(html).not.toContain('stable id');
+    expect(html).not.toMatch(/<details[^>]*\bopen(?:=|>)/i);
+  });
+
+  it('keeps no-primary classifications supplemental and leaves all-false representative candidates unselected', () => {
+    const fixturePath = path.resolve('fixtures', 'backend-contract-v0.1.0', 'design-export-fictional.json');
+    const routed = loadDesignJsonText(fs.readFileSync(fixturePath, 'utf8'), 'design-export-fictional.json');
+    expect(routed.kind).toBe('backend_contract');
+    if (routed.kind !== 'backend_contract' || !routed.result.ok) {
+      throw new Error('The fictional Backend Contract fixture must be accepted.');
+    }
+    const template = routed.result.records.find(
+      (record) => record.adapterDisposition.status === 'accepted' && record.classifications.length > 1 && record.drawings.length > 0,
+    );
+    if (!template) throw new Error('The fixture must contain an accepted multi-classification record with drawings.');
+    const backendContract = {
+      ...routed.result,
+      records: routed.result.records.map((record) =>
+        record.id === template.id
+          ? {
+              ...record,
+              classifications: record.classifications.map((classification) => ({ ...classification, isPrimary: false })),
+              drawings: record.drawings.map((drawing) => ({ ...drawing, isRepresentativeCandidate: false })),
+            }
+          : record,
+      ),
+    };
+    const noPrimaryResult: AnalysisResult = {
+      ...result,
+      market: {
+        trends: { ...result.market!.trends, evidenceIds: [template.id], metric: { label: '対象意匠件数', value: 1, unit: '件' } },
+        emergingDomains: { ...result.market!.emergingDomains, evidenceIds: [], metric: { label: '画像意匠件数', value: 0, unit: '件' } },
+        companyMoves: { ...result.market!.companyMoves, evidenceIds: [], metric: { label: '対象企業数', value: 0, unit: '社' } },
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: noPrimaryResult,
+        analysisRecords: routed.result.analysisRecords,
+        allRecords: [],
+        backendContract,
+        dataMode: 'backend',
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: false,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
+        onClearProductDomain: () => undefined,
+      }),
+    );
+
+    expect(html).toContain('主分類は未選定です。先頭の分類を主分類として扱っていません。');
+    expect(html.match(/data-classification-role="supplemental"/g)).toHaveLength(template.classifications.length);
+    expect(html).not.toContain('data-classification-role="primary"');
+    expect(html).toContain('代表候補は未選定です。');
+    expect(html).not.toContain('data-representative-candidate="true"');
+    expect(html).not.toContain('>いいえ</td>');
+  });
+
+  it('keeps valid Backend record fragments and tuple-based row identities distinct', () => {
+    const fixturePath = path.resolve('fixtures', 'backend-contract-v0.1.0', 'design-export-fictional.json');
+    const routed = loadDesignJsonText(fs.readFileSync(fixturePath, 'utf8'), 'design-export-fictional.json');
+    expect(routed.kind).toBe('backend_contract');
+    if (routed.kind !== 'backend_contract' || !routed.result.ok) {
+      throw new Error('The fictional Backend Contract fixture must be accepted.');
+    }
+    const template = routed.result.records.find((record) => record.adapterDisposition.status === 'accepted');
+    if (!template) throw new Error('The fixture must contain an accepted record.');
+    const ids = ['fixture:a', 'fixture.a', 'fixture-a'];
+    const backendContract = {
+      ...routed.result,
+      records: ids.map((id, index) => ({
+        ...template,
+        id,
+        classifications:
+          index === 0
+            ? [
+                { scheme: 'a:b', code: 'c', label: '架空分類コロン一', isPrimary: true },
+                { scheme: 'a', code: 'b:c', label: '架空分類コロン二', isPrimary: false },
+              ]
+            : template.classifications,
+        drawings:
+          index === 0 && template.drawings.length > 0
+            ? [
+                { ...template.drawings[0], drawingId: 'fixture-duplicate-drawing', order: 1 },
+                { ...template.drawings[0], drawingId: 'fixture-duplicate-drawing', order: 2 },
+              ]
+            : template.drawings,
+      })),
+    };
+    const collisionResult: AnalysisResult = {
+      ...result,
+      market: {
+        ...result.market!,
+        trends: { ...result.market!.trends, evidenceIds: ids },
+        emergingDomains: { ...result.market!.emergingDomains, evidenceIds: [] },
+        companyMoves: { ...result.market!.companyMoves, evidenceIds: [] },
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: collisionResult,
+        analysisRecords: [],
+        allRecords: [],
+        backendContract,
+        dataMode: 'backend',
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: false,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
+        onClearProductDomain: () => undefined,
+      }),
+    );
+
+    expect(html).toContain('href="#evidence-fixture~3aa"');
+    expect(html).toContain('href="#evidence-fixture~2ea"');
+    expect(html).toContain('href="#evidence-fixture-a"');
+    expect(html).toContain('id="evidence-fixture~3aa"');
+    expect(html).toContain('id="evidence-fixture~2ea"');
+    expect(html).toContain('id="evidence-fixture-a"');
+    expect(html).toContain('架空分類コロン一');
+    expect(html).toContain('架空分類コロン二');
+    expect(html).toContain('order 1: fixture-duplicate-drawing');
+    expect(html).toContain('order 2: fixture-duplicate-drawing');
+  });
+
   it('renders external demo mode guide, showcase records, and folded unresolved codes safely', () => {
     const html = renderToStaticMarkup(
       createElement(ResultsArea, {
         request,
         result,
-        records,
+        analysisRecords: legacyAnalysisRecords,
         allRecords: records,
+        backendContract: null,
+        dataMode: 'legacy',
         isRunning: false,
         localJpoSummary: {
           ...summary,
@@ -263,6 +682,8 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: true,
         demoShowcaseRecords,
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
+        onClearProductDomain: () => undefined,
       }),
     );
 
@@ -288,6 +709,11 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('実データ検証版の到達点');
     expect(html).toContain('現在の未接続・改善予定');
     expect(html).toContain('セキュリティ・共有前提');
+    expect(html).toContain('現在はローカル検証版です。');
+    expect(html).toContain('この画面は画面共有用のローカル検証版です。');
+    expect(html).not.toContain('現在は公開URL用の架空サンプルデータ版です。');
+    expect(html).not.toContain('この画面は公開URL用の架空サンプルデータ版です。');
+    expect(html).not.toContain('公開サンプル版では架空メタデータです。');
     expect(html).toContain('先方の社外秘情報を入力する必要はありません。');
     expect(html).toContain('商用導入時は、社内環境・閉域環境・セキュアなクラウド構成を相談可能です。');
     expect(html).toContain('デモナビ');
@@ -313,7 +739,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('注意事項');
     expect(html).toContain('一部の申請人・権利者コードは、現在DB側で名寄せ改善中です。');
     expect(html).toContain('未解決コード一覧');
-    expect(html).not.toContain('<details open');
+    expect(html).toContain('技術・検証情報');
     expect(html).not.toMatch(/https?:\/\//i);
     expect(html).not.toMatch(/[A-Za-z]:\\/);
     expect(html).not.toMatch(new RegExp(['base', '64'].join(''), 'i'));
@@ -327,8 +753,10 @@ describe('ResultsArea gazette drawing metadata display', () => {
       createElement(ResultsArea, {
         request,
         result: null,
-        records: [],
+        analysisRecords: [],
         allRecords: publicSampleRecords,
+        backendContract: null,
+        dataMode: 'sample',
         isRunning: false,
         localJpoSummary: null,
         localJpoWarnings: [],
@@ -336,6 +764,8 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: true,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
+        onClearProductDomain: () => undefined,
       }),
     );
 
@@ -343,7 +773,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('注力領域');
     expect(html).toContain('変化の兆候');
     expect(html).toContain('戦略の材料');
-    expect(html).toContain('任意：データ・デモ・技術情報');
+    expect(html).toContain('技術・検証情報');
     expect(html).toContain('この公開デモはサンプルデータ版です。特許庁実データを用いた検証版は、画面共有でご説明します。');
     expect(html).toContain('公開URL用サンプルデータ概要');
     expect(html).toContain('サンプルデータ件数');
@@ -352,6 +782,13 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('公開サンプルデータから自動抽出した、架空メタデータを説明しやすい意匠です。');
     expect(html).toContain('公開URL版のデータは架空データで、実在企業・実在公報ではありません。');
     expect(html).toContain('セキュリティ・共有前提');
+    expect(html).toContain('現在は公開URL用の架空サンプルデータ版です。');
+    expect(html).toContain('この画面は公開URL用の架空サンプルデータ版です。');
+    expect(html).not.toContain('現在はローカル検証版です。');
+    expect(html).not.toContain('この画面は画面共有用のローカル検証版です。');
+    ['AI分析結果を見る', 'AI分析結果', 'AI分析結果だけでなく', 'AI知財戦略コメント'].forEach((phrase) => {
+      expect(html).not.toContain(phrase);
+    });
     expect(html).not.toContain('細江');
     expect(html).not.toContain('6社比較ビュー');
     expect(html).not.toContain('Soft' + 'Bank');
@@ -376,20 +813,31 @@ describe('ResultsArea gazette drawing metadata display', () => {
   it('shows only the selected company-purpose details and matching evidence records', async () => {
     const purposeRequest: AnalysisRequest = {
       ...request,
-      scope: { mode: 'companies', companies: [records[0].applicant] },
-      purposes: ['dx_dev'],
+      scope: {
+        mode: 'companies',
+        companySelectors: [companySelectorFromMembership(legacyAnalysisRecords[0].companyMemberships[0])],
+      },
+      purposes: ['dx_dev', 'filing_strategy'],
     };
-    const purposeResult = await new RuleBasedAnalysisEngine().analyze(purposeRequest, records, '2026-06-23');
+    const purposeResult = await new RuleBasedAnalysisEngine().analyze(
+      purposeRequest,
+      legacyAnalysisRecords,
+      '2026-06-23',
+    );
     const company = purposeResult.companies[0];
     company.designTrend.domains.evidenceIds = ['fixture-without-keys'];
     company.designTrend.domains.metric.value = 1;
+    company.dxDevTrend.aiIotTrend.evidenceIds = ['fixture-with-keys'];
+    company.dxDevTrend.aiIotTrend.metric.value = 1;
 
     const html = renderToStaticMarkup(
       createElement(ResultsArea, {
         request: purposeRequest,
         result: purposeResult,
-        records,
+        analysisRecords: legacyAnalysisRecords,
         allRecords: records,
+        backendContract: null,
+        dataMode: 'legacy',
         isRunning: false,
         localJpoSummary: null,
         localJpoWarnings: [],
@@ -397,10 +845,14 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
+        onClearProductDomain: () => undefined,
       }),
     );
 
     expect(html).toContain('DX商品開発動向');
+    expect(html).toContain('AI・IoT関連傾向');
+    expect(html).toContain('知財戦略の検討材料');
     expect(html).not.toContain('意匠ポートフォリオ分析');
     expect(html).not.toContain('AI知財戦略コメント');
     expect(html).toContain('id="evidence-fixture-with-keys"');
@@ -409,13 +861,19 @@ describe('ResultsArea gazette drawing metadata display', () => {
 
   it('keeps the market overview as scope context while emphasizing a non-market purpose', async () => {
     const purposeRequest: AnalysisRequest = { ...request, purposes: ['dx_dev'] };
-    const purposeResult = await new RuleBasedAnalysisEngine().analyze(purposeRequest, records, '2026-06-23');
+    const purposeResult = await new RuleBasedAnalysisEngine().analyze(
+      purposeRequest,
+      legacyAnalysisRecords,
+      '2026-06-23',
+    );
     const html = renderToStaticMarkup(
       createElement(ResultsArea, {
         request: purposeRequest,
         result: purposeResult,
-        records,
+        analysisRecords: legacyAnalysisRecords,
         allRecords: records,
+        backendContract: null,
+        dataMode: 'legacy',
         isRunning: false,
         localJpoSummary: null,
         localJpoWarnings: [],
@@ -423,6 +881,8 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
+        onClearProductDomain: () => undefined,
       }),
     );
 
@@ -450,8 +910,10 @@ describe('ResultsArea gazette drawing metadata display', () => {
       createElement(ResultsArea, {
         request,
         result: manyResult,
-        records: manyRecords,
+        analysisRecords: manyRecords.map(projectLocalJpoDesignRecord),
         allRecords: manyRecords,
+        backendContract: null,
+        dataMode: 'legacy',
         isRunning: false,
         localJpoSummary: null,
         localJpoWarnings: [],
@@ -459,17 +921,22 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
+        onClearProductDomain: () => undefined,
       }),
     );
 
     expect(html.match(/id="evidence-bulk-evidence-/g)).toHaveLength(8);
+    expect(html).toContain('分析結果全体の根拠意匠9件／まず先頭8件を表示しています。');
     expect(html).toContain('残り1件の根拠意匠を表示');
     expect(html).not.toContain('id="evidence-bulk-evidence-9"');
   });
 
   it('explains how to recover when no records match the selected conditions', () => {
+    const emptyRequest = { ...request, productDomain: '架空の限定領域' };
     const emptyResult: AnalysisResult = {
       ...result,
+      request: emptyRequest,
       market: {
         trends: { ...result.market!.trends, evidenceIds: [], metric: { label: '対象意匠件数', value: 0, unit: '件' } },
         emergingDomains: { ...result.market!.emergingDomains, evidenceIds: [], metric: { label: '画像意匠件数', value: 0, unit: '件' } },
@@ -478,10 +945,12 @@ describe('ResultsArea gazette drawing metadata display', () => {
     };
     const html = renderToStaticMarkup(
       createElement(ResultsArea, {
-        request,
+        request: emptyRequest,
         result: emptyResult,
-        records: [],
+        analysisRecords: [],
         allRecords: publicSampleRecords,
+        backendContract: null,
+        dataMode: 'sample',
         isRunning: false,
         localJpoSummary: null,
         localJpoWarnings: [],
@@ -489,11 +958,14 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
+        onClearProductDomain: () => undefined,
       }),
     );
 
     expect(html).toContain('この条件に一致する意匠はありません。');
     expect(html).toContain('企業名、商品・事業領域、期間、意匠種別を見直して');
+    expect(html).toContain('商品・事業領域の指定を解除');
     expect(html).toContain('role="status"');
   });
 });

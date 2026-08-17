@@ -26,6 +26,7 @@ describe('Vercel Basic authentication middleware', () => {
 
     expect(response.status).toBe(401);
     expect(response.headers.get('www-authenticate')).toContain('Basic realm=');
+    expect(response.headers.get('www-authenticate')).toContain('KIRIKO Design Signals');
   });
 
   it('rejects incorrect credentials', () => {

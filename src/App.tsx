@@ -2,25 +2,42 @@ import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { RuleBasedAnalysisEngine } from './analysis/RuleBasedAnalysisEngine';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
 import { ResultsArea } from './components/ResultsArea/ResultsArea';
-import { Badge } from './components/common/Badge';
-import { ALL_DESIGN_KINDS, STATUS_BADGES } from './domain/labels';
+import { DataUsageBanner } from './components/common/DataUsageBanner';
+import { ALL_DESIGN_KINDS } from './domain/labels';
 import type { AnalysisPurpose, AnalysisRequest, AnalysisResult, DesignRecord, HosoeAnalysisPack, ValidationErrors } from './domain/types';
+import {
+  companySelectorKey,
+  type AnalysisReadyDesignRecord,
+  type CompanySelector,
+} from './domain/analysisRecords';
 import { validateRequest } from './domain/validation';
+import { clearProductDomainFilter, createRequestForDataMode } from './domain/presets';
+import { buildCompanyOptions } from './analysis/buildCompanyOptions';
+import { normalizeLocalCompanyKey } from './analysis/projectLegacyDesignRecord';
 import { SampleDesignDataSource } from './data/SampleDesignDataSource';
 import {
-  loadLocalJpoJson,
   sanitizeAnalysisEvidenceIds,
   type LocalJpoDataPeriodKind,
   type LocalJpoLoadFailure,
   type LocalJpoLoadSuccess,
 } from './data/LocalJpoJsonDataSource';
 import {
+  BackendContractDataSource,
+  type BackendContractAdapterSuccess,
+  type DatasetAdapterErrorCode,
+} from './data/BackendContractDataSource';
+import { loadDesignJsonText } from './data/DesignJsonFileLoader';
+import {
+  classifyBackendContractData,
+  type BackendContractDataClassification,
+} from './data/BackendContractDataClassification';
+import {
   loadDemoShowcaseJson,
   type DemoShowcaseLoadFailure,
   type DemoShowcaseLoadSuccess,
 } from './data/DemoShowcaseDataSource';
 
-const DEFAULT_PURPOSES: AnalysisPurpose[] = ['market_trend', 'dx_dev', 'portfolio', 'filing_strategy'];
+const DEFAULT_PURPOSES: AnalysisPurpose[] = ['market_trend', 'competitor_design'];
 const ENABLE_LOCAL_ANALYSIS_PACK = import.meta.env.DEV || import.meta.env.VITE_ENABLE_LOCAL_ANALYSIS_PACK === 'true';
 
 const initialRequest: AnalysisRequest = {
@@ -29,7 +46,7 @@ const initialRequest: AnalysisRequest = {
   period: 'last_1y',
   designKinds: [...ALL_DESIGN_KINDS],
   purposes: DEFAULT_PURPOSES,
-  departments: ['product_planning', 'design', 'ip'],
+  departments: ['mgmt_planning', 'product_planning'],
   includeUnresolvedApplicants: true,
 };
 
@@ -37,6 +54,13 @@ type LocalJpoState =
   | { status: 'sample'; warnings: string[]; errors: string[] }
   | { status: 'loading'; fileName: string; warnings: string[]; errors: string[] }
   | { status: 'loaded'; load: LocalJpoLoadSuccess }
+  | {
+      status: 'backend_loaded';
+      fileName: string;
+      adapted: BackendContractAdapterSuccess;
+      dataSource: BackendContractDataSource;
+      classification: BackendContractDataClassification;
+    }
   | { status: 'error'; failure: LocalJpoLoadFailure };
 
 type DemoShowcaseState =
@@ -64,7 +88,7 @@ export default function App() {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [records, setRecords] = useState<DesignRecord[]>([]);
+  const [analysisRecords, setAnalysisRecords] = useState<AnalysisReadyDesignRecord[]>([]);
   const [localJpoState, setLocalJpoState] = useState<LocalJpoState>({ status: 'sample', warnings: [], errors: [] });
   const [demoShowcaseState, setDemoShowcaseState] = useState<DemoShowcaseState>({ status: 'empty', warnings: [], errors: [] });
   const [hosoeAnalysisPackState, setHosoeAnalysisPackState] = useState<HosoeAnalysisPackState>({ status: 'empty', warnings: [], errors: [] });
@@ -72,13 +96,19 @@ export default function App() {
   const [externalDemoMode, setExternalDemoMode] = useState(true);
   const [analysisWarnings, setAnalysisWarnings] = useState<string[]>([]);
 
-  const dataSource = localJpoState.status === 'loaded' ? localJpoState.load.dataSource : sampleDataSource;
-  const allRecords = useMemo(() => dataSource.getAllRecords(), [dataSource]);
-  const companyOptions = useMemo(() => buildCompanyOptions(allRecords), [allRecords]);
-  const headerBadges =
-    localJpoState.status === 'loaded'
-      ? ['ローカル実データJSON（開発用）', 'ルールベース分析', 'File API読込']
-      : STATUS_BADGES;
+  const dataSource =
+    localJpoState.status === 'backend_loaded'
+      ? localJpoState.dataSource
+      : localJpoState.status === 'loaded'
+        ? localJpoState.load.dataSource
+        : sampleDataSource;
+  const dataMode = localJpoState.status === 'backend_loaded' ? 'backend' : localJpoState.status === 'loaded' ? 'legacy' : 'sample';
+  const allAnalysisRecords = useMemo(() => dataSource.getAllRecords(), [dataSource]);
+  const legacyViewRecords = useMemo<DesignRecord[]>(
+    () => (localJpoState.status === 'backend_loaded' ? [] : dataSource.getViewRecords() as DesignRecord[]),
+    [dataSource, localJpoState.status],
+  );
+  const companyOptions = useMemo(() => buildCompanyOptions(allAnalysisRecords), [allAnalysisRecords]);
 
   useEffect(() => {
     if (!ENABLE_LOCAL_ANALYSIS_PACK) return;
@@ -102,21 +132,48 @@ export default function App() {
 
   const clearAnalysisResult = () => {
     setResult(null);
-    setRecords([]);
+    setAnalysisRecords([]);
     setAnalysisWarnings([]);
   };
 
-  const addCompany = (suggestedCompany?: string) => {
-    const nextCompany = (suggestedCompany ?? companyInput).trim();
-    if (!nextCompany) return;
+  const clearProductDomain = () => {
+    setRequest((current) => clearProductDomainFilter(current));
+    setErrors({});
+    clearAnalysisResult();
+    window.requestAnimationFrame(() => {
+      const input = document.getElementById('product-domain-input');
+      input?.focus({ preventScroll: true });
+      input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
+
+  const addCompany = (suggestedSelectorKey?: string) => {
+    const inputLabel = companyInput.trim();
+    const option = suggestedSelectorKey
+      ? companyOptions.find((candidate) => companySelectorKey(candidate) === suggestedSelectorKey)
+      : companyOptions.find((candidate) => candidate.displayLabel === inputLabel);
+    const nextSelector: CompanySelector | undefined =
+      option ??
+      (inputLabel && dataMode !== 'backend'
+        ? {
+            origin: dataMode,
+            role: 'applicant',
+            localKey: normalizeLocalCompanyKey(inputLabel),
+            displayLabel: inputLabel,
+          }
+        : undefined);
+    if (!nextSelector) return;
 
     setRequest((current) => {
-      const companies = current.scope.mode === 'companies' ? current.scope.companies : [];
+      const companySelectors = current.scope.mode === 'companies' ? current.scope.companySelectors : [];
+      const nextKey = companySelectorKey(nextSelector);
       return {
         ...current,
         scope: {
           mode: 'companies',
-          companies: companies.includes(nextCompany) ? companies : [...companies, nextCompany],
+          companySelectors: companySelectors.some((selector) => companySelectorKey(selector) === nextKey)
+            ? companySelectors
+            : [...companySelectors, nextSelector],
         },
       };
     });
@@ -124,14 +181,14 @@ export default function App() {
     clearAnalysisResult();
   };
 
-  const removeCompany = (company: string) => {
+  const removeCompany = (selectorKey: string) => {
     setRequest((current) => {
-      const companies = current.scope.mode === 'companies' ? current.scope.companies : [];
+      const companySelectors = current.scope.mode === 'companies' ? current.scope.companySelectors : [];
       return {
         ...current,
         scope: {
           mode: 'companies',
-          companies: companies.filter((item) => item !== company),
+          companySelectors: companySelectors.filter((selector) => companySelectorKey(selector) !== selectorKey),
         },
       };
     });
@@ -147,11 +204,13 @@ export default function App() {
     try {
       const queriedRecords = await dataSource.query(request);
       const nextResult = await analysisEngine.analyze(request, queriedRecords, dataSource.getDataAsOf());
-      const evidenceWarnings = sanitizeAnalysisEvidenceIds(nextResult, allRecords);
+      const evidenceWarnings = sanitizeAnalysisEvidenceIds(nextResult, allAnalysisRecords);
       if (localJpoState.status === 'loaded') {
         nextResult.disclaimer = localJpoAnalysisDisclaimer(localJpoState.load.summary);
+      } else if (localJpoState.status === 'backend_loaded') {
+        nextResult.disclaimer = backendContractAnalysisDisclaimer();
       }
-      setRecords(queriedRecords);
+      setAnalysisRecords(queriedRecords);
       setResult(nextResult);
       setAnalysisWarnings(evidenceWarnings);
     } finally {
@@ -162,26 +221,71 @@ export default function App() {
   const handleLocalJsonFile = async (file: File | null) => {
     if (!file) return;
 
+    setErrors({});
     setResult(null);
-    setRecords([]);
+    setAnalysisRecords([]);
     setAnalysisWarnings([]);
     setLocalJpoState({ status: 'loading', fileName: file.name, warnings: [], errors: [] });
+    let routed: ReturnType<typeof loadDesignJsonText>;
     try {
-      const text = await file.text();
-      const parsed = JSON.parse(text.replace(/^\uFEFF/, '')) as unknown;
-      const loadResult = loadLocalJpoJson(parsed, file.name);
-      setLocalJpoState(loadResult.ok ? { status: 'loaded', load: loadResult } : { status: 'error', failure: loadResult });
-    } catch (error) {
+      routed = loadDesignJsonText(await file.text(), file.name);
+    } catch {
       setLocalJpoState({
         status: 'error',
         failure: {
           ok: false,
           fileName: file.name,
-          errors: [`JSONを読み込めませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`],
+          errors: ['ファイルを読み込めませんでした。ファイルを選び直してください。'],
+          warnings: [],
+        },
+      });
+      setRequest((current) => ({ ...current, scope: { mode: 'all_classes' } }));
+      setCompanyInput('');
+      return;
+    }
+    if (routed.kind === 'legacy') {
+      setLocalJpoState(routed.result.ok ? { status: 'loaded', load: routed.result } : { status: 'error', failure: routed.result });
+    } else if (routed.result.ok) {
+      setLocalJpoState({
+        status: 'backend_loaded',
+        fileName: file.name,
+        adapted: routed.result,
+        dataSource: new BackendContractDataSource(routed.result),
+        classification: classifyBackendContractData({ exportId: routed.result.meta.exportId }),
+      });
+    } else {
+      setLocalJpoState({
+        status: 'error',
+        failure: {
+          ok: false,
+          fileName: file.name,
+          errors: formatBackendAdapterErrors(routed.result.errors.map((error) => error.code)),
           warnings: [],
         },
       });
     }
+    const loadedDataMode =
+      routed.kind === 'backend_contract' && routed.result.ok
+        ? 'backend'
+        : routed.kind === 'legacy' && routed.result.ok
+          ? 'legacy'
+          : 'sample';
+    setRequest((current) => createRequestForDataMode(current, loadedDataMode));
+    setCompanyInput('');
+  };
+
+  const handleApprovedPublicDesignDemoChange = (approved: boolean) => {
+    setLocalJpoState((current) => {
+      if (current.status !== 'backend_loaded') return current;
+
+      return {
+        ...current,
+        classification: classifyBackendContractData({
+          exportId: current.adapted.meta.exportId,
+          approvedPublicDesignDemo: approved,
+        }),
+      };
+    });
   };
 
   const handleDemoShowcaseFile = async (file: File | null) => {
@@ -193,13 +297,13 @@ export default function App() {
       const parsed = JSON.parse(text.replace(/^\uFEFF/, '')) as unknown;
       const loadResult = loadDemoShowcaseJson(parsed, file.name);
       setDemoShowcaseState(loadResult.ok ? { status: 'loaded', load: loadResult } : { status: 'error', failure: loadResult });
-    } catch (error) {
+    } catch {
       setDemoShowcaseState({
         status: 'error',
         failure: {
           ok: false,
           fileName: file.name,
-          errors: [`JSONを読み込めませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`],
+          errors: ['JSONを読み込めませんでした。ファイル形式を確認して選び直してください。'],
           warnings: [],
         },
       });
@@ -216,13 +320,13 @@ export default function App() {
       const { loadHosoeAnalysisPackJson } = await import('./data/HosoeAnalysisPackDataSource');
       const loadResult = loadHosoeAnalysisPackJson(parsed, file.name);
       setHosoeAnalysisPackState(loadResult.ok ? { status: 'loaded', load: loadResult } : { status: 'error', failure: loadResult });
-    } catch (error) {
+    } catch {
       setHosoeAnalysisPackState({
         status: 'error',
         failure: {
           ok: false,
           fileName: file.name,
-          errors: [`JSONを読み込めませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`],
+          errors: ['JSONを読み込めませんでした。ファイル形式を確認して選び直してください。'],
           warnings: [],
         },
       });
@@ -231,40 +335,30 @@ export default function App() {
 
   const resetToSampleData = () => {
     setLocalJpoState({ status: 'sample', warnings: [], errors: [] });
-    setResult(null);
-    setRecords([]);
-    setAnalysisWarnings([]);
+    setRequest((current) => ({ ...current, scope: { mode: 'all_classes' } }));
+    setCompanyInput('');
+    clearAnalysisResult();
   };
   const LocalAnalysisPackPanel = localAnalysisPackPanel;
 
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="border-b border-line bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mx-auto max-w-7xl px-4 py-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-normal text-ink">AI Design Intelligence</h1>
-            <p className="mt-1 text-sm text-muted">意匠情報を、先行商品戦略＆知財戦略へ活用</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {headerBadges.map((badge, index) => (
-              <Badge key={badge} tone={index === 1 ? 'accent' : index === 2 ? 'warning' : 'neutral'}>
-                {badge}
-              </Badge>
-            ))}
+            <h1 className="text-2xl font-bold tracking-normal text-ink">KIRIKO Design Signals</h1>
+            <p className="mt-1 text-sm text-muted">意匠情報から、市場・企業・商品化領域の先行シグナルを捉える</p>
           </div>
         </div>
-        {localJpoState.status === 'loaded' ? (
-          <div className="border-t border-line bg-teal-50">
-            <div className="mx-auto max-w-7xl px-4 py-3 text-sm leading-6 text-accent">
-              ローカル検証データを使用中です。データはブラウザのメモリ上だけで扱い、公開ビルドには含めません。
-            </div>
-          </div>
+        {localJpoState.status === 'backend_loaded' ? (
+          <DataUsageBanner
+            mode="backend"
+            classification={localJpoState.classification}
+            acceptedCount={localJpoState.adapted.summary.acceptedCount}
+            analysisCutoff={localJpoState.adapted.meta.analysisCutoff}
+          />
         ) : (
-          <div className="border-t border-amber-200 bg-amber-50">
-            <div className="mx-auto max-w-7xl px-4 py-3 text-sm leading-6 text-caution">
-              サンプルデータ版です。表示される企業・意匠情報はすべて架空で、実在企業・実在公報ではありません。
-            </div>
-          </div>
+          <DataUsageBanner mode={localJpoState.status === 'loaded' ? 'legacy' : 'sample'} />
         )}
       </header>
 
@@ -273,34 +367,36 @@ export default function App() {
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Design intelligence workflow</p>
             <h2 className="mt-3 max-w-3xl text-2xl font-bold leading-tight text-ink sm:text-3xl">
-              競合や市場の意匠から、次に注目すべき商品領域と出願戦略のヒントを見つける
+              意匠情報から、市場・企業・商品化領域の先行シグナルを捉える
             </h2>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-muted sm:text-base">
-              対象と知りたいことを選ぶだけで、動向・変化・ポートフォリオを整理し、根拠となる意匠まで確認できます。
+              意匠情報を俯瞰し、市場動向・企業動向・商品化領域・デザイン変化の検討材料を得ます。結果の件数から根拠意匠へ戻り、他の知財情報、商品情報、事業情報等と組み合わせて検討できます。
             </p>
           </div>
-          <ol className="grid gap-3 rounded-xl border border-teal-200 bg-white p-4 shadow-soft sm:grid-cols-3 lg:grid-cols-1">
+          <ul aria-label="分析の流れ" className="grid gap-3 rounded-xl border border-teal-200 bg-white p-4 shadow-soft sm:grid-cols-3 lg:grid-cols-1">
             <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">1</span>
-              <div><strong className="block text-sm text-ink">対象を決める</strong><span className="text-xs leading-5 text-muted">市場全体または企業を選択</span></div>
+              <span aria-hidden="true" className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
+              <div><strong className="block text-sm text-ink">対象を決める</strong><span className="text-xs leading-5 text-muted">市場・業界・企業を選択</span></div>
             </li>
             <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">2</span>
-              <div><strong className="block text-sm text-ink">知りたいことを選ぶ</strong><span className="text-xs leading-5 text-muted">期間・意匠種別・分析目的を設定</span></div>
+              <span aria-hidden="true" className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
+              <div><strong className="block text-sm text-ink">見たい領域を決める</strong><span className="text-xs leading-5 text-muted">領域・意匠情報・期間を設定</span></div>
             </li>
             <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">3</span>
-              <div><strong className="block text-sm text-ink">示唆と根拠を見る</strong><span className="text-xs leading-5 text-muted">重要な結果から根拠意匠へ</span></div>
+              <span aria-hidden="true" className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
+              <div><strong className="block text-sm text-ink">結果と根拠を確認する</strong><span className="text-xs leading-5 text-muted">件数から該当する根拠意匠へ</span></div>
             </li>
-          </ol>
+          </ul>
         </div>
       </section>
 
       <div className="mx-auto grid max-w-7xl gap-5 px-4 py-6 lg:grid-cols-[410px_minmax(0,1fr)] lg:items-start">
         <SettingsPanel
+          key={dataMode}
           request={request}
           companyInput={companyInput}
           companyOptions={companyOptions}
+          companySelectionMode={dataMode === 'backend' ? 'options_only' : 'freeform'}
           errors={errors}
           isRunning={isRunning}
           hasResult={Boolean(result)}
@@ -316,6 +412,7 @@ export default function App() {
           localJpoState={localJpoState}
           enableLocalAnalysisPack={ENABLE_LOCAL_ANALYSIS_PACK}
           onLocalJsonFile={handleLocalJsonFile}
+          onApprovedPublicDesignDemoChange={handleApprovedPublicDesignDemoChange}
           onResetToSampleData={resetToSampleData}
           externalDemoMode={externalDemoMode}
           onExternalDemoModeChange={setExternalDemoMode}
@@ -328,35 +425,42 @@ export default function App() {
         />
         <div className="min-w-0">
           <ResultsArea
-          request={request}
-          result={result}
-          records={records}
-          allRecords={allRecords}
-          isRunning={isRunning}
-          localJpoSummary={localJpoState.status === 'loaded' ? localJpoState.load.summary : null}
-          localJpoWarnings={
-            localJpoState.status === 'loaded'
-              ? localJpoState.load.warnings
-              : localJpoState.status === 'error'
-                ? [...localJpoState.failure.errors, ...localJpoState.failure.warnings]
-                : []
-          }
-          analysisWarnings={analysisWarnings}
-          externalDemoMode={externalDemoMode}
-          demoShowcaseRecords={demoShowcaseState.status === 'loaded' ? demoShowcaseState.load.records : []}
-          localAnalysisPackPanel={
-            ENABLE_LOCAL_ANALYSIS_PACK && hosoeAnalysisPackState.status === 'loaded' && LocalAnalysisPackPanel ? (
-              <LocalAnalysisPackPanel pack={hosoeAnalysisPackState.load.pack} />
-            ) : null
-          }
+            request={request}
+            result={result}
+            analysisRecords={analysisRecords}
+            allRecords={legacyViewRecords}
+            backendContract={localJpoState.status === 'backend_loaded' ? localJpoState.adapted : null}
+            dataMode={dataMode}
+            isRunning={isRunning}
+            localJpoSummary={localJpoState.status === 'loaded' ? localJpoState.load.summary : null}
+            localJpoWarnings={
+              localJpoState.status === 'loaded'
+                ? localJpoState.load.warnings
+                : localJpoState.status === 'error'
+                  ? [...localJpoState.failure.errors, ...localJpoState.failure.warnings]
+                  : []
+            }
+            analysisWarnings={analysisWarnings}
+            externalDemoMode={externalDemoMode}
+            demoShowcaseRecords={demoShowcaseState.status === 'loaded' ? demoShowcaseState.load.records : []}
+            onClearProductDomain={clearProductDomain}
+            localAnalysisPackPanel={
+              ENABLE_LOCAL_ANALYSIS_PACK && hosoeAnalysisPackState.status === 'loaded' && LocalAnalysisPackPanel ? (
+                <LocalAnalysisPackPanel pack={hosoeAnalysisPackState.load.pack} />
+              ) : null
+            }
           />
         </div>
       </div>
 
       <footer className="border-t border-line bg-white">
         <div className="mx-auto max-w-7xl px-4 py-5 text-sm leading-6 text-muted">
-          出力はデモ用サンプルデータとルールベース分析による参考情報であり、法的助言ではありません。外部API、LLM、J-PlatPat
-          Web UIの自動取得、WEB・新聞・プレス等の外部データ取得は接続していません。
+          {dataMode === 'backend'
+            ? '公開意匠データを対象に、ルールベースで集計した参考情報です。日本の全意匠や最新の法的状態を示すものではなく、法的判断には使用できません。'
+            : `${dataMode === 'sample'
+                ? '出力はデモ用サンプルデータとルールベース分析による参考情報です。'
+                : '出力は手動選択したローカルJSONをブラウザのメモリ上でルールベース分析した参考情報です。'
+              } 法的助言ではありません。DB、LLM、J-PlatPat Web UIの自動取得、WEB・新聞・プレス等の外部データ取得は接続していません。`}
         </div>
       </footer>
     </div>
@@ -370,26 +474,27 @@ function localJpoAnalysisDisclaimer(summary: LocalJpoLoadSuccess['summary']): st
   }${localJpoAnalysisPeriodLabel(summary.dataPeriodKind)}のため、傾向判断には追加データが必要です。分析期間はgazetteDate基準です。法的助言ではありません。`;
 }
 
-function buildCompanyOptions(records: DesignRecord[], limit = 20): string[] {
-  const counts = new Map<string, number>();
-  for (const record of records) {
-    const company = record.applicant.trim();
-    if (!company) continue;
-    counts.set(company, (counts.get(company) ?? 0) + 1);
-  }
+function backendContractAnalysisDisclaimer(): string {
+  return '公開意匠データを対象に、ルールベースで集計した参考情報です。日本の全意匠や最新の法的状態を示すものではなく、法的判断には使用できません。';
+}
 
-  return [...counts.entries()]
-    .sort(([leftCompany, leftCount], [rightCompany, rightCount]) => rightCount - leftCount || leftCompany.localeCompare(rightCompany, 'ja'))
-    .slice(0, limit)
-    .map(([company]) => company);
+function formatBackendAdapterErrors(codes: DatasetAdapterErrorCode[]): string[] {
+  const labels: Record<DatasetAdapterErrorCode, string> = {
+    MALFORMED_JSON: 'JSONを解析できませんでした。ファイル形式を確認してください。',
+    INVALID_ENVELOPE: 'Backend Contractの必須メタデータを確認できませんでした。',
+    UNSUPPORTED_CONTRACT_VERSION: '対応していないBackend Contract versionです。対応versionは0.1.0です。',
+    CONTRACT_VALIDATION_FAILED: 'Backend Contract 0.1.0の検証に失敗しました。データセット全体を読み込んでいません。',
+    UNSAFE_PUBLIC_PROVENANCE: '公開境界で許可されていない参照情報を検出したため、データセット全体を読み込んでいません。',
+  };
+  return [...new Set(codes)].map((code) => labels[code]);
 }
 
 function focusFirstValidationError(errors: ValidationErrors): void {
   const targets: Array<[keyof ValidationErrors, string]> = [
     ['companies', 'companies-error'],
+    ['productDomain', 'product-domain-error'],
     ['designKinds', 'design-kinds-error'],
     ['purposes', 'purposes-error'],
-    ['departments', 'departments-error'],
   ];
   const targetId = targets.find(([key]) => Boolean(errors[key]))?.[1];
   if (!targetId) return;

@@ -1,0 +1,639 @@
+{
+  "contractVersion": "0.1.0",
+  "exportId": "FIXTURE-FRONTEND-V010",
+  "generatedAt": "2026-08-10T12:30:00Z",
+  "sourceUpdatedAt": "2026-08-10T12:00:00Z",
+  "backendProcessingVersion": "FIXTURE-BACKEND-0.1.0",
+  "recordCount": 7,
+  "records": [
+    {
+      "id": "kds_fixture_alpha",
+      "applicationNumber": "FIXTURE-APP-ALPHA",
+      "applicationDate": "2026-01-05",
+      "registrationNumber": "FIXTURE-REG-ALPHA",
+      "registrationDate": "2026-06-01",
+      "gazetteDate": "2026-08-01",
+      "articleName": "架空携帯表示端末",
+      "description": "架空端末の操作表示部を対象とする完全架空の説明",
+      "articleDescription": "架空の携帯端末に用いる表示部",
+      "designType": "article",
+      "keywords": [
+        "架空端末",
+        "操作表示"
+      ],
+      "designFeatures": [
+        "角丸形状",
+        "省面積配置"
+      ],
+      "applicants": [
+        {
+          "role": "applicant",
+          "rawName": "架空アルファ意匠研究所",
+          "displayName": "架空アルファ意匠研究所",
+          "normalizedNameCandidate": "架空アルファ意匠研究所",
+          "resolvedEntityId": "FIXTURE-ENTITY-ALPHA",
+          "resolutionStatus": "resolved",
+          "sourceRef": "fixture:record:alpha:applicant:1"
+        },
+        {
+          "role": "applicant",
+          "rawName": "架空アルファ意匠研究所別表記",
+          "displayName": "架空アルファ意匠研究所",
+          "normalizedNameCandidate": "架空アルファ意匠研究所",
+          "resolvedEntityId": "FIXTURE-ENTITY-ALPHA",
+          "resolutionStatus": "resolved",
+          "sourceRef": "fixture:record:alpha:applicant:2"
+        }
+      ],
+      "rightHolders": [
+        {
+          "role": "right_holder",
+          "rawName": "架空アルファ意匠研究所",
+          "displayName": "架空アルファ意匠研究所",
+          "normalizedNameCandidate": "架空アルファ意匠研究所",
+          "resolvedEntityId": "FIXTURE-ENTITY-ALPHA",
+          "resolutionStatus": "resolved",
+          "sourceRef": "fixture:record:alpha:right-holder:1"
+        }
+      ],
+      "classifications": [
+        {
+          "scheme": "FIXTURE-SCHEME-A",
+          "code": "FIXTURE-CLASS-A1",
+          "label": "架空分類アルファ主分類",
+          "isPrimary": true
+        },
+        {
+          "scheme": "FIXTURE-SCHEME-B",
+          "code": "FIXTURE-CLASS-B1",
+          "label": "架空分類アルファ副分類",
+          "isPrimary": false
+        }
+      ],
+      "publication": {
+        "gazetteNumber": "FIXTURE-GAZETTE-ALPHA",
+        "publicationDocumentId": "FIXTURE-PUBLICATION-ALPHA",
+        "issueDate": "2026-08-01",
+        "sourceRef": "fixture:record:alpha:publication"
+      },
+      "drawings": [
+        {
+          "drawingId": "FIXTURE-DRAWING-ALPHA-A",
+          "label": "架空正面図",
+          "fileName": "fixture-alpha-front.png",
+          "mediaType": "image/png",
+          "order": 1,
+          "isRepresentativeCandidate": true,
+          "sourceDocumentRef": "fixture:record:alpha:drawing:1"
+        },
+        {
+          "drawingId": "FIXTURE-DRAWING-ALPHA-B",
+          "label": "架空背面図",
+          "fileName": "fixture-alpha-back.png",
+          "mediaType": "image/png",
+          "order": 2,
+          "isRepresentativeCandidate": false,
+          "sourceDocumentRef": "fixture:record:alpha:drawing:2"
+        }
+      ],
+      "unresolved": {
+        "applicants": [],
+        "rightHolders": []
+      },
+      "provenance": {
+        "sourceDatasets": [
+          "fixture:dataset:frontend-v010"
+        ],
+        "sourceArtifactRefs": [
+          "fixture:artifact:alpha"
+        ],
+        "processingRunId": "FIXTURE-RUN-ALPHA",
+        "parserVersion": "fixture-parser-0.1.0",
+        "normalizationVersion": "fixture-normalizer-0.1.0",
+        "sourceRecordLocator": "fixture:record:alpha"
+      },
+      "quality": {
+        "state": "pass",
+        "findings": [],
+        "duplicateCandidates": []
+      },
+      "sourceUpdatedAt": "2026-08-09T11:00:00Z",
+      "backendProcessingVersion": "FIXTURE-BACKEND-0.1.0"
+    },
+    {
+      "id": "kds_fixture_beta",
+      "applicationNumber": "FIXTURE-APP-BETA",
+      "applicationDate": "2026-02-10",
+      "registrationNumber": "FIXTURE-REG-BETA",
+      "registrationDate": "2026-06-20",
+      "gazetteDate": "2026-07-15",
+      "articleName": "架空案内画面",
+      "description": "架空施設を案内する完全架空の画面表示",
+      "articleDescription": "架空案内端末に表示する画像",
+      "designType": "image",
+      "keywords": [
+        "架空案内",
+        "画面遷移"
+      ],
+      "designFeatures": [
+        "カード配置",
+        "状態表示"
+      ],
+      "applicants": [
+        {
+          "role": "applicant",
+          "rawName": "架空ベータ画面工房",
+          "displayName": "架空ベータ画面工房",
+          "normalizedNameCandidate": "架空ベータ画面工房",
+          "resolvedEntityId": "FIXTURE-ENTITY-BETA",
+          "resolutionStatus": "resolved",
+          "sourceRef": "fixture:record:beta:applicant:1"
+        },
+        {
+          "role": "applicant",
+          "rawName": "架空未解決申請人ベータ",
+          "displayName": "架空未解決申請人ベータ",
+          "normalizedNameCandidate": "架空未解決申請人ベータ候補",
+          "resolvedEntityId": null,
+          "resolutionStatus": "unresolved",
+          "sourceRef": "fixture:record:beta:applicant:2"
+        }
+      ],
+      "rightHolders": [
+        {
+          "role": "right_holder",
+          "rawName": "架空ベータ画面工房",
+          "displayName": "架空ベータ画面工房",
+          "normalizedNameCandidate": "架空ベータ画面工房",
+          "resolvedEntityId": "FIXTURE-ENTITY-BETA",
+          "resolutionStatus": "resolved",
+          "sourceRef": "fixture:record:beta:right-holder:1"
+        }
+      ],
+      "classifications": [
+        {
+          "scheme": "FIXTURE-SCHEME-A",
+          "code": "FIXTURE-CLASS-A2",
+          "label": "架空分類ベータ",
+          "isPrimary": true
+        }
+      ],
+      "publication": {
+        "gazetteNumber": "FIXTURE-GAZETTE-BETA",
+        "publicationDocumentId": "FIXTURE-PUBLICATION-BETA",
+        "issueDate": "2026-07-15",
+        "sourceRef": "fixture:record:beta:publication"
+      },
+      "drawings": [
+        {
+          "drawingId": "FIXTURE-DRAWING-BETA-A",
+          "label": "架空画面図",
+          "fileName": "fixture-beta-screen.png",
+          "mediaType": "image/png",
+          "order": 1,
+          "isRepresentativeCandidate": true,
+          "sourceDocumentRef": "fixture:record:beta:drawing:1"
+        }
+      ],
+      "unresolved": {
+        "applicants": [
+          {
+            "rawValue": "架空未解決申請人ベータ",
+            "code": "FIXTURE-CODE-BETA",
+            "reason": "ambiguous_match",
+            "sourceRef": "fixture:record:beta:applicant:2"
+          }
+        ],
+        "rightHolders": []
+      },
+      "provenance": {
+        "sourceDatasets": [
+          "fixture:dataset:frontend-v010"
+        ],
+        "sourceArtifactRefs": [
+          "fixture:artifact:beta"
+        ],
+        "processingRunId": "FIXTURE-RUN-BETA",
+        "parserVersion": "fixture-parser-0.1.0",
+        "normalizationVersion": "fixture-normalizer-0.1.0",
+        "sourceRecordLocator": "fixture:record:beta"
+      },
+      "quality": {
+        "state": "warning",
+        "findings": [
+          {
+            "code": "FIXTURE_REVIEW_NOTICE",
+            "severity": "warning",
+            "message": "完全架空fixtureの確認用注意状態",
+            "path": "$.quality"
+          }
+        ],
+        "duplicateCandidates": [
+          "kds_fixture_alpha"
+        ]
+      },
+      "sourceUpdatedAt": "2026-08-09T11:10:00Z",
+      "backendProcessingVersion": "FIXTURE-BACKEND-0.1.0"
+    },
+    {
+      "id": "kds_fixture_gamma",
+      "applicationNumber": "FIXTURE-APP-GAMMA",
+      "applicationDate": "2026-03-12",
+      "registrationNumber": "FIXTURE-REG-GAMMA",
+      "registrationDate": "2026-07-01",
+      "gazetteDate": "2026-07-20",
+      "articleName": "架空体験展示空間",
+      "description": "架空展示の回遊体験を示す完全架空の空間説明",
+      "articleDescription": "架空展示施設の内部空間",
+      "designType": "interior",
+      "keywords": [
+        "架空展示",
+        "回遊体験"
+      ],
+      "designFeatures": [
+        "連続壁面",
+        "誘導照明"
+      ],
+      "applicants": [
+        {
+          "role": "applicant",
+          "rawName": "架空ガンマ空間企画",
+          "displayName": "架空ガンマ空間企画",
+          "normalizedNameCandidate": "架空ガンマ空間企画",
+          "resolvedEntityId": "FIXTURE-ENTITY-GAMMA",
+          "resolutionStatus": "resolved",
+          "sourceRef": "fixture:record:gamma:applicant:1"
+        }
+      ],
+      "rightHolders": [
+        {
+          "role": "right_holder",
+          "rawName": "架空未解決権利者ガンマ",
+          "displayName": "架空未解決権利者ガンマ",
+          "normalizedNameCandidate": "架空未解決権利者ガンマ候補",
+          "resolvedEntityId": null,
+          "resolutionStatus": "unresolved",
+          "sourceRef": "fixture:record:gamma:right-holder:1"
+        }
+      ],
+      "classifications": [
+        {
+          "scheme": "FIXTURE-SCHEME-A",
+          "code": "FIXTURE-CLASS-A3",
+          "label": "架空分類ガンマ主分類",
+          "isPrimary": true
+        },
+        {
+          "scheme": "FIXTURE-SCHEME-B",
+          "code": "FIXTURE-CLASS-B3",
+          "label": "架空分類ガンマ副分類",
+          "isPrimary": false
+        },
+        {
+          "scheme": "FIXTURE-SCHEME-C",
+          "code": "FIXTURE-CLASS-C3",
+          "label": "架空分類ガンマ補助分類",
+          "isPrimary": false
+        }
+      ],
+      "publication": null,
+      "drawings": [
+        {
+          "drawingId": "FIXTURE-DRAWING-GAMMA-A",
+          "label": "架空平面図",
+          "fileName": "fixture-gamma-plan.png",
+          "mediaType": "image/png",
+          "order": 1,
+          "isRepresentativeCandidate": true,
+          "sourceDocumentRef": "fixture:record:gamma:drawing:1"
+        },
+        {
+          "drawingId": "FIXTURE-DRAWING-GAMMA-B",
+          "label": "架空斜視図",
+          "fileName": "fixture-gamma-view.png",
+          "mediaType": "image/png",
+          "order": 2,
+          "isRepresentativeCandidate": false,
+          "sourceDocumentRef": "fixture:record:gamma:drawing:2"
+        },
+        {
+          "drawingId": "FIXTURE-DRAWING-GAMMA-C",
+          "label": "架空断面図",
+          "fileName": "fixture-gamma-section.png",
+          "mediaType": "image/png",
+          "order": 3,
+          "isRepresentativeCandidate": false,
+          "sourceDocumentRef": "fixture:record:gamma:drawing:3"
+        }
+      ],
+      "unresolved": {
+        "applicants": [],
+        "rightHolders": [
+          {
+            "rawValue": "架空未解決権利者ガンマ",
+            "code": "FIXTURE-CODE-GAMMA",
+            "reason": "missing_master",
+            "sourceRef": "fixture:record:gamma:right-holder:1"
+          }
+        ]
+      },
+      "provenance": {
+        "sourceDatasets": [
+          "fixture:dataset:frontend-v010"
+        ],
+        "sourceArtifactRefs": [
+          "fixture:artifact:gamma"
+        ],
+        "processingRunId": "FIXTURE-RUN-GAMMA",
+        "parserVersion": "fixture-parser-0.1.0",
+        "normalizationVersion": "fixture-normalizer-0.1.0",
+        "sourceRecordLocator": "fixture:record:gamma"
+      },
+      "quality": {
+        "state": "pass",
+        "findings": [],
+        "duplicateCandidates": []
+      },
+      "sourceUpdatedAt": "2026-08-09T11:20:00Z",
+      "backendProcessingVersion": "FIXTURE-BACKEND-0.1.0"
+    },
+    {
+      "id": "kds_fixture_delta",
+      "applicationNumber": "FIXTURE-APP-DELTA",
+      "applicationDate": "2026-04-01",
+      "registrationNumber": null,
+      "registrationDate": null,
+      "gazetteDate": "2026-08-02",
+      "articleName": "架空種別未確定デザイン",
+      "description": "種別未確定を確認する完全架空の説明",
+      "articleDescription": null,
+      "designType": "unknown",
+      "keywords": [
+        "架空種別未確定"
+      ],
+      "designFeatures": [
+        "確認用特徴"
+      ],
+      "applicants": [
+        {
+          "role": "applicant",
+          "rawName": "架空デルタ設計室",
+          "displayName": "架空デルタ設計室",
+          "normalizedNameCandidate": "架空デルタ設計室",
+          "resolvedEntityId": "FIXTURE-ENTITY-DELTA",
+          "resolutionStatus": "resolved",
+          "sourceRef": "fixture:record:delta:applicant:1"
+        }
+      ],
+      "rightHolders": [],
+      "classifications": [
+        {
+          "scheme": "FIXTURE-SCHEME-A",
+          "code": "FIXTURE-CLASS-A4",
+          "label": "架空分類デルタ",
+          "isPrimary": false
+        }
+      ],
+      "publication": null,
+      "drawings": [],
+      "unresolved": {
+        "applicants": [],
+        "rightHolders": []
+      },
+      "provenance": {
+        "sourceDatasets": [
+          "fixture:dataset:frontend-v010"
+        ],
+        "sourceArtifactRefs": [
+          "fixture:artifact:delta"
+        ],
+        "processingRunId": "FIXTURE-RUN-DELTA",
+        "parserVersion": "fixture-parser-0.1.0",
+        "normalizationVersion": "fixture-normalizer-0.1.0",
+        "sourceRecordLocator": "fixture:record:delta"
+      },
+      "quality": {
+        "state": "warning",
+        "findings": [
+          {
+            "code": "FIXTURE_DESIGN_TYPE_UNKNOWN",
+            "severity": "warning",
+            "message": "完全架空fixtureの種別未確定状態",
+            "path": "$.designType"
+          }
+        ],
+        "duplicateCandidates": []
+      },
+      "sourceUpdatedAt": "2026-08-09T11:30:00Z",
+      "backendProcessingVersion": "FIXTURE-BACKEND-0.1.0"
+    },
+    {
+      "id": "kds_fixture_epsilon",
+      "applicationNumber": "FIXTURE-APP-EPSILON",
+      "applicationDate": "2026-04-10",
+      "registrationNumber": null,
+      "registrationDate": null,
+      "gazetteDate": null,
+      "articleName": "架空日付欠落確認端末",
+      "description": "日付欠落を確認する完全架空の説明",
+      "articleDescription": "架空の確認用端末",
+      "designType": "article",
+      "keywords": [
+        "架空日付欠落"
+      ],
+      "designFeatures": [
+        "確認用形状"
+      ],
+      "applicants": [
+        {
+          "role": "applicant",
+          "rawName": "架空イプシロン製作所",
+          "displayName": "架空イプシロン製作所",
+          "normalizedNameCandidate": "架空イプシロン製作所",
+          "resolvedEntityId": "FIXTURE-ENTITY-EPSILON",
+          "resolutionStatus": "resolved",
+          "sourceRef": "fixture:record:epsilon:applicant:1"
+        }
+      ],
+      "rightHolders": [],
+      "classifications": [
+        {
+          "scheme": "FIXTURE-SCHEME-A",
+          "code": "FIXTURE-CLASS-A5",
+          "label": "架空分類イプシロン",
+          "isPrimary": true
+        }
+      ],
+      "publication": {
+        "gazetteNumber": null,
+        "publicationDocumentId": null,
+        "issueDate": null,
+        "sourceRef": "fixture:record:epsilon:publication"
+      },
+      "drawings": [],
+      "unresolved": {
+        "applicants": [],
+        "rightHolders": []
+      },
+      "provenance": {
+        "sourceDatasets": [
+          "fixture:dataset:frontend-v010"
+        ],
+        "sourceArtifactRefs": [
+          "fixture:artifact:epsilon"
+        ],
+        "processingRunId": "FIXTURE-RUN-EPSILON",
+        "parserVersion": "fixture-parser-0.1.0",
+        "normalizationVersion": "fixture-normalizer-0.1.0",
+        "sourceRecordLocator": "fixture:record:epsilon"
+      },
+      "quality": {
+        "state": "pass",
+        "findings": [
+          {
+            "code": "GAZETTE_DATE_MISSING",
+            "severity": "info",
+            "message": "完全架空fixtureの日付欠落状態",
+            "path": "$.gazetteDate"
+          }
+        ],
+        "duplicateCandidates": []
+      },
+      "sourceUpdatedAt": "2026-08-09T11:40:00Z",
+      "backendProcessingVersion": "FIXTURE-BACKEND-0.1.0"
+    },
+    {
+      "id": "kds_fixture_zeta",
+      "applicationNumber": "FIXTURE-APP-ZETA",
+      "applicationDate": "2026-05-01",
+      "registrationNumber": "FIXTURE-REG-ZETA",
+      "registrationDate": "2026-07-20",
+      "gazetteDate": "2026-08-05",
+      "articleName": "架空隔離確認画面",
+      "description": "隔離状態を確認する完全架空の画面説明",
+      "articleDescription": "架空確認装置に表示する画像",
+      "designType": "image",
+      "keywords": [
+        "架空隔離確認"
+      ],
+      "designFeatures": [
+        "警告表示"
+      ],
+      "applicants": [
+        {
+          "role": "applicant",
+          "rawName": "架空ゼータ表示研究所",
+          "displayName": "架空ゼータ表示研究所",
+          "normalizedNameCandidate": "架空ゼータ表示研究所",
+          "resolvedEntityId": "FIXTURE-ENTITY-ZETA",
+          "resolutionStatus": "resolved",
+          "sourceRef": "fixture:record:zeta:applicant:1"
+        }
+      ],
+      "rightHolders": [],
+      "classifications": [
+        {
+          "scheme": "FIXTURE-SCHEME-A",
+          "code": "FIXTURE-CLASS-A6",
+          "label": "架空分類ゼータ",
+          "isPrimary": true
+        }
+      ],
+      "publication": null,
+      "drawings": [],
+      "unresolved": {
+        "applicants": [],
+        "rightHolders": []
+      },
+      "provenance": {
+        "sourceDatasets": [
+          "fixture:dataset:frontend-v010"
+        ],
+        "sourceArtifactRefs": [
+          "fixture:artifact:zeta"
+        ],
+        "processingRunId": "FIXTURE-RUN-ZETA",
+        "parserVersion": "fixture-parser-0.1.0",
+        "normalizationVersion": "fixture-normalizer-0.1.0",
+        "sourceRecordLocator": "fixture:record:zeta"
+      },
+      "quality": {
+        "state": "quarantined",
+        "findings": [
+          {
+            "code": "FIXTURE_QUARANTINED",
+            "severity": "error",
+            "message": "完全架空fixtureの隔離状態",
+            "path": "$.quality"
+          }
+        ],
+        "duplicateCandidates": []
+      },
+      "sourceUpdatedAt": "2026-08-09T11:50:00Z",
+      "backendProcessingVersion": "FIXTURE-BACKEND-0.1.0"
+    },
+    {
+      "id": "kds_fixture_eta",
+      "applicationNumber": "FIXTURE-APP-ETA",
+      "applicationDate": "2026-05-10",
+      "registrationNumber": "FIXTURE-REG-ETA",
+      "registrationDate": "2026-08-01",
+      "gazetteDate": "2026-08-11",
+      "articleName": "架空未来日付展示空間",
+      "description": "cutoff後の日付を確認する完全架空の空間説明",
+      "articleDescription": "架空展示施設の確認用内部空間",
+      "designType": "interior",
+      "keywords": [
+        "架空未来日付"
+      ],
+      "designFeatures": [
+        "確認用空間"
+      ],
+      "applicants": [
+        {
+          "role": "applicant",
+          "rawName": "架空イータ空間工房",
+          "displayName": "架空イータ空間工房",
+          "normalizedNameCandidate": "架空イータ空間工房",
+          "resolvedEntityId": "FIXTURE-ENTITY-ETA",
+          "resolutionStatus": "resolved",
+          "sourceRef": "fixture:record:eta:applicant:1"
+        }
+      ],
+      "rightHolders": [],
+      "classifications": [
+        {
+          "scheme": "FIXTURE-SCHEME-A",
+          "code": "FIXTURE-CLASS-A7",
+          "label": "架空分類イータ",
+          "isPrimary": true
+        }
+      ],
+      "publication": null,
+      "drawings": [],
+      "unresolved": {
+        "applicants": [],
+        "rightHolders": []
+      },
+      "provenance": {
+        "sourceDatasets": [
+          "fixture:dataset:frontend-v010"
+        ],
+        "sourceArtifactRefs": [
+          "fixture:artifact:eta"
+        ],
+        "processingRunId": "FIXTURE-RUN-ETA",
+        "parserVersion": "fixture-parser-0.1.0",
+        "normalizationVersion": "fixture-normalizer-0.1.0",
+        "sourceRecordLocator": "fixture:record:eta"
+      },
+      "quality": {
+        "state": "pass",
+        "findings": [],
+        "duplicateCandidates": []
+      },
+      "sourceUpdatedAt": "2026-08-10T11:30:00Z",
+      "backendProcessingVersion": "FIXTURE-BACKEND-0.1.0"
+    }
+  ]
+}

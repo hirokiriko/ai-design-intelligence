@@ -10,7 +10,7 @@ describe('App primary task flow', () => {
 
     for (const html of [firstMount, reloadedMount]) {
       expect(html).toContain('サンプルデータ版です。');
-      expect(html).not.toContain('公開意匠実データを使用中');
+      expect(html).not.toContain('公開意匠データを使用中');
       expect(html).not.toContain('fictional_contract_fixture');
       expect(html).not.toContain('approved_public_design_demo');
       expect(html).not.toContain('unclassified_contract');
@@ -60,8 +60,12 @@ describe('App primary task flow', () => {
     expect(header).not.toBe('');
     ['デモ用サンプルデータ', 'ルールベース分析', '外部データ未接続'].forEach((label) => {
       expect(header).not.toContain(label);
-      expect(html).toContain(label);
     });
+    expect(html).toContain('技術・検証情報');
+    expect(html).not.toContain('Backend Contract');
+    expect(html).not.toContain('accepted');
+    expect(html).not.toContain('excluded');
+    expect(html).not.toContain('adapter');
     expect(html).not.toMatch(/<details[^>]*\bopen(?:=|>)/i);
     expect(html).not.toMatch(/https?:\/\//i);
     expect(html).not.toMatch(/[A-Za-z]:\\/);

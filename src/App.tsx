@@ -208,7 +208,7 @@ export default function App() {
       if (localJpoState.status === 'loaded') {
         nextResult.disclaimer = localJpoAnalysisDisclaimer(localJpoState.load.summary);
       } else if (localJpoState.status === 'backend_loaded') {
-        nextResult.disclaimer = backendContractAnalysisDisclaimer(localJpoState.adapted);
+        nextResult.disclaimer = backendContractAnalysisDisclaimer();
       }
       setAnalysisRecords(queriedRecords);
       setResult(nextResult);
@@ -455,12 +455,12 @@ export default function App() {
 
       <footer className="border-t border-line bg-white">
         <div className="mx-auto max-w-7xl px-4 py-5 text-sm leading-6 text-muted">
-          {dataMode === 'sample'
-            ? '出力はデモ用サンプルデータとルールベース分析による参考情報です。'
-            : dataMode === 'backend'
-              ? '出力は手動選択したBackend Contract JSONの受理レコードをブラウザのメモリ上でルールベース分析した参考情報です。'
-              : '出力は手動選択したローカルJSONをブラウザのメモリ上でルールベース分析した参考情報です。'}{' '}
-          法的助言ではありません。リモートBackend API、DB、LLM、J-PlatPat Web UIの自動取得、WEB・新聞・プレス等の外部データ取得は接続していません。
+          {dataMode === 'backend'
+            ? '公開意匠データを対象に、ルールベースで集計した参考情報です。日本の全意匠や最新の法的状態を示すものではなく、法的判断には使用できません。'
+            : `${dataMode === 'sample'
+                ? '出力はデモ用サンプルデータとルールベース分析による参考情報です。'
+                : '出力は手動選択したローカルJSONをブラウザのメモリ上でルールベース分析した参考情報です。'
+              } 法的助言ではありません。DB、LLM、J-PlatPat Web UIの自動取得、WEB・新聞・プレス等の外部データ取得は接続していません。`}
         </div>
       </footer>
     </div>
@@ -474,8 +474,8 @@ function localJpoAnalysisDisclaimer(summary: LocalJpoLoadSuccess['summary']): st
   }${localJpoAnalysisPeriodLabel(summary.dataPeriodKind)}のため、傾向判断には追加データが必要です。分析期間はgazetteDate基準です。法的助言ではありません。`;
 }
 
-function backendContractAnalysisDisclaimer(contract: BackendContractAdapterSuccess): string {
-  return `この結果はBackend Contract ${contract.meta.contractVersion}をブラウザのメモリ上で検証し、分析対象として受理した${contract.summary.acceptedCount}件を、${contract.meta.analysisCutoff}を基準日にルールベースで集計した参考情報です。除外レコードは根拠IDに使用していません。法的助言ではありません。`;
+function backendContractAnalysisDisclaimer(): string {
+  return '公開意匠データを対象に、ルールベースで集計した参考情報です。日本の全意匠や最新の法的状態を示すものではなく、法的判断には使用できません。';
 }
 
 function formatBackendAdapterErrors(codes: DatasetAdapterErrorCode[]): string[] {

@@ -25,11 +25,11 @@ describe('DataUsageBanner', () => {
     const html = renderBackendBanner(contract, classification);
 
     expect(classification).toBe('fictional_contract_fixture');
-    expect(html).toContain('架空Contract検証データを使用中');
+    expect(html).toContain('架空の検証データを使用中');
     expect(html).toContain('完全架空データ');
     expect(html).toContain('実在企業・実在公報ではなく');
-    expect(html).not.toContain('公開意匠実データを使用中');
-    expect(html).not.toContain('取得済みの週次更新差分');
+    expect(html).not.toContain('公開意匠データを使用中');
+    expect(html).not.toContain('Contract');
   });
 
   it('shows the real-data banner and dynamic Contract values only after explicit local approval', () => {
@@ -41,22 +41,24 @@ describe('DataUsageBanner', () => {
     const html = renderBackendBanner(contract, classification);
 
     expect(classification).toBe('approved_public_design_demo');
-    expect(html).toContain('公開意匠実データを使用中');
+    expect(html).toContain('公開意匠データを使用中');
     expect(html).toContain('role="status"');
     expect(html).toContain('aria-live="polite"');
     expect(html).toContain('分析対象件数');
     expect(html).toContain(`${new Intl.NumberFormat('ja-JP').format(contract.summary.acceptedCount)}件`);
     expect(html).toContain(formatExpectedDate(contract.meta.analysisCutoff));
-    expect(html).toContain('取得済みの週次更新差分');
-    expect(html).toContain('初回提案向けの限定デモ');
-    expect(html).toContain('日本の全意匠を網羅するものではなく');
-    expect(html).toContain('最新の法的状態や完全な市場母集団を示すものではありません');
-    expect(html).toContain('ブラウザのメモリ上だけで扱い');
-    expect(html).toContain('公開Preview・公開ビルドには含めません');
+    expect(html).toContain('公開意匠データを対象に、ルールベースで集計した参考情報です');
+    expect(html).toContain('日本の全意匠や最新の法的状態を示すものではなく');
+    expect(html).toContain('法的判断には使用できません');
+    expect(html).not.toContain('ブラウザのメモリ');
+    expect(html).not.toContain('公開Preview');
     expect(html).not.toContain('Backend Contract');
+    expect(html).not.toContain('accepted');
+    expect(html).not.toContain('excluded');
+    expect(html).not.toContain('adapter');
     expect(html).not.toContain('analysis-ready');
-    expect(html).not.toContain('架空Contract検証データを使用中');
-    expect(html).not.toContain('Contract検証データを使用中');
+    expect(html).not.toContain('架空の検証データを使用中');
+    expect(html).not.toContain('データ区分を確認中');
   });
 
   it('keeps a valid but unclassified Contract neutral', () => {
@@ -65,12 +67,12 @@ describe('DataUsageBanner', () => {
     const html = renderBackendBanner(contract, classification);
 
     expect(classification).toBe('unclassified_contract');
-    expect(html).toContain('Contract検証データを使用中');
+    expect(html).toContain('データ区分を確認中');
     expect(html).toContain('データ区分は未確認です');
-    expect(html).toContain('実データとは断定しません');
-    expect(html).not.toContain('公開意匠実データを使用中');
-    expect(html).not.toContain('架空Contract検証データを使用中');
-    expect(html).not.toContain('取得済みの週次更新差分');
+    expect(html).toContain('公開意匠データとは断定しません');
+    expect(html).not.toContain('公開意匠データを使用中');
+    expect(html).not.toContain('架空の検証データを使用中');
+    expect(html).not.toContain('Contract');
   });
 
   it('keeps sample and legacy explanations separate from Contract classifications', () => {
@@ -79,13 +81,13 @@ describe('DataUsageBanner', () => {
 
     expect(sampleHtml).toContain('サンプルデータ版です。');
     expect(sampleHtml).toContain('すべて架空');
-    expect(sampleHtml).not.toContain('公開意匠実データを使用中');
-    expect(sampleHtml).not.toContain('Contract検証データを使用中');
+    expect(sampleHtml).not.toContain('公開意匠データを使用中');
+    expect(sampleHtml).not.toContain('データ区分を確認中');
     expect(sampleHtml).not.toContain('ローカル検証データを使用中');
 
     expect(legacyHtml).toContain('ローカル検証データを使用中です。');
-    expect(legacyHtml).not.toContain('公開意匠実データを使用中');
-    expect(legacyHtml).not.toContain('Contract検証データを使用中');
+    expect(legacyHtml).not.toContain('公開意匠データを使用中');
+    expect(legacyHtml).not.toContain('データ区分を確認中');
     expect(legacyHtml).not.toContain('サンプルデータ版');
   });
 });

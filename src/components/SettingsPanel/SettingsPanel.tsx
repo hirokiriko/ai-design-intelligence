@@ -17,6 +17,7 @@ import type { DemoShowcaseLoadFailure, DemoShowcaseLoadSuccess } from '../../dat
 import type { HosoeAnalysisPackLoadFailure, HosoeAnalysisPackLoadSuccess } from '../../data/HosoeAnalysisPackDataSource';
 import type { BackendContractAdapterSuccess } from '../../data/BackendContractDataSource';
 import type { BackendContractDataClassification } from '../../data/BackendContractDataClassification';
+import type { BackendContractAcquisition } from '../../domain/backendContractAcquisition';
 import {
   createDemoPresetRequest,
   getDemoPresetsForDataMode,
@@ -60,6 +61,7 @@ interface SettingsPanelProps {
   hasResult?: boolean;
   technicalDetailsInitiallyOpen?: boolean;
   localJpoState: LocalJpoPanelState;
+  backendContractAcquisition?: BackendContractAcquisition;
   enableLocalAnalysisPack: boolean;
   externalDemoMode: boolean;
   demoShowcaseState: DemoShowcasePanelState;
@@ -89,6 +91,7 @@ export function SettingsPanel({
   hasResult = false,
   technicalDetailsInitiallyOpen = false,
   localJpoState,
+  backendContractAcquisition = 'manual_file',
   enableLocalAnalysisPack,
   externalDemoMode,
   demoShowcaseState,
@@ -112,6 +115,7 @@ export function SettingsPanel({
   const availableCompanyOptions = companyOptions.filter((company) => !selectedCompanyKeys.has(companySelectorKey(company)));
   const [designKindsManuallyChanged, setDesignKindsManuallyChanged] = useState(false);
   const demoPresets = getDemoPresetsForDataMode(localJpoState.status === 'backend_loaded' ? 'backend' : 'sample');
+  const isAuthenticatedTrial = backendContractAcquisition === 'authenticated_trial';
 
   const changeProductDomain = (productDomain: string) => {
     onRequestChange({
@@ -366,7 +370,9 @@ export function SettingsPanel({
               ) : null}
             </div>
             <p className={`mt-3 rounded-md border p-3 text-sm leading-6 ${designKindsManuallyChanged ? 'border-amber-200 bg-amber-50 text-caution' : 'border-sky-200 bg-sky-50 text-sky-900'}`}>
-              {getDesignKindSelectionStatus(designKindsManuallyChanged)}
+              {isAuthenticatedTrial
+                ? getAuthenticatedTrialDesignKindSelectionStatus(designKindsManuallyChanged)
+                : getDesignKindSelectionStatus(designKindsManuallyChanged)}
             </p>
           </fieldset>
 
@@ -466,7 +472,13 @@ export function SettingsPanel({
                 : 'デモ用サンプルデータ'}
           </Badge>
           <Badge tone="accent">ルールベース分析</Badge>
-          <Badge tone="warning">{localJpoState.status === 'sample' ? '外部データ未接続' : 'File API・メモリ内のみ'}</Badge>
+          <Badge tone="warning">
+            {localJpoState.status === 'sample'
+              ? '外部データ未接続'
+              : isAuthenticatedTrial
+                ? '認証後・同一オリジン自動取得'
+                : 'File API・メモリ内のみ'}
+          </Badge>
           {localJpoState.status === 'backend_loaded' ? (
             <Badge tone={localJpoState.classification === 'approved_public_design_demo' ? 'accent' : 'warning'}>
               {backendClassificationLabel(localJpoState.classification)}
@@ -494,11 +506,21 @@ export function SettingsPanel({
           />
           <span>
             <span className="block font-semibold text-ink">外部デモモードを有効にする</span>
-            <span className="text-muted">法的注意書きとローカル検証版の前提は表示したまま、デモで見るポイントを前面に出します。</span>
+            <span className="text-muted">
+              {isAuthenticatedTrial
+                ? '法的注意書きと限定試用の前提は表示したまま、デモで見るポイントを前面に出します。'
+                : '法的注意書きとローカル検証版の前提は表示したまま、デモで見るポイントを前面に出します。'}
+            </span>
           </span>
         </label>
       </section>
 
+      {isAuthenticatedTrial && localJpoState.status === 'backend_loaded' ? (
+        <AuthenticatedTrialContractSummary state={localJpoState} />
+      ) : null}
+
+      {!isAuthenticatedTrial ? (
+        <>
       <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -769,6 +791,8 @@ export function SettingsPanel({
           ) : null}
         </section>
       ) : null}
+        </>
+      ) : null}
 
       <section className="rounded-lg border border-line bg-white p-5">
         <h2 className="text-base font-bold text-ink">出力部門（任意）</h2>
@@ -823,6 +847,45 @@ export function SettingsPanel({
       ) : null}
     </aside>
   );
+}
+
+function AuthenticatedTrialContractSummary({
+  state,
+}: {
+  state: Extract<LocalJpoPanelState, { status: 'backend_loaded' }>;
+}) {
+  return (
+    <section
+      className="rounded-lg border border-sky-200 bg-sky-50 p-5 text-sm text-sky-950"
+      data-testid="authenticated-trial-contract-summary"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-bold text-ink">Backend Contract自動取得済み</h2>
+          <p className="mt-1 leading-6 text-muted">
+            認証済みセッションで同一オリジンから取得し、受理されたレコードだけを分析対象にしています。
+          </p>
+        </div>
+        <Badge tone={state.classification === 'approved_public_design_demo' ? 'accent' : 'warning'}>
+          {backendClassificationLabel(state.classification)}
+        </Badge>
+      </div>
+      <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div><dt className="inline font-semibold">contract version: </dt><dd className="inline">{state.adapted.meta.contractVersion}</dd></div>
+        <div><dt className="inline font-semibold">analysis cutoff: </dt><dd className="inline">{state.adapted.meta.analysisCutoff}</dd></div>
+        <div><dt className="inline font-semibold">total / accepted / excluded: </dt><dd className="inline">{state.adapted.summary.totalRecordCount} / {state.adapted.summary.acceptedCount} / {state.adapted.summary.excludedCount}</dd></div>
+        <div><dt className="inline font-semibold">warning / quarantined: </dt><dd className="inline">{state.adapted.summary.warningCount} / {state.adapted.summary.quarantinedCount}</dd></div>
+        <div><dt className="inline font-semibold">missing gazetteDate: </dt><dd className="inline">{state.adapted.summary.missingGazetteDateCount}</dd></div>
+        <div><dt className="inline font-semibold">unknown design type: </dt><dd className="inline">{state.adapted.summary.unknownDesignTypeCount}</dd></div>
+      </dl>
+    </section>
+  );
+}
+
+function getAuthenticatedTrialDesignKindSelectionStatus(selectionChanged: boolean): string {
+  return selectionChanged
+    ? '個別設定中です。分析目的を変更しても現在の意匠種別を維持します。'
+    : '自動設定中です。分析目的に合わせて意匠種別を設定し、必要なら個別に変更できます。';
 }
 
 function backendClassificationLabel(classification: BackendContractDataClassification): string {

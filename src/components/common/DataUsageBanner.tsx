@@ -1,4 +1,5 @@
 import type { BackendContractDataClassification } from '../../data/BackendContractDataClassification';
+import type { BackendContractAcquisition } from '../../domain/backendContractAcquisition';
 
 type DataUsageBannerProps =
   | { mode: 'sample' }
@@ -8,6 +9,7 @@ type DataUsageBannerProps =
       classification: BackendContractDataClassification;
       acceptedCount: number;
       analysisCutoff: string;
+      acquisition?: BackendContractAcquisition;
     };
 
 const countFormatter = new Intl.NumberFormat('ja-JP');

@@ -45,6 +45,25 @@ describe('Vercel Basic authentication middleware', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('x-middleware-next')).toBe('1');
     expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow, noarchive');
+    expect(response.headers.get('cache-control')).toBeNull();
+  });
+
+  it('keeps the same authentication boundary on the trial Contract path', () => {
+    configureCredentials();
+
+    const unauthenticated = middleware(createRequest(undefined, '/api/trial/design-export'));
+    const authenticated = middleware(
+      createRequest(
+        basicAuthorization(TEST_USER, TEST_PASSWORD),
+        '/api/trial/design-export',
+      ),
+    );
+
+    expect(unauthenticated.status).toBe(401);
+    expect(unauthenticated.headers.get('cache-control')).toBe('private, no-store');
+    expect(authenticated.status).toBe(200);
+    expect(authenticated.headers.get('x-middleware-next')).toBe('1');
+    expect(authenticated.headers.get('cache-control')).toBe('private, no-store');
   });
 });
 
@@ -53,8 +72,8 @@ function configureCredentials(): void {
   vi.stubEnv('BASIC_AUTH_PASSWORD', TEST_PASSWORD);
 }
 
-function createRequest(authorization?: string): Request {
-  return new Request('https://example.test/', {
+function createRequest(authorization?: string, pathname = '/'): Request {
+  return new Request(`https://example.test${pathname}`, {
     headers: authorization ? { authorization } : undefined,
   });
 }

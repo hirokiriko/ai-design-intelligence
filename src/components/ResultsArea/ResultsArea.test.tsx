@@ -448,6 +448,64 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).not.toMatch(/[A-Za-z]:\\/);
     expect(html).not.toMatch(/^data:/im);
     expect(html).not.toContain('<img');
+
+    const authenticatedTrialHtml = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: backendResult,
+        analysisRecords: backendContract.analysisRecords,
+        allRecords: [],
+        backendContract,
+        backendContractAcquisition: 'authenticated_trial',
+        dataMode: 'backend',
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: true,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
+      }),
+    );
+
+    expect(authenticatedTrialHtml).toContain('技術・検証情報');
+    expect(authenticatedTrialHtml).not.toContain('認証後に同一オリジンから自動取得したContract 0.1.0');
+    expect(authenticatedTrialHtml).not.toContain('Backend Contract');
+    expect(authenticatedTrialHtml).not.toContain('accepted');
+    expect(authenticatedTrialHtml).not.toContain('excluded');
+    expect(authenticatedTrialHtml).not.toContain('adapter');
+    expect(authenticatedTrialHtml).not.toContain('File API');
+    expect(authenticatedTrialHtml.indexOf('data-testid="backend-customer-details"')).toBeLessThan(
+      authenticatedTrialHtml.indexOf('data-testid="backend-technical-details"'),
+    );
+    const authenticatedTrialTechnicalTag = authenticatedTrialHtml.match(
+      /<details[^>]*data-testid="backend-technical-details"[^>]*>/,
+    )?.[0];
+    expect(authenticatedTrialTechnicalTag).toBeDefined();
+    expect(authenticatedTrialTechnicalTag).not.toMatch(/\bopen(?:=|>)/i);
+
+    const authenticatedTrialTechnicalHtml = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: backendResult,
+        analysisRecords: backendContract.analysisRecords,
+        allRecords: [],
+        backendContract,
+        backendContractAcquisition: 'authenticated_trial',
+        dataMode: 'backend',
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: true,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
+        technicalDetailsInitiallyOpen: true,
+      }),
+    );
+    expect(authenticatedTrialTechnicalHtml).toContain('認証後に同一オリジンから自動取得したContract 0.1.0');
   });
 
   it('keeps raw classification schemes and Backend terms out of the initial customer markup', () => {
@@ -967,5 +1025,40 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('企業名、商品・事業領域、期間、意匠種別を見直して');
     expect(html).toContain('商品・事業領域の指定を解除');
     expect(html).toContain('role="status"');
+  });
+
+  it('offers a full safe-preset reset for a zero-result authenticated trial', () => {
+    const emptyResult: AnalysisResult = {
+      ...result,
+      request: { ...request, productDomain: '' },
+      market: {
+        trends: { ...result.market!.trends, evidenceIds: [], metric: { label: '対象意匠件数', value: 0, unit: '件' } },
+        emergingDomains: { ...result.market!.emergingDomains, evidenceIds: [], metric: { label: '画像意匠件数', value: 0, unit: '件' } },
+        companyMoves: { ...result.market!.companyMoves, evidenceIds: [], metric: { label: '対象企業数', value: 0, unit: '社' } },
+      },
+    };
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request: emptyResult.request,
+        result: emptyResult,
+        analysisRecords: [],
+        allRecords: [],
+        backendContract: null,
+        backendContractAcquisition: 'authenticated_trial',
+        dataMode: 'backend',
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: true,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
+        onResetAnalysisFilters: () => undefined,
+      }),
+    );
+
+    expect(html).toContain('推奨条件に戻す');
+    expect(html).not.toContain('商品・事業領域の指定を解除');
   });
 });

@@ -38,6 +38,7 @@ describe('SettingsPanel external information wording', () => {
         isRunning: false,
         localJpoState: { status: 'sample', warnings: [], errors: [] },
         enableLocalAnalysisPack: true,
+        technicalDetailsInitiallyOpen: true,
         externalDemoMode: true,
         demoShowcaseState: { status: 'empty', warnings: [], errors: [] },
         hosoeAnalysisPackState: { status: 'empty', warnings: [], errors: [] },
@@ -69,7 +70,7 @@ describe('SettingsPanel external information wording', () => {
     ['デモ用サンプルデータ', 'ルールベース分析', '外部データ未接続'].forEach((label) => {
       expect(html.indexOf(label)).toBeGreaterThan(dataDetailsIndex);
     });
-    expect(html).not.toMatch(/<details[^>]*\bopen(?:=|>)/i);
+    expect(html).toMatch(/<details[^>]*\bopen(?:=|>)/i);
     expect(html).toContain('ローカル分析パックJSONを読み込む（開発用）');
     expect(html).toContain('未読込');
     expect(html).toContain('将来構想');
@@ -115,6 +116,7 @@ describe('SettingsPanel external information wording', () => {
         isRunning: false,
         localJpoState: { status: 'sample', warnings: [], errors: [] },
         enableLocalAnalysisPack: false,
+        technicalDetailsInitiallyOpen: true,
         externalDemoMode: true,
         demoShowcaseState: { status: 'empty', warnings: [], errors: [] },
         hosoeAnalysisPackState: { status: 'empty', warnings: [], errors: [] },
@@ -148,28 +150,28 @@ describe('SettingsPanel external information wording', () => {
   it('shows an auditable, non-persistent classification control for Backend Contracts', () => {
     const fixtureContract = loadContractFixture();
     const testContract = loadContractFixture('TEST-CONTRACT-PUBLIC-SAFE-V1');
-    const fictionalHtml = renderBackendSettings(fixtureContract, 'fictional_contract_fixture');
-    const unclassifiedHtml = renderBackendSettings(testContract, 'unclassified_contract');
-    const approvedHtml = renderBackendSettings(testContract, 'approved_public_design_demo');
+    const fictionalHtml = renderBackendSettings(fixtureContract, 'fictional_contract_fixture', undefined, true);
+    const unclassifiedHtml = renderBackendSettings(testContract, 'unclassified_contract', undefined, true);
+    const approvedHtml = renderBackendSettings(testContract, 'approved_public_design_demo', undefined, true);
 
-    expect(fictionalHtml).toContain('架空Contract検証データ');
+    expect(fictionalHtml).toContain('架空の検証データ');
     expect(fictionalHtml).toContain('fictional_contract_fixture');
     expect(fictionalHtml).toContain('架空Contract fixtureとして固定');
     expect(fictionalHtml).not.toContain('承認済み公開意匠デモデータとして表示する');
 
-    expect(unclassifiedHtml).toContain('未分類Contract検証データ');
+    expect(unclassifiedHtml).toContain('データ区分を確認中');
     expect(unclassifiedHtml).toContain('unclassified_contract');
     expect(unclassifiedHtml).toContain('承認済み公開意匠デモデータとして表示する');
     expect(unclassifiedHtml).toContain('別ファイルの選択や再読込では引き継ぎません');
     expect(approvalControl(unclassifiedHtml)).not.toContain('checked=""');
 
-    expect(approvedHtml).toContain('承認済み公開意匠実データ');
+    expect(approvedHtml).toContain('公開意匠データ');
     expect(approvedHtml).toContain('approved_public_design_demo');
     expect(approvalControl(approvedHtml)).toContain('checked=""');
 
     for (const html of [fictionalHtml, unclassifiedHtml, approvedHtml]) {
-      expect(html).toContain('Backend推奨：受理レコード全体');
-      expect(html).toContain('商品・事業領域を固定せず、直近2年の受理レコードを把握');
+      expect(html).toContain('公開意匠データ：全体を俯瞰');
+      expect(html).toContain('商品・事業領域を固定せず、直近2年の公開意匠データを把握');
       expect(html).not.toContain('プリセットA：家電・映像機器');
       expect(html).not.toContain('プリセットB：画像意匠');
       expect(html).toContain('ローカルJSONを読み込む');
@@ -179,7 +181,15 @@ describe('SettingsPanel external information wording', () => {
 
   it('removes every local acquisition control from authenticated trial markup', () => {
     const contract = loadContractFixture('TEST-AUTHENTICATED-TRIAL-PUBLIC-SAFE-V1');
-    const html = renderBackendSettings(contract, 'approved_public_design_demo', 'authenticated_trial');
+    const initialHtml = renderBackendSettings(contract, 'approved_public_design_demo', 'authenticated_trial');
+    const html = renderBackendSettings(contract, 'approved_public_design_demo', 'authenticated_trial', true);
+
+    expect(initialHtml).toContain('公開意匠データ');
+    expect(initialHtml).toContain('技術・検証情報');
+    expect(initialHtml).not.toContain('Backend Contract');
+    expect(initialHtml).not.toContain('accepted');
+    expect(initialHtml).not.toContain('excluded');
+    expect(initialHtml).not.toContain('adapter');
 
     expect(html).toContain('Backend Contract自動取得済み');
     expect(html).toContain('認証済みセッションで同一オリジンから取得');
@@ -200,6 +210,21 @@ describe('SettingsPanel external information wording', () => {
     expect(html).not.toContain('ファイル');
     expect(html).not.toContain('手動');
     expect(html).not.toContain('サンプル');
+  });
+
+  it('keeps Backend technical terms out of the initial customer markup', () => {
+    const contract = loadContractFixture();
+    const html = renderBackendSettings(contract, 'fictional_contract_fixture');
+
+    expect(html).toContain('3. 対象となる意匠情報を決める');
+    expect(html).toContain('公開意匠データ');
+    expect(html).toContain('技術・検証情報');
+    expect(html).not.toMatch(/<details[^>]*\bopen(?:=|>)/i);
+    expect(html).not.toContain('Backend Contract');
+    expect(html).not.toContain('accepted');
+    expect(html).not.toContain('excluded');
+    expect(html).not.toContain('adapter');
+    expect(html).not.toContain('fictional_contract_fixture');
   });
 
   it('offers companies from the active dataset and exposes validation errors accessibly', () => {
@@ -270,6 +295,7 @@ function renderBackendSettings(
   adapted: BackendContractAdapterSuccess,
   classification: 'fictional_contract_fixture' | 'approved_public_design_demo' | 'unclassified_contract',
   backendContractAcquisition?: BackendContractAcquisition,
+  technicalDetailsInitiallyOpen = false,
 ): string {
   return renderToStaticMarkup(
     createElement(SettingsPanel, {
@@ -280,6 +306,7 @@ function renderBackendSettings(
       localJpoState: { status: 'backend_loaded', fileName: 'contract-test.json', adapted, classification },
       backendContractAcquisition,
       enableLocalAnalysisPack: false,
+      technicalDetailsInitiallyOpen,
       externalDemoMode: true,
       demoShowcaseState: { status: 'empty', warnings: [], errors: [] },
       hosoeAnalysisPackState: { status: 'empty', warnings: [], errors: [] },

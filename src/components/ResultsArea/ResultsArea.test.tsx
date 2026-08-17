@@ -285,12 +285,14 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
         onClearProductDomain: () => undefined,
       }),
     );
 
     expect(html).toContain('今回わかったこと');
     expect(html).toContain('重要な示唆');
+    expect(html).toContain('件数の多い意匠分類・領域');
     expect(html).toContain('データ基準日 2026-06-23');
     expect(html).not.toContain('ルールベース分析');
     expect(html).not.toContain('信頼度：');
@@ -300,6 +302,10 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('data-testid="analysis-record-count-button"');
     expect(html.match(/data-testid="priority-insight"/g)).toHaveLength(3);
     expect(html.match(/data-testid="priority-evidence-button"/g)).toHaveLength(3);
+    expect(html).not.toContain('根拠となる数値');
+    expect(html).not.toContain('クリックして対象意匠を確認');
+    expect(html).not.toMatch(/根拠意匠[\d,]+件を見る/);
+    expect(html).toContain('min-w-0 overflow-hidden');
     expect(html.match(/data-testid="insight-evidence-button"/g)).toHaveLength(3);
     expect(html).toContain('tabindex="-1"');
     expect(html).not.toContain('generatedBy:');
@@ -320,7 +326,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).not.toContain('<img');
   });
 
-  it('renders customer-first Backend evidence with collapsed technical details and hidden provenance', () => {
+  it('renders customer-first Backend evidence and exposes technical details only when requested', () => {
     const fixturePath = path.resolve('fixtures', 'backend-contract-v0.1.0', 'design-export-fictional.json');
     const routed = loadDesignJsonText(fs.readFileSync(fixturePath, 'utf8'), 'design-export-fictional.json');
     expect(routed.kind).toBe('backend_contract');
@@ -365,6 +371,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: true,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
         onClearProductDomain: () => undefined,
       }),
     );
@@ -405,7 +412,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('技術・検証情報');
     const technicalDetailsTag = html.match(/<details[^>]*data-testid="backend-technical-details"[^>]*>/)?.[0];
     expect(technicalDetailsTag).toBeDefined();
-    expect(technicalDetailsTag).not.toMatch(/\bopen(?:=|>)/i);
+    expect(technicalDetailsTag).toMatch(/\bopen(?:=|>)/i);
     expect(html).toContain('stable id');
     expect(html).toContain('架空アルファ意匠研究所');
     expect(html).toContain('right holder resolution');
@@ -462,7 +469,12 @@ describe('ResultsArea gazette drawing metadata display', () => {
       }),
     );
 
-    expect(authenticatedTrialHtml).toContain('認証後に同一オリジンから自動取得したContract 0.1.0');
+    expect(authenticatedTrialHtml).toContain('技術・検証情報');
+    expect(authenticatedTrialHtml).not.toContain('認証後に同一オリジンから自動取得したContract 0.1.0');
+    expect(authenticatedTrialHtml).not.toContain('Backend Contract');
+    expect(authenticatedTrialHtml).not.toContain('accepted');
+    expect(authenticatedTrialHtml).not.toContain('excluded');
+    expect(authenticatedTrialHtml).not.toContain('adapter');
     expect(authenticatedTrialHtml).not.toContain('File API');
     expect(authenticatedTrialHtml.indexOf('data-testid="backend-customer-details"')).toBeLessThan(
       authenticatedTrialHtml.indexOf('data-testid="backend-technical-details"'),
@@ -472,6 +484,106 @@ describe('ResultsArea gazette drawing metadata display', () => {
     )?.[0];
     expect(authenticatedTrialTechnicalTag).toBeDefined();
     expect(authenticatedTrialTechnicalTag).not.toMatch(/\bopen(?:=|>)/i);
+
+    const authenticatedTrialTechnicalHtml = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: backendResult,
+        analysisRecords: backendContract.analysisRecords,
+        allRecords: [],
+        backendContract,
+        backendContractAcquisition: 'authenticated_trial',
+        dataMode: 'backend',
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: true,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
+        technicalDetailsInitiallyOpen: true,
+      }),
+    );
+    expect(authenticatedTrialTechnicalHtml).toContain('認証後に同一オリジンから自動取得したContract 0.1.0');
+  });
+
+  it('keeps raw classification schemes and Backend terms out of the initial customer markup', () => {
+    const fixturePath = path.resolve('fixtures', 'backend-contract-v0.1.0', 'design-export-fictional.json');
+    const routed = loadDesignJsonText(fs.readFileSync(fixturePath, 'utf8'), 'design-export-fictional.json');
+    if (routed.kind !== 'backend_contract' || !routed.result.ok) {
+      throw new Error('The fictional Backend Contract fixture must be accepted.');
+    }
+    const template = routed.result.records.find((record) => record.adapterDisposition.status === 'accepted');
+    if (!template) throw new Error('The fixture must contain an accepted record.');
+    const backendContract = {
+      ...routed.result,
+      records: routed.result.records.map((record) =>
+        record.id === template.id
+          ? {
+              ...record,
+              classifications: [
+                {
+                  scheme: 'JPO_NATIONAL_DESIGN_CLASSIFICATION',
+                  code: 'FIXTURE-CODE-A1',
+                  label: null,
+                  isPrimary: true,
+                },
+                {
+                  scheme: 'FIXTURE_SUPPLEMENTAL_CLASSIFICATION_SCHEME_WITH_A_LONG_NAME',
+                  code: 'FIXTURE-SUPPLEMENTAL-CODE',
+                  label: null,
+                  isPrimary: false,
+                },
+              ],
+            }
+          : record,
+      ),
+    };
+    const initialResult: AnalysisResult = {
+      ...result,
+      market: {
+        trends: {
+          ...result.market!.trends,
+          evidenceIds: [template.id],
+          metric: { label: '検出意匠数', value: 1, unit: '件' },
+        },
+        emergingDomains: { ...result.market!.emergingDomains, evidenceIds: [], metric: { label: '検出意匠数', value: 0, unit: '件' } },
+        companyMoves: { ...result.market!.companyMoves, evidenceIds: [], metric: { label: '検出意匠数', value: 0, unit: '件' } },
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(ResultsArea, {
+        request,
+        result: initialResult,
+        analysisRecords: routed.result.analysisRecords,
+        allRecords: [],
+        backendContract,
+        dataMode: 'backend',
+        isRunning: false,
+        localJpoSummary: null,
+        localJpoWarnings: [],
+        analysisWarnings: [],
+        externalDemoMode: true,
+        demoShowcaseRecords: [],
+        localAnalysisPackPanel: null,
+        onClearProductDomain: () => undefined,
+      }),
+    );
+
+    expect(html).toContain('日本意匠分類 FIXTURE-CODE-A1');
+    expect(html).toContain('技術・検証情報');
+    expect(html).toContain('data-testid="backend-technical-details"');
+    expect(html).not.toContain('JPO_NATIONAL_DESIGN_CLASSIFICATION');
+    expect(html).not.toContain('FIXTURE_SUPPLEMENTAL_CLASSIFICATION_SCHEME_WITH_A_LONG_NAME');
+    expect(html).not.toContain('FIXTURE-SUPPLEMENTAL-CODE');
+    expect(html).not.toContain('Backend Contract');
+    expect(html).not.toContain('accepted');
+    expect(html).not.toContain('excluded');
+    expect(html).not.toContain('adapter');
+    expect(html).not.toContain('stable id');
+    expect(html).not.toMatch(/<details[^>]*\bopen(?:=|>)/i);
   });
 
   it('keeps no-primary classifications supplemental and leaves all-false representative candidates unselected', () => {
@@ -521,6 +633,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
         onClearProductDomain: () => undefined,
       }),
     );
@@ -589,6 +702,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
         onClearProductDomain: () => undefined,
       }),
     );
@@ -626,6 +740,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: true,
         demoShowcaseRecords,
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
         onClearProductDomain: () => undefined,
       }),
     );
@@ -682,7 +797,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('注意事項');
     expect(html).toContain('一部の申請人・権利者コードは、現在DB側で名寄せ改善中です。');
     expect(html).toContain('未解決コード一覧');
-    expect(html).not.toContain('<details open');
+    expect(html).toContain('技術・検証情報');
     expect(html).not.toMatch(/https?:\/\//i);
     expect(html).not.toMatch(/[A-Za-z]:\\/);
     expect(html).not.toMatch(new RegExp(['base', '64'].join(''), 'i'));
@@ -707,6 +822,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: true,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
         onClearProductDomain: () => undefined,
       }),
     );
@@ -715,7 +831,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
     expect(html).toContain('注力領域');
     expect(html).toContain('変化の兆候');
     expect(html).toContain('戦略の材料');
-    expect(html).toContain('任意：データ・デモ・技術情報');
+    expect(html).toContain('技術・検証情報');
     expect(html).toContain('この公開デモはサンプルデータ版です。特許庁実データを用いた検証版は、画面共有でご説明します。');
     expect(html).toContain('公開URL用サンプルデータ概要');
     expect(html).toContain('サンプルデータ件数');
@@ -787,6 +903,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
         onClearProductDomain: () => undefined,
       }),
     );
@@ -822,6 +939,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
         onClearProductDomain: () => undefined,
       }),
     );
@@ -861,6 +979,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
         onClearProductDomain: () => undefined,
       }),
     );
@@ -897,6 +1016,7 @@ describe('ResultsArea gazette drawing metadata display', () => {
         externalDemoMode: false,
         demoShowcaseRecords: [],
         localAnalysisPackPanel: null,
+        technicalDetailsInitiallyOpen: true,
         onClearProductDomain: () => undefined,
       }),
     );

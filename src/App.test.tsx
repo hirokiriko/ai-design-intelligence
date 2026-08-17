@@ -21,7 +21,7 @@ describe('App primary task flow', () => {
 
     for (const html of [firstMount, reloadedMount]) {
       expect(html).toContain('サンプルデータ版です。');
-      expect(html).not.toContain('公開意匠実データを使用中');
+      expect(html).not.toContain('公開意匠データを使用中');
       expect(html).not.toContain('fictional_contract_fixture');
       expect(html).not.toContain('approved_public_design_demo');
       expect(html).not.toContain('unclassified_contract');
@@ -71,8 +71,12 @@ describe('App primary task flow', () => {
     expect(header).not.toBe('');
     ['デモ用サンプルデータ', 'ルールベース分析', '外部データ未接続'].forEach((label) => {
       expect(header).not.toContain(label);
-      expect(html).toContain(label);
     });
+    expect(html).toContain('技術・検証情報');
+    expect(html).not.toContain('Backend Contract');
+    expect(html).not.toContain('accepted');
+    expect(html).not.toContain('excluded');
+    expect(html).not.toContain('adapter');
     expect(html).not.toMatch(/<details[^>]*\bopen(?:=|>)/i);
     expect(html).not.toMatch(/https?:\/\//i);
     expect(html).not.toMatch(/[A-Za-z]:\\/);
@@ -155,11 +159,16 @@ describe('authenticated trial bootstrap', () => {
       }),
     );
 
-    expect(html).toContain('公開意匠実データを使用中');
-    expect(html).toContain('認証後に自動取得した週次更新差分');
-    expect(html).toContain('Backend推奨：受理レコード全体');
+    expect(html).toContain('公開意匠データを使用中');
+    expect(html).toContain('公開意匠データを対象に、ルールベースで集計した参考情報です');
+    expect(html).toContain('公開意匠データ：全体を俯瞰');
     expect(html).toContain('傾向把握：直近2年');
-    expect(html).toContain('認証後に自動取得したBackend Contract');
+    expect(html).toContain('技術・検証情報');
+    expect(html).not.toContain('Backend Contract');
+    expect(html).not.toContain('accepted');
+    expect(html).not.toContain('excluded');
+    expect(html).not.toContain('adapter');
+    expect(html).not.toContain('認証後に自動取得');
     expect(html).not.toMatch(/<input[^>]+type="file"/i);
     expect(html).not.toContain('承認済み公開意匠デモデータとして表示する');
     expect(html).not.toContain('サンプルデータに戻す');
@@ -179,8 +188,8 @@ describe('authenticated trial bootstrap', () => {
       }),
     );
 
-    expect(html).toContain('架空Contract検証データを使用中');
-    expect(html).not.toContain('公開意匠実データを使用中');
+    expect(html).toContain('架空の検証データを使用中');
+    expect(html).not.toContain('公開意匠データを使用中');
     expect(html).not.toMatch(/<input[^>]+type="file"/i);
   });
 });

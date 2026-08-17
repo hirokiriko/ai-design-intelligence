@@ -17,8 +17,6 @@ const isoDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 export function DataUsageBanner(props: DataUsageBannerProps) {
   if (props.mode === 'backend') {
-    const acquisition = props.acquisition ?? 'manual_file';
-    const isAuthenticatedTrial = acquisition === 'authenticated_trial';
     const isApprovedPublicDesignDemo = props.classification === 'approved_public_design_demo';
     const isFictionalContractFixture = props.classification === 'fictional_contract_fixture';
 
@@ -44,58 +42,45 @@ export function DataUsageBanner(props: DataUsageBannerProps) {
                 : 'mx-auto max-w-7xl px-4 py-4 text-slate-700'
           }
         >
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div>
+          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
               <p className="text-lg font-bold text-ink">
                 {isApprovedPublicDesignDemo
-                  ? '公開意匠実データを使用中'
+                  ? '公開意匠データを使用中'
                   : isFictionalContractFixture
-                    ? '架空Contract検証データを使用中'
-                    : 'Contract検証データを使用中'}
+                    ? '架空の検証データを使用中'
+                    : 'データ区分を確認中'}
               </p>
               <p className="mt-1 text-sm leading-6">
                 {isApprovedPublicDesignDemo
-                  ? isAuthenticatedTrial
-                    ? '認証後に自動取得した週次更新差分を用いる、2026年8月17日限定試用向けの表示です。'
-                    : '取得済みの週次更新差分を用いた、初回提案向けの限定デモです。'
+                  ? '公開意匠データを対象に、ルールベースで集計した参考情報です。'
                   : isFictionalContractFixture
-                    ? 'Contract 0.1.0の読込・分析経路を確認するための完全架空データです。'
-                    : 'Contract 0.1.0として検証済みですが、データ区分は未確認です。実データとは断定しません。'}
+                    ? '読込・分析経路を確認するための完全架空データです。'
+                    : 'データ区分は未確認です。公開意匠データとは断定しません。'}
               </p>
             </div>
-            <dl className="grid shrink-0 grid-cols-2 gap-2 text-sm">
-              <div className="rounded-lg border border-teal-200 bg-white px-4 py-2">
+            <dl className="grid w-full min-w-0 grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:w-auto lg:shrink-0">
+              <div className="min-w-0 rounded-lg border border-teal-200 bg-white px-4 py-2">
                 <dt className="text-xs font-semibold text-muted">分析対象件数</dt>
-                <dd className="mt-1 text-base font-bold text-ink">{countFormatter.format(props.acceptedCount)}件</dd>
+                <dd className="readable-text mt-1 text-base font-bold text-ink">{countFormatter.format(props.acceptedCount)}件</dd>
               </div>
-              <div className="rounded-lg border border-teal-200 bg-white px-4 py-2">
+              <div className="min-w-0 rounded-lg border border-teal-200 bg-white px-4 py-2">
                 <dt className="text-xs font-semibold text-muted">データ基準日</dt>
-                <dd className="mt-1 text-base font-bold text-ink">{formatAnalysisCutoff(props.analysisCutoff)}</dd>
+                <dd className="readable-text mt-1 text-base font-bold text-ink">{formatAnalysisCutoff(props.analysisCutoff)}</dd>
               </div>
             </dl>
           </div>
           {isApprovedPublicDesignDemo ? (
             <p className="mt-3 text-xs leading-5 text-muted">
-              {isAuthenticatedTrial
-                ? '日本の全意匠を網羅するものではなく、最新の法的状態や完全な市場母集団を示すものではありません。法的判断の根拠には使用できません。'
-                : '日本の全意匠を網羅するものではなく、最新の法的状態や完全な市場母集団を示すものではありません。'}
+              日本の全意匠や最新の法的状態を示すものではなく、法的判断には使用できません。
             </p>
           ) : null}
           {isFictionalContractFixture ? (
             <p className="mt-3 text-xs leading-5 text-muted">実在企業・実在公報ではなく、実データとして扱いません。</p>
           ) : null}
-          {!isAuthenticatedTrial && props.classification === 'unclassified_contract' ? (
-            <p className="mt-3 text-xs leading-5 text-muted">利用承認を確認するまで、承認済みデータ用の表示へ切り替えません。</p>
+          {props.classification === 'unclassified_contract' ? (
+            <p className="mt-3 text-xs leading-5 text-muted">利用承認を確認するまで、公開意匠データ用の表示へ切り替えません。</p>
           ) : null}
-          {isAuthenticatedTrial ? (
-            <p className="mt-1 text-xs leading-5 text-muted">
-              認証済みセッションで同一オリジンから取得し、この表示中だけ一時利用します。
-            </p>
-          ) : (
-            <p className="mt-1 text-xs leading-5 text-muted">
-              手動選択したデータはブラウザのメモリ上だけで扱い、公開Preview・公開ビルドには含めません。
-            </p>
-          )}
         </div>
       </section>
     );

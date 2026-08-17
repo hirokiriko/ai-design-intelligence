@@ -9,7 +9,11 @@ import type {
   DemoShowcaseRecord,
   DesignRecord,
 } from '../../domain/types';
-import { classificationMembershipKey, type AnalysisReadyDesignRecord } from '../../domain/analysisRecords';
+import {
+  classificationMembershipKey,
+  customerClassificationLabel,
+  type AnalysisReadyDesignRecord,
+} from '../../domain/analysisRecords';
 import type { BackendContractAcquisition } from '../../domain/backendContractAcquisition';
 import { designKindSummary } from '../../analysis/RuleBasedAnalysisEngine';
 import { displayPartyLabel, type LocalJpoDatasetSummary, type RankedItem } from '../../data/LocalJpoJsonDataSource';
@@ -18,6 +22,7 @@ import type {
   BackendRecordViewModel,
 } from '../../data/BackendContractDataSource';
 import { Badge } from '../common/Badge';
+import { DeferredDetails } from '../common/DeferredDetails';
 import {
   evidenceInteractionReducer,
   focusEvidenceSection,
@@ -41,6 +46,7 @@ interface ResultsAreaProps {
   localAnalysisPackPanel: ReactNode | null;
   onClearProductDomain: () => void;
   onResetAnalysisFilters?: () => void;
+  technicalDetailsInitiallyOpen?: boolean;
 }
 
 type DemoScenarioKind = 'three_min' | 'ten_min';
@@ -117,6 +123,7 @@ export function ResultsArea({
   localAnalysisPackPanel,
   onClearProductDomain,
   onResetAnalysisFilters,
+  technicalDetailsInitiallyOpen = false,
 }: ResultsAreaProps) {
   const [presenterMode, setPresenterMode] = useState(true);
   const [demoScenario, setDemoScenario] = useState<DemoScenarioKind>('three_min');
@@ -294,7 +301,12 @@ export function ResultsArea({
           <div key={listRevision} className="mt-4 grid gap-3" data-testid="evidence-record-list">
             {visibleEvidenceRecords.map((item) =>
               item.kind === 'backend' ? (
-                <BackendEvidenceRecord key={item.record.id} record={item.record} forceOpen={highlightedEvidenceId === item.record.id} />
+                <BackendEvidenceRecord
+                  key={item.record.id}
+                  record={item.record}
+                  forceOpen={highlightedEvidenceId === item.record.id}
+                  technicalDetailsInitiallyOpen={technicalDetailsInitiallyOpen}
+                />
               ) : (
                 <EvidenceRecord
                   key={item.record.id}
@@ -320,13 +332,17 @@ export function ResultsArea({
         </section>
       ) : null}
 
-      <details className="rounded-lg border border-line bg-white p-4 shadow-soft">
-        <summary className="cursor-pointer rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-          <div>
-            <div className="text-sm font-bold text-ink">任意：データ・デモ・技術情報</div>
-            <p className="mt-1 text-xs leading-5 text-muted">データ範囲、画面共有用の案内、未接続事項を確認するときだけ開いてください。</p>
-          </div>
-        </summary>
+      <DeferredDetails
+        className="rounded-lg border border-line bg-white p-4 shadow-soft"
+        initiallyOpen={technicalDetailsInitiallyOpen}
+        summaryClassName="cursor-pointer rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        summary={
+          <span className="block">
+            <span className="block text-sm font-bold text-ink">技術・検証情報</span>
+            <span className="mt-1 block text-xs leading-5 text-muted">データ範囲や検証方法を確認するときだけ開いてください。</span>
+          </span>
+        }
+      >
         <div className="mt-4 space-y-5 border-t border-line pt-4">
           {backendContract ? (
             <BackendContractSummaryPanel contract={backendContract} acquisition={backendContractAcquisition} />
@@ -376,14 +392,14 @@ export function ResultsArea({
           {externalDemoMode && dataMode !== 'backend' ? <DemoClosingSummaryPanel summary={localJpoSummary} sampleSummary={publicSampleSummary} /> : null}
           {externalDemoMode && dataMode !== 'backend' ? <DemoNoticePanel /> : null}
         </div>
-      </details>
+      </DeferredDetails>
     </main>
   );
 }
 
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-line bg-panel p-3">
+    <div className="min-w-0 overflow-hidden rounded-md border border-line bg-panel p-3">
       <dt className="text-xs font-bold text-muted">{label}</dt>
       <dd className="readable-text mt-1 text-sm font-semibold text-ink">{value}</dd>
     </div>
@@ -467,12 +483,15 @@ function ExecutiveSummary({
       <button
         type="button"
         data-testid="analysis-record-count-button"
-        className="w-full rounded-xl border-2 border-teal-300 bg-teal-50 p-5 text-left transition hover:border-teal-500"
+        className="min-w-0 w-full overflow-hidden rounded-xl border-2 border-teal-300 bg-teal-50 p-5 text-left transition hover:border-teal-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        aria-label={`今回の分析対象意匠数 ${formatCount(records.length)}件。対象意匠を表示`}
         onClick={() => onSelectEvidence('今回の分析対象意匠数', records.map((record) => record.id))}
       >
         <span className="block text-xs font-bold text-accent">1. 今回の分析対象意匠数</span>
-        <span className="mt-2 block text-3xl font-bold text-ink">{formatCount(records.length)}件</span>
-        <span className="mt-2 block text-sm font-semibold text-accent">クリックして対象意匠を確認</span>
+        <span className="mt-2 flex min-w-0 items-center gap-2 text-3xl font-bold text-ink">
+          <span>{formatCount(records.length)}件</span>
+          <span aria-hidden="true" className="text-xl text-accent">→</span>
+        </span>
       </button>
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
@@ -485,21 +504,22 @@ function ExecutiveSummary({
         {priorityInsights.map(({ label, insight }, index) => {
           const evidenceIds = insight.evidenceIds.filter((id) => acceptedIds.has(id));
           return (
-            <article key={label} className="rounded-lg border border-teal-200 bg-teal-50/50 p-4" data-testid="priority-insight">
+            <article key={label} className="min-w-0 overflow-hidden rounded-lg border border-teal-200 bg-teal-50/50 p-4" data-testid="priority-insight">
               <h4 className="text-sm font-bold text-ink">{index + 2}. {label}</h4>
-              <p className="mt-3 text-sm leading-6 text-ink">{insight.text}</p>
+              <p className="readable-text mt-3 min-w-0 overflow-hidden text-sm leading-6 text-ink [overflow-wrap:anywhere]">{insight.text}</p>
               <button
                 type="button"
                 data-testid="priority-evidence-button"
-                className="mt-3 w-full rounded-md border border-line bg-white p-3 text-left text-sm disabled:cursor-not-allowed disabled:text-muted"
+                className="mt-3 min-w-0 w-full overflow-hidden rounded-md border border-line bg-white p-3 text-left text-sm transition hover:border-teal-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:text-muted"
+                aria-label={`${label}の${insight.metric.label} ${formatCount(insight.metric.value)}${insight.metric.unit ?? ''}。対応する意匠を表示`}
                 onClick={() => onSelectEvidence(label, evidenceIds)}
                 disabled={evidenceIds.length === 0}
               >
-                <span className="block text-xs font-bold text-muted">根拠となる数値</span>
-                <span className="mt-1 block font-semibold text-ink">
-                  {insight.metric.label}: {formatCount(insight.metric.value)}{insight.metric.unit ?? ''}
+                <span className="block text-xs font-bold text-muted">{insight.metric.label}</span>
+                <span className="mt-1 flex min-w-0 items-center gap-2 text-lg font-bold text-ink">
+                  <span>{formatCount(insight.metric.value)}{insight.metric.unit ?? ''}</span>
+                  <span aria-hidden="true" className="text-accent">→</span>
                 </span>
-                <span className="mt-1 block font-semibold text-accent">根拠意匠{formatCount(evidenceIds.length)}件を見る</span>
               </button>
             </article>
           );
@@ -512,7 +532,7 @@ function ExecutiveSummary({
 function buildPrimaryInsights(result: AnalysisResult): PriorityInsight[] {
   if (result.market) {
     return [
-      { label: '注目トレンド', insight: result.market.trends },
+      { label: '件数の多い意匠分類・領域', insight: result.market.trends },
       { label: '商品化領域のヒント', insight: result.market.emergingDomains },
       { label: '企業動向', insight: result.market.companyMoves },
     ].filter(({ insight }) => shouldShowInsight(insight));
@@ -524,7 +544,7 @@ function buildPrimaryInsights(result: AnalysisResult): PriorityInsight[] {
       .filter(shouldShowInsight)
       .sort((left, right) => insightStrength(right) - insightStrength(left))[0];
   const candidates: Array<[string, AnalysisInsight | undefined]> = [
-    ['注目トレンド', pickStrongest((company) => company.portfolio.strengthening)],
+    ['直近1年の意匠展開', pickStrongest((company) => company.portfolio.strengthening)],
     ['商品化領域のヒント', pickStrongest((company) => company.portfolio.focusAreas)],
     ['企業動向', pickStrongest((company) => company.designTrend.domains)],
   ];
@@ -1659,9 +1679,11 @@ function InsightView({
 function BackendEvidenceRecord({
   record,
   forceOpen,
+  technicalDetailsInitiallyOpen,
 }: {
   record: BackendRecordViewModel;
   forceOpen: boolean;
+  technicalDetailsInitiallyOpen: boolean;
 }) {
   const applicantLabel = backendPartyNameListValue(record.applicants);
   const rightHolderLabel = backendPartyNameListValue(record.rightHolders);
@@ -1677,8 +1699,8 @@ function BackendEvidenceRecord({
   return (
     <details id={evidenceDomId(record.id)} className="scroll-mt-24 rounded-md border border-sky-200 bg-sky-50/40 p-4" open={forceOpen || undefined}>
       <summary className="cursor-pointer list-none">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 max-w-full">
             <h3 className="readable-text font-bold text-ink">
               {record.articleName ?? '物品名・画像の用途 未取得'}
             </h3>
@@ -1689,7 +1711,7 @@ function BackendEvidenceRecord({
         </div>
       </summary>
       <div className="mt-4 space-y-3">
-        <section className="rounded-md border border-line bg-white p-4" data-testid="backend-customer-details">
+        <section className="min-w-0 overflow-hidden rounded-md border border-line bg-white p-4" data-testid="backend-customer-details">
           <h4 className="text-sm font-bold text-ink">意匠情報</h4>
           <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
             <Detail label="企業名" value={companyLabel} />
@@ -1739,8 +1761,13 @@ function BackendEvidenceRecord({
           <p className="mt-3 text-xs leading-5 text-muted">図面画像本体と外部リンクは表示していません。</p>
         </section>
 
-        <details className="rounded-md border border-slate-300 bg-slate-50 p-4" data-testid="backend-technical-details">
-          <summary className="cursor-pointer text-sm font-bold text-ink">技術・検証情報</summary>
+        <DeferredDetails
+          className="rounded-md border border-slate-300 bg-slate-50 p-4"
+          initiallyOpen={technicalDetailsInitiallyOpen}
+          summaryClassName="cursor-pointer text-sm font-bold text-ink"
+          summary="技術・検証情報"
+          testId="backend-technical-details"
+        >
           <div className="mt-4 space-y-3">
             <section className="rounded-md border border-line bg-white p-4">
               <h4 className="text-sm font-bold text-ink">内部状態</h4>
@@ -1776,7 +1803,7 @@ function BackendEvidenceRecord({
                 {record.classifications.map((classification) => (
                   <li
                     key={classificationMembershipKey(classification)}
-                    className="rounded-md bg-panel px-3 py-2"
+                    className="readable-text min-w-0 max-w-full rounded-md bg-panel px-3 py-2 [overflow-wrap:anywhere]"
                     data-classification-role={classification.isPrimary ? 'primary' : 'supplemental'}
                   >
                     <Badge tone={classification.isPrimary ? 'accent' : 'neutral'}>
@@ -1814,7 +1841,7 @@ function BackendEvidenceRecord({
                     {record.drawings.map((drawing) => (
                       <li
                         key={drawing.order}
-                        className="rounded-md bg-panel px-3 py-2"
+                        className="readable-text min-w-0 max-w-full rounded-md bg-panel px-3 py-2 [overflow-wrap:anywhere]"
                         data-representative-candidate={drawing.isRepresentativeCandidate ? 'true' : undefined}
                       >
                         order {drawing.order}: {drawing.drawingId} / {drawing.label ?? 'label未設定'} / {drawing.fileName ?? 'fileName未設定'} /{' '}
@@ -1835,17 +1862,17 @@ function BackendEvidenceRecord({
                 {record.quality.findings.length > 0 ? (
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-caution">
                     {record.quality.findings.map((finding, index) => (
-                      <li key={`${finding.code}:${index}`}>{finding.code} / {finding.severity}</li>
+                      <li className="readable-text min-w-0 max-w-full [overflow-wrap:anywhere]" key={`${finding.code}:${index}`}>{finding.code} / {finding.severity}</li>
                     ))}
                   </ul>
                 ) : null}
                 {record.quality.duplicateCandidates.length > 0 ? (
-                  <p className="mt-2 text-sm text-caution">duplicate candidates: {record.quality.duplicateCandidates.join(', ')}</p>
+                  <p className="readable-text mt-2 min-w-0 max-w-full text-sm text-caution [overflow-wrap:anywhere]">duplicate candidates: {record.quality.duplicateCandidates.join(', ')}</p>
                 ) : null}
               </section>
             ) : null}
           </div>
-        </details>
+        </DeferredDetails>
       </div>
     </details>
   );
@@ -2237,9 +2264,9 @@ function backendPartyTechnicalValue(parties: BackendRecordViewModel['applicants'
 
 function backendCustomerClassificationValue(classifications: BackendRecordViewModel['classifications']): string {
   const labels = classifications
-    .map((classification) => classification.label?.trim())
-    .filter((label): label is string => Boolean(label));
-  return labels.length > 0 ? [...new Set(labels)].join('、') : '分類名未取得';
+    .filter((classification) => classification.isPrimary)
+    .map(customerClassificationLabel);
+  return labels.length > 0 ? [...new Set(labels)].join('、') : '主分類未取得';
 }
 
 function backendUnresolvedSummary(items: BackendRecordViewModel['unresolved']['applicants']): string {
@@ -2254,9 +2281,9 @@ function evidenceDomId(id: string): string {
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 max-w-full overflow-hidden">
       <dt className="text-xs font-bold text-muted">{label}</dt>
-      <dd className="readable-text mt-0.5 font-semibold text-ink">{value}</dd>
+      <dd className="readable-text mt-0.5 min-w-0 max-w-full font-semibold text-ink [overflow-wrap:anywhere]">{value}</dd>
     </div>
   );
 }

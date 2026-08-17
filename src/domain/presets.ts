@@ -42,8 +42,8 @@ export const DEMO_PRESETS: DemoPreset[] = [
 
 export const BACKEND_CONTRACT_DEMO_PRESET: DemoPreset = {
   id: 'backend_all',
-  label: 'Backend推奨：受理レコード全体',
-  description: '商品・事業領域を固定せず、直近2年の受理レコードを把握',
+  label: '公開意匠データ：全体を俯瞰',
+  description: '商品・事業領域を固定せず、直近2年の公開意匠データを把握',
   request: {
     scope: { mode: 'all_classes' },
     productDomain: '',

@@ -25,6 +25,7 @@ import {
 } from '../../domain/presets';
 import { getDesignKindSelectionStatus, resolveDesignKinds } from '../../domain/selection';
 import { Badge } from '../common/Badge';
+import { DeferredDetails } from '../common/DeferredDetails';
 
 type LocalJpoPanelState =
   | { status: 'sample'; warnings: string[]; errors: string[] }
@@ -58,6 +59,7 @@ interface SettingsPanelProps {
   errors: ValidationErrors;
   isRunning: boolean;
   hasResult?: boolean;
+  technicalDetailsInitiallyOpen?: boolean;
   localJpoState: LocalJpoPanelState;
   backendContractAcquisition?: BackendContractAcquisition;
   enableLocalAnalysisPack: boolean;
@@ -87,6 +89,7 @@ export function SettingsPanel({
   errors,
   isRunning,
   hasResult = false,
+  technicalDetailsInitiallyOpen = false,
   localJpoState,
   backendContractAcquisition = 'manual_file',
   enableLocalAnalysisPack,
@@ -138,7 +141,7 @@ export function SettingsPanel({
   };
 
   return (
-    <aside className="space-y-5">
+    <aside className="min-w-0 space-y-5">
       <section id="analysis-settings" className="scroll-mt-6 rounded-lg border-2 border-teal-200 bg-white p-5 pb-24 shadow-soft sm:pb-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -260,7 +263,7 @@ export function SettingsPanel({
                   </>
                 ) : (
                   <p className="mt-3 rounded-md border border-sky-200 bg-sky-50 p-3 text-xs leading-5 text-sky-900">
-                    Backend Contractでは、名称解決済みapplicantだけを候補から選択できます。表示名の自由入力やright holderへの代替は行いません。
+                    表示される企業候補から選択できます。候補にない名称は追加されません。
                   </p>
                 )}
                 {companySelectors.length > 0 ? (
@@ -269,7 +272,7 @@ export function SettingsPanel({
                       <button
                         key={companySelectorKey(company)}
                         type="button"
-                        className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-sm font-semibold text-accent"
+                        className="readable-text min-w-0 max-w-full rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-sm font-semibold text-accent [overflow-wrap:anywhere]"
                         onClick={() => onRemoveCompany(companySelectorKey(company))}
                       >
                         {company.displayLabel} ×
@@ -325,7 +328,7 @@ export function SettingsPanel({
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <span className="font-semibold">
                   {localJpoState.status === 'backend_loaded'
-                    ? 'Backend Contract 0.1.0'
+                    ? '公開意匠データ'
                     : localJpoState.status === 'loaded'
                       ? 'ローカル実データJSON'
                       : 'デモ用意匠情報'}
@@ -429,26 +432,30 @@ export function SettingsPanel({
         </p>
       </section>
 
-      <details className="rounded-lg border border-line bg-white p-4 shadow-soft">
-        <summary className="cursor-pointer rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="text-sm font-bold text-ink">詳細設定・データ情報</div>
-              <p className="mt-1 text-xs leading-5 text-muted">
-                {isAuthenticatedTrial
-                  ? '通常は開かずに分析できます。取得済みデータの技術情報を確認する場合だけ開いてください。'
-                  : '通常は開かずに分析できます。ローカルJSONや画面共有用の設定が必要な場合だけ開いてください。'}
-              </p>
-            </div>
+      <DeferredDetails
+        className="rounded-lg border border-line bg-white p-4 shadow-soft"
+        initiallyOpen={technicalDetailsInitiallyOpen}
+        summaryClassName="cursor-pointer rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        summary={
+          <span className="flex flex-wrap items-start justify-between gap-3">
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-ink">
+                {localJpoState.status === 'backend_loaded' ? '技術・検証情報' : '詳細設定・データ情報'}
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-muted">
+                通常は開かずに分析できます。データの取扱いや検証情報を確認する場合だけ開いてください。
+              </span>
+            </span>
             <Badge tone={localJpoState.status === 'loaded' ? 'warning' : localJpoState.status === 'backend_loaded' ? 'accent' : 'neutral'}>
               {localJpoState.status === 'backend_loaded'
-                ? backendClassificationLabel(localJpoState.classification, isAuthenticatedTrial)
+                ? backendClassificationLabel(localJpoState.classification)
                 : localJpoState.status === 'loaded'
                   ? 'ローカルデータ利用中'
                   : 'サンプルデータ利用中'}
             </Badge>
-          </div>
-        </summary>
+          </span>
+        }
+      >
 
         <div className="mt-4 space-y-5 border-t border-line pt-4">
       <section className="rounded-lg border border-line bg-slate-50 p-5">
@@ -474,7 +481,7 @@ export function SettingsPanel({
           </Badge>
           {localJpoState.status === 'backend_loaded' ? (
             <Badge tone={localJpoState.classification === 'approved_public_design_demo' ? 'accent' : 'warning'}>
-              {backendClassificationLabel(localJpoState.classification, isAuthenticatedTrial)}
+              {backendClassificationLabel(localJpoState.classification)}
             </Badge>
           ) : null}
         </div>
@@ -823,7 +830,7 @@ export function SettingsPanel({
       </section>
 
         </div>
-      </details>
+      </DeferredDetails>
 
       {!hasResult ? (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white/95 px-4 py-3 shadow-[0_-6px_20px_rgba(15,23,42,0.12)] backdrop-blur sm:hidden">
@@ -860,7 +867,7 @@ function AuthenticatedTrialContractSummary({
           </p>
         </div>
         <Badge tone={state.classification === 'approved_public_design_demo' ? 'accent' : 'warning'}>
-          {backendClassificationLabel(state.classification, true)}
+          {backendClassificationLabel(state.classification)}
         </Badge>
       </div>
       <dl className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -881,17 +888,14 @@ function getAuthenticatedTrialDesignKindSelectionStatus(selectionChanged: boolea
     : '自動設定中です。分析目的に合わせて意匠種別を設定し、必要なら個別に変更できます。';
 }
 
-function backendClassificationLabel(
-  classification: BackendContractDataClassification,
-  authenticatedTrial = false,
-): string {
+function backendClassificationLabel(classification: BackendContractDataClassification): string {
   switch (classification) {
     case 'fictional_contract_fixture':
-      return '架空Contract検証データ';
+      return '架空の検証データ';
     case 'approved_public_design_demo':
-      return authenticatedTrial ? '公開意匠実データ' : '承認済み公開意匠実データ';
+      return '公開意匠データ';
     case 'unclassified_contract':
-      return '未分類Contract検証データ';
+      return 'データ区分を確認中';
   }
 }
 

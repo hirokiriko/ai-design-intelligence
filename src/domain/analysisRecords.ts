@@ -108,3 +108,15 @@ export function companySelectorFromMembership(membership: CompanyMembership): Co
 export function classificationMembershipKey(membership: ClassificationMembership): string {
   return JSON.stringify([membership.scheme, membership.code]);
 }
+
+export function customerClassificationLabel(membership: ClassificationMembership): string {
+  const label = membership.label?.trim();
+  if (membership.scheme === 'JPO_NATIONAL_DESIGN_CLASSIFICATION') {
+    return `日本意匠分類 ${membership.code}${label ? `（${label}）` : ''}`;
+  }
+  if (label) return label;
+  if (membership.scheme === 'sample-design-class' || membership.scheme === 'legacy-design-class') {
+    return membership.code;
+  }
+  return `分類コード ${membership.code}`;
+}

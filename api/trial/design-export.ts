@@ -168,9 +168,8 @@ export async function proxyTrialDesignExport(
     ...RESPONSE_HEADERS,
     'Content-Type': contentType,
   };
-  if (contentLength.value !== null) {
-    responseHeaders['Content-Length'] = String(contentLength.value);
-  }
+  // Vercel owns the downstream Content-Length for streamed responses. The
+  // upstream value remains an internal byte-integrity gate for this relay.
 
   return new Response(
     createRelayStream(

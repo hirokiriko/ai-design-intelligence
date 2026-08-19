@@ -387,7 +387,7 @@ describe('trial design export server-side proxy', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('content-length')).toBe(String(rawBytes.byteLength));
+    expect(response.headers.get('content-length')).toBeNull();
     expect(response.headers.get('cache-control')).toBe('private, no-store');
     const chunks = await readChunks(requireBody(response));
     expect(chunks.length).toBeGreaterThan(1);

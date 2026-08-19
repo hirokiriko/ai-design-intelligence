@@ -92,7 +92,7 @@ Backend Contractの適合確認とデータ利用承認は別の境界です。�
 
 限定ローカル検証は、利用承認済みJSONを利用者がFile APIで手動選択し、画面上でも承認済み分類を明示した場合だけ行います。限定試用モードはファイル選択や承認チェックを表示せず、Backend側の認証・期限・配信承認を境界として同一originから自動取得します。
 
-このrepositoryには`/api/trial/design-export`のserver-side proxyだけを含み、Backend本体や実データは含めません。proxyはGET・queryなし・固定pathだけを受理し、ブラウザのAuthorization、Cookie、Origin、bodyをBackendへ転送しません。Backend error bodyも顧客画面やconsoleへ転載せず、401/403、404、410、422、5xx・timeoutを安全な顧客向け状態へ分類してfail closedとします。Preview確認はProductionへの反映や昇格を意味しません。
+このrepositoryには`/api/trial/design-export`のserver-side proxyだけを含み、Backend本体や実データは含めません。proxyはGET・queryなし・固定pathだけを受理し、ブラウザのAuthorization、Cookie、Origin、bodyをBackendへ転送しません。Backendの200 bodyはproxy上で全件bufferせず、最大25,000,000 bytesの有限上限を適用したWeb Streamとして中継します。30秒のtimeoutとBrowser/request cancelはstream完了まで維持し、正常終了・失敗・cancelの全経路でreader、timer、listenerを解放します。Backend error bodyも顧客画面やconsoleへ転載せず、401/403、404、410、422、5xx・timeoutを安全な顧客向け状態へ分類してfail closedとします。Preview確認はProductionへの反映や昇格を意味しません。
 
 ## 5分デモ
 

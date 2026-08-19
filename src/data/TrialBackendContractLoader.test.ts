@@ -91,6 +91,55 @@ describe('trial Backend Contract loader', () => {
     }
   });
 
+  it('maps a mid-stream read failure to unavailable without exposing details', async () => {
+    const confidentialDetail = 'FIXTURE-CONFIDENTIAL-STREAM-DETAIL';
+    const response = new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{'));
+          controller.error(new TypeError(confidentialDetail));
+        },
+      }),
+      { headers: { 'content-type': 'application/json' } },
+    );
+
+    const result = await loadTrialBackendContract(vi.fn(async () => response));
+
+    expectFailure(result, 'unavailable');
+    expect(JSON.stringify(result)).not.toContain(confidentialDetail);
+  });
+
+  it('keeps the Browser timeout active until response stream completion', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn(
+        async (_input: RequestInfo | URL, init?: RequestInit) =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode('{'));
+                init?.signal?.addEventListener('abort', () => {
+                  controller.error(
+                    new DOMException('FIXTURE-CONFIDENTIAL-BODY-TIMEOUT', 'AbortError'),
+                  );
+                });
+              },
+            }),
+            { headers: { 'content-type': 'application/json' } },
+          ),
+      );
+
+      const resultPromise = loadTrialBackendContract(fetchMock, 25);
+      await vi.advanceTimersByTimeAsync(25);
+      const result = await resultPromise;
+
+      expectFailure(result, 'unavailable');
+      expect(JSON.stringify(result)).not.toContain('FIXTURE-CONFIDENTIAL-BODY-TIMEOUT');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it.each([
     ['non-JSON content', () => new Response('FIXTURE-HTML', { headers: { 'content-type': 'text/html' } })],
     ['malformed JSON', () => new Response('{', { headers: { 'content-type': 'application/json' } })],

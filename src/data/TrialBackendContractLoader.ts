@@ -6,7 +6,7 @@ import {
 import { createBackendContractDemoRequest } from '../domain/presets';
 
 export const TRIAL_BACKEND_CONTRACT_PATH = '/api/trial/design-export' as const;
-export const TRIAL_BACKEND_CONTRACT_TIMEOUT_MS = 15_000;
+export const TRIAL_BACKEND_CONTRACT_TIMEOUT_MS = 40_000;
 
 export type TrialBackendContractErrorCode =
   | 'authentication_required'
@@ -59,16 +59,20 @@ export async function loadTrialBackendContract(
       return failure('unavailable');
     }
 
-    if (!response.ok) return failure(errorCodeForStatus(response.status));
+    if (!response.ok) {
+      await discardResponseBody(response);
+      return failure(errorCodeForStatus(response.status));
+    }
     if (!isJsonContentType(response.headers.get('content-type'))) {
+      await discardResponseBody(response);
       return failure('invalid_contract');
     }
 
     let value: unknown;
     try {
       value = await response.json() as unknown;
-    } catch {
-      return abortController.signal.aborted
+    } catch (error) {
+      return abortController.signal.aborted || !(error instanceof SyntaxError)
         ? failure('unavailable')
         : failure('invalid_contract');
     }
@@ -90,6 +94,14 @@ export async function loadTrialBackendContract(
     return { ok: true, adapted };
   } finally {
     globalThis.clearTimeout(timeout);
+  }
+}
+
+async function discardResponseBody(response: Response): Promise<void> {
+  try {
+    await response.body?.cancel();
+  } catch {
+    // Upstream error details are intentionally ignored.
   }
 }
 

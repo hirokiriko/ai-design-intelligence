@@ -71,9 +71,10 @@ export function DataUsageBanner(props: DataUsageBannerProps) {
             </dl>
           </div>
           {isApprovedPublicDesignDemo ? (
-            <p className="mt-3 text-xs leading-5 text-muted">
-              日本の全意匠や最新の法的状態を示すものではなく、法的判断には使用できません。
-            </p>
+            <div className="mt-3 space-y-1 text-xs leading-5 text-muted">
+              <p>取得済みの公報番号・発行日・分類・図面メタデータまでを表示します。公報PDF・画像本体は未接続です。外部公報リンクも未接続です。</p>
+              <p>日本の全意匠や最新の法的状態を示すものではなく、法的判断には使用できません。</p>
+            </div>
           ) : null}
           {isFictionalContractFixture ? (
             <p className="mt-3 text-xs leading-5 text-muted">実在企業・実在公報ではなく、実データとして扱いません。</p>

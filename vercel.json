@@ -3,5 +3,11 @@
   "framework": "vite",
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm run build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "functions": {
+    "api/trial/design-export.ts": {
+      "maxDuration": 35,
+      "supportsCancellation": true
+    }
+  }
 }

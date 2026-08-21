@@ -49,6 +49,12 @@ describe('DataUsageBanner', () => {
     expect(html).toContain(`${new Intl.NumberFormat('ja-JP').format(contract.summary.acceptedCount)}件`);
     expect(html).toContain(formatExpectedDate(contract.meta.analysisCutoff));
     expect(html).toContain('公開意匠データを対象に、ルールベースで集計した参考情報です');
+    expect(html).toContain('取得済みの公報番号・発行日・分類・図面メタデータまでを表示します');
+    expect(html).toContain('公報PDF・画像本体は未接続です');
+    expect(html).toContain('外部公報リンクも未接続です');
+    expect(html).not.toContain('公報PDFを見る');
+    expect(html).not.toContain('画像本体を見る');
+    expect(html).not.toContain('外部公報リンクを開く');
     expect(html).toContain('日本の全意匠や最新の法的状態を示すものではなく');
     expect(html).toContain('法的判断には使用できません');
     expect(html).not.toContain('ブラウザのメモリ');

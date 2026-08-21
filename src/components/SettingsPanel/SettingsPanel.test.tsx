@@ -64,7 +64,8 @@ describe('SettingsPanel external information wording', () => {
     expect(html).toContain('プリセットB：画像意匠');
     expect(html).not.toContain('Backend推奨：受理レコード全体');
     expect(html).toContain('分析を開始');
-    expect(html).toContain('6. 結果と根拠を確認する');
+    expect(html).toContain('6. 出力部門を選ぶ（任意）');
+    expect(html).toContain('7. 結果と根拠を確認する');
     expect(html).toContain('外部データ未接続');
     const dataDetailsIndex = html.indexOf('詳細設定・データ情報');
     ['デモ用サンプルデータ', 'ルールベース分析', '外部データ未接続'].forEach((label) => {
@@ -80,7 +81,7 @@ describe('SettingsPanel external information wording', () => {
     expect(html).toContain('株主総会情報・事業方針');
     expect(html).toContain('準備中');
     expect(html).toContain('現在の分析には使用しません。');
-    expect(html).toContain('出力部門（任意）');
+    expect(html.match(/出力部門を選ぶ（任意）/g)).toHaveLength(1);
     expect(html).toContain('住宅設備');
     expect(html).toContain('モビリティ');
     const stepLabels = [
@@ -89,14 +90,16 @@ describe('SettingsPanel external information wording', () => {
       '3. 対象となる意匠情報を決める',
       '4. 対象期間を決める',
       '5. 分析目的を選ぶ',
-      '6. 結果と根拠を確認する',
+      '6. 出力部門を選ぶ（任意）',
+      '7. 結果と根拠を確認する',
     ];
     const stepSequence = Array.from(
-      html.matchAll(/1\. 分析対象を決める|2\. 見たい領域を決める|3\. 対象となる意匠情報を決める|4\. 対象期間を決める|5\. 分析目的を選ぶ|6\. 結果と根拠を確認する/g),
+      html.matchAll(/1\. 分析対象を決める|2\. 見たい領域を決める|3\. 対象となる意匠情報を決める|4\. 対象期間を決める|5\. 分析目的を選ぶ|6\. 出力部門を選ぶ（任意）|7\. 結果と根拠を確認する/g),
       (match) => match[0],
     );
     expect(stepSequence).toEqual(stepLabels);
-    expect(html.indexOf('6. 結果と根拠を確認する')).toBeLessThan(html.indexOf('詳細設定・データ情報'));
+    expect(html.indexOf('6. 出力部門を選ぶ（任意）')).toBeLessThan(html.indexOf('分析を開始'));
+    expect(html.indexOf('7. 結果と根拠を確認する')).toBeLessThan(html.indexOf('詳細設定・データ情報'));
     expect(html).not.toMatch(/\b(?:[a-z]+:)*order-[^\s"]+/);
     expect(html).not.toContain('C:\\KIRIKO_Data');
     expect(html).not.toContain(['design-records-', 'monthly-preview'].join(''));

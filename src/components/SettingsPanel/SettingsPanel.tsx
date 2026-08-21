@@ -417,6 +417,16 @@ export function SettingsPanel({
             errorId="purposes-error"
             onToggle={changePurposes}
           />
+
+          <CheckboxGroup
+            title="6. 出力部門を選ぶ（任意）"
+            values={ALL_DEPARTMENTS}
+            selected={request.departments}
+            labels={DEPARTMENT_LABELS}
+            error={errors.departments}
+            errorId="departments-error"
+            onToggle={(value) => onRequestChange({ ...request, departments: toggleValue(request.departments, value) })}
+          />
         </div>
 
         <button
@@ -428,7 +438,7 @@ export function SettingsPanel({
           {isRunning ? '分析しています...' : '分析を開始'}
         </button>
         <p className="mt-2 text-center text-xs leading-5 text-muted">
-          6. 結果と根拠を確認する。分析対象意匠数と主な傾向を確認し、件数から根拠意匠へ移動します。
+          7. 結果と根拠を確認する。分析対象意匠数と主な傾向を確認し、件数から根拠意匠へ移動します。
         </p>
       </section>
 
@@ -793,24 +803,6 @@ export function SettingsPanel({
       ) : null}
         </>
       ) : null}
-
-      <section className="rounded-lg border border-line bg-white p-5">
-        <h2 className="text-base font-bold text-ink">出力部門（任意）</h2>
-        <p className="mt-1 text-sm leading-6 text-muted">
-          通常は分析目的から自動設定されます。伝え方を調整したい場合だけ変更してください。
-        </p>
-        <div className="mt-4">
-          <CheckboxGroup
-            title="出力部門"
-            values={ALL_DEPARTMENTS}
-            selected={request.departments}
-            labels={DEPARTMENT_LABELS}
-            error={errors.departments}
-            errorId="departments-error"
-            onToggle={(value) => onRequestChange({ ...request, departments: toggleValue(request.departments, value) })}
-          />
-        </div>
-      </section>
 
       <section className="rounded-lg border border-line bg-slate-50 p-5">
         <div className="flex flex-wrap items-center gap-2">

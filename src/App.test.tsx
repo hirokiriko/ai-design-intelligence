@@ -42,7 +42,8 @@ describe('App primary task flow', () => {
     expect(html).toContain('3. 対象となる意匠情報を決める');
     expect(html).toContain('4. 対象期間を決める');
     expect(html).toContain('5. 分析目的を選ぶ');
-    expect(html).toContain('6. 結果と根拠を確認する');
+    expect(html).toContain('6. 出力部門を選ぶ（任意）');
+    expect(html).toContain('7. 結果と根拠を確認する');
     expect(html).toContain('詳細設定・データ情報');
     expect(html).toContain('分析条件を決める');
     expect(html).toContain('分析を開始');
@@ -54,10 +55,11 @@ describe('App primary task flow', () => {
       '3. 対象となる意匠情報を決める',
       '4. 対象期間を決める',
       '5. 分析目的を選ぶ',
-      '6. 結果と根拠を確認する',
+      '6. 出力部門を選ぶ（任意）',
+      '7. 結果と根拠を確認する',
     ];
     const formalStepSequence = Array.from(
-      html.matchAll(/1\. 分析対象を決める|2\. 見たい領域を決める|3\. 対象となる意匠情報を決める|4\. 対象期間を決める|5\. 分析目的を選ぶ|6\. 結果と根拠を確認する/g),
+      html.matchAll(/1\. 分析対象を決める|2\. 見たい領域を決める|3\. 対象となる意匠情報を決める|4\. 対象期間を決める|5\. 分析目的を選ぶ|6\. 出力部門を選ぶ（任意）|7\. 結果と根拠を確認する/g),
       (match) => match[0],
     );
     expect(formalStepSequence).toEqual(formalStepLabels);

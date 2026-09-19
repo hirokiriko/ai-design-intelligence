@@ -1,6 +1,10 @@
-# AI Design Intelligence
+# KIRIKO Design Signals
 
-意匠情報を、先行商品戦略と知財戦略へ活用する Phase 0 の静的SPAです。
+Vite / React / TypeScript のSPAです。Issue #17では、保存条件→差分→画像観察候補→登録公式資料→根拠付きシグナル→保存履歴という画面を、同一originのBackend APIへ接続します。
+
+`VITE_APP_MODE=signals`で新しい画面、未指定または`standard`で従来のサンプル・Contract・ルール分析を起動します。利用者認証、永続保存、実行権限、予算、AI呼出、公式サイトの有限探索はBackendが担当します。FrontendへAPIキーやGoogle credentialを設定しません。
+
+新画面のAPI、採用元、状態と検証境界は[Signal UI実装](docs/architecture/signal-ui.md)を参照してください。クラウドに配備・受入済みという意味ではありません。以下のPhase 0説明は従来の`standard`画面を対象とします。
 
 ## 方針
 

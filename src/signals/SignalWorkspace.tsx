@@ -1,0 +1,154 @@
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { signalApi, SignalApiError, type SignalApi } from './api';
+import { ContractError, type Bootstrap, type Run, type Watch, type WatchInput } from './contract';
+import { SignalResult } from './SignalResult';
+import { runLabels } from './labels';
+import { SignalHistory, type HistoryState } from './SignalHistory';
+import './signals.css';
+
+interface Props { api?: SignalApi; renderAnalysis?: (datasetId: string) => ReactNode }
+const selectedRunId = () => typeof window === 'undefined' ? null : new URL(window.location.href).searchParams.get('run');
+function saveRunLocation(id: string | null): void {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set('run', id); else url.searchParams.delete('run');
+  window.history.replaceState(null, '', url);
+}
+function message(error: unknown): string {
+  return error instanceof SignalApiError || error instanceof ContractError ? error.message : '確認処理を利用できません。保存履歴を再取得してください。';
+}
+
+export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
+  const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
+  const [watchId, setWatchId] = useState('');
+  const [runs, setRuns] = useState<Run[]>([]);
+  const [historyState, setHistoryState] = useState<HistoryState>('loading');
+  const [run, setRun] = useState<Run | null>(null);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('確認条件を読み込んでいます。');
+  const [busy, setBusy] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const mutation = useRef(false);
+  const revision = useRef(0);
+  const request = useRef<{ watchId: string; intent: 'check' | 'reanalyze'; id: string } | null>(null);
+  const selectedWatch = bootstrap?.watches.find((item) => item.id === watchId);
+  const actionPending = busy || historyState === 'loading';
+
+  useEffect(() => {
+    let active = true;
+    void api.bootstrap().then(async (loaded) => {
+      const storedId = selectedRunId();
+      const saved = storedId ? await api.run(storedId) : null;
+      const initialWatch = saved?.watchId ?? loaded.watches[0]?.id ?? '';
+      const history = initialWatch ? await api.runs(initialWatch) : [];
+      if (!active) return;
+      const selected = saved ?? history[0] ?? null;
+      setBootstrap(loaded); setWatchId(initialWatch); setRuns(history); setRun(selected); setHistoryState('ready');
+      saveRunLocation(selected?.id ?? null);
+      setNotice('保存された条件と履歴を読み込みました。更新を確認すると新しい確認処理を開始します。');
+    }).catch((failure: unknown) => { if (active) { setError(message(failure)); setNotice('読込に失敗しました。'); } });
+    return () => { active = false; revision.current += 1; };
+  }, [api]);
+
+  const recoverError = (failure: unknown) => {
+    setError(message(failure));
+    if (failure instanceof SignalApiError && ['401', '403'].includes(failure.code)) {
+      setBootstrap(null); setRuns([]); setRun(null);
+    }
+  };
+  const loadHistory = async (id: string, preserveRun = false) => {
+    const current = ++revision.current;
+    setError(''); setHistoryState('loading'); setNotice('保存履歴を読み込んでいます。AIは実行しません。');
+    try {
+      const history = await api.runs(id);
+      if (current !== revision.current) return;
+      const selected = preserveRun ? history.find((item) => item.id === run?.id) ?? history[0] ?? null : history[0] ?? null;
+      setRuns(history); setHistoryState('ready'); setRun(selected); saveRunLocation(selected?.id ?? null);
+      setNotice('保存履歴を再取得しました。AIは実行していません。');
+    } catch (failure) { if (current === revision.current) { setHistoryState('error'); recoverError(failure); } }
+  };
+  const changeWatch = (id: string) => {
+    setWatchId(id); setRun(null); setRuns([]); setShowAnalysis(false); saveRunLocation(null);
+    void loadHistory(id);
+  };
+  const selectRun = async (id: string) => {
+    if (historyState === 'loading') return;
+    const current = ++revision.current;
+    setError(''); setNotice('保存結果を再取得しています。');
+    try {
+      const selected = await api.run(id);
+      if (current !== revision.current) return;
+      setRun(selected); saveRunLocation(selected.id); setNotice('保存結果を表示しました。AIは実行していません。');
+    } catch (failure) { if (current === revision.current) recoverError(failure); }
+  };
+  const saveWatch = async (input: WatchInput) => {
+    if (!bootstrap || mutation.current || historyState === 'loading') return;
+    mutation.current = true; revision.current += 1; setBusy(true); setError('');
+    try {
+      const saved = await api.saveWatch(input, bootstrap.csrfToken);
+      setBootstrap({ ...bootstrap, watches: [...bootstrap.watches, saved] });
+      setWatchId(saved.id); setRuns([]); setRun(null); setHistoryState('ready'); setShowCreate(false); saveRunLocation(null);
+      setNotice('確認条件をバックエンドへ保存しました。「更新を確認」で開始できます。');
+    } catch (failure) { recoverError(failure); }
+    finally { mutation.current = false; setBusy(false); }
+  };
+  const startRun = async (intent: 'check' | 'reanalyze') => {
+    if (!bootstrap || !selectedWatch || mutation.current || historyState === 'loading') return;
+    mutation.current = true; revision.current += 1; setBusy(true); setError('');
+    setNotice('バックエンドが差分・画像観察・登録公式サイトの確認を実行しています。');
+    if (!request.current || request.current.watchId !== watchId || request.current.intent !== intent) request.current = { watchId, intent, id: crypto.randomUUID() };
+    try {
+      const saved = await api.start(watchId, intent, request.current.id, bootstrap.csrfToken);
+      request.current = null;
+      setRun(saved); setRuns((previous) => [saved, ...previous.filter((item) => item.id !== saved.id)]); setHistoryState('ready'); saveRunLocation(saved.id);
+      setNotice(`確認結果を保存しました。${runLabels[saved.status]}。`);
+    } catch (failure) { recoverError(failure); setNotice('通信または確認処理が完了していません。履歴で状態を確認してください。'); }
+    finally { mutation.current = false; setBusy(false); }
+  };
+
+  return <div className="signals-app">
+    <a href="#signal-main" className="signal-skip">確認条件と結果へ移動</a>
+    <header className="signal-header"><div><span className="signal-brand-mark" aria-hidden="true">K</span><strong>KIRIKO <span>Design Signals</span></strong></div><span className="signal-header-label">企業・商品の変化を確認</span></header>
+    <main id="signal-main" className="signal-main">
+      <div className="signal-intro"><p className="signal-eyebrow">変化を見つけ、根拠に戻る</p><h1>次の検討につながる、<br className="signal-mobile-break" />企業と商品のシグナル。</h1><p>保存した企業・商品領域で、前後の意匠データと公式資料を確認します。管理者が週次・月次で更新した収録データが対象です。</p></div>
+      <div className="signal-data-banner">{bootstrap?.dataMode === 'public_design' ? '公開意匠データを使用中' : bootstrap ? '審査用の架空データ · 実在の企業・製品ではありません' : 'データ区分を確認中'}<span>常時監視・自動通知ではありません。</span></div>
+      <p className="signal-live" role="status" aria-live="polite">{notice}</p>
+      {error ? <div className="signal-error" role="alert"><p>{error}</p>{!bootstrap ? <button type="button" className="signal-button" onClick={() => window.location.reload()}>認証・設定を確認して再読み込み</button> : null}</div> : null}
+      {bootstrap ? <div className="signal-layout">
+        <aside className="signal-sidebar" aria-label="保存条件と履歴">
+          <section className="signal-panel"><p className="signal-eyebrow">確認条件</p><h2>保存した確認条件</h2>
+            {bootstrap.watches.length ? <label className="signal-field">確認する条件<select value={watchId} disabled={busy} onChange={(event) => changeWatch(event.target.value)}>{bootstrap.watches.map((watch) => <option key={watch.id} value={watch.id}>{watch.name}</option>)}</select></label> : <p>最初の確認条件を保存してください。</p>}
+            {selectedWatch ? <><button className="signal-button signal-primary" type="button" disabled={actionPending || run?.status === 'running'} onClick={() => void startRun('check')}>{busy ? '確認しています…' : '更新を確認'}</button><p className="signal-subtle">同じ条件・同じデータの確認済み結果がある場合は、保存結果を表示します。</p><WatchSummary watch={selectedWatch} bootstrap={bootstrap} /></> : null}
+            <button className="signal-text-button" type="button" disabled={busy} aria-expanded={showCreate} onClick={() => setShowCreate(!showCreate)}>{showCreate ? '条件の作成を閉じる' : '＋ 確認条件を保存'}</button>
+            {showCreate || !bootstrap.watches.length ? <WatchForm bootstrap={bootstrap} busy={actionPending} onSave={saveWatch} /> : null}
+          </section>
+          <section className="signal-panel"><h2>保存履歴</h2><button className="signal-text-button" type="button" disabled={busy || !watchId} onClick={() => void loadHistory(watchId, true)}>履歴を再取得</button>
+            <SignalHistory runs={runs} selectedId={run?.id} state={historyState} disabled={actionPending} onSelect={(id) => void selectRun(id)} />
+            {run && run.status !== 'running' ? <details className="signal-details"><summary>新しい実行として確認し直す</summary><p className="signal-subtle">過去の結果を残して、AI・公式確認を新しく実行します。</p><button className="signal-button" type="button" disabled={actionPending} onClick={() => void startRun('reanalyze')}>別の実行として再確認</button></details> : null}
+          </section>
+        </aside>
+        <div className="signal-content">{run ? <SignalResult key={run.id} run={run} subject={`${bootstrap.catalog.entities.find((item) => item.id === run.input.watch.entityId)?.name ?? run.input.watch.entityId} / ${bootstrap.catalog.categories.find((item) => item.id === run.input.watch.categoryId)?.label ?? run.input.watch.categoryId}`} /> : <section className="signal-panel signal-welcome"><span aria-hidden="true" className="signal-welcome-symbol">↗</span><h2>気になる変化を、根拠とともに。</h2><p>保存条件を選び「更新を確認」を押してください。</p><ol><li>意匠データの差分</li><li>画像からの観察候補</li><li>公式資料と関連仮説</li></ol><p className="signal-subtle">変化なし・資料不足も結果として保存されます。</p></section>}</div>
+      </div> : null}
+      {renderAnalysis && selectedWatch ? <section className="signal-legacy"><button className="signal-text-button" type="button" disabled={busy} aria-expanded={showAnalysis} onClick={() => setShowAnalysis(!showAnalysis)}>既存の市場・企業ルール分析 {showAnalysis ? 'を閉じる' : 'を開く'}</button>{showAnalysis ? renderAnalysis(selectedWatch.afterDatasetId) : null}</section> : null}
+    </main><footer className="signal-footer">参考情報です。収録範囲外や最新の法的状態は示しません。事実・AI観察候補・関連仮説を区別して確認してください。</footer>
+  </div>;
+}
+
+function WatchSummary({ watch, bootstrap }: { watch: Watch; bootstrap: Bootstrap }) {
+  const before = bootstrap.catalog.datasets.find((item) => item.id === watch.beforeDatasetId);
+  const after = bootstrap.catalog.datasets.find((item) => item.id === watch.afterDatasetId);
+  return <dl className="signal-metadata"><div><dt>企業</dt><dd>{bootstrap.catalog.entities.find((item) => item.id === watch.entityId)?.name ?? watch.entityId}</dd></div><div><dt>商品カテゴリー / 分類</dt><dd>{bootstrap.catalog.categories.find((item) => item.id === watch.categoryId)?.label ?? watch.categoryId}</dd></div><div><dt>比較A · 基準日</dt><dd>{before?.dataAsOf ?? '不明'}<small>{before?.coverage ?? '収録範囲不明'}</small></dd></div><div><dt>比較B · 基準日</dt><dd>{after?.dataAsOf ?? '不明'}<small>{after?.coverage ?? '収録範囲不明'}</small></dd></div><div><dt>公式確認先</dt><dd>{bootstrap.catalog.sourceProfiles.find((item) => item.id === watch.sourceProfileId)?.label ?? watch.sourceProfileId}</dd></div></dl>;
+}
+
+function WatchForm({ bootstrap, busy, onSave }: { bootstrap: Bootstrap; busy: boolean; onSave: (input: WatchInput) => Promise<void> }) {
+  const { entities, categories, datasets, sourceProfiles } = bootstrap.catalog;
+  const seed = bootstrap.watches[0];
+  const orderedDatasets = [...datasets].sort((left, right) => left.dataAsOf.localeCompare(right.dataAsOf));
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const field = (name: string) => String(data.get(name) ?? '').trim();
+    void onSave({ name: field('name'), entityId: field('entityId'), categoryId: field('categoryId'), beforeDatasetId: field('beforeDatasetId'), afterDatasetId: field('afterDatasetId'), sourceProfileId: field('sourceProfileId') });
+  };
+  return <form className="signal-watch-form" onSubmit={onSubmit}><h3>新しい確認条件</h3><label className="signal-field">条件名<input name="name" required maxLength={100} defaultValue="商品の変化を確認" disabled={busy} /></label><label className="signal-field">企業候補<select name="entityId" required disabled={busy} defaultValue={seed?.entityId}>{entities.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="signal-field">商品カテゴリー / 分類<select name="categoryId" required disabled={busy} defaultValue={seed?.categoryId}>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label className="signal-field">比較Aの収録データ<select name="beforeDatasetId" required disabled={busy} defaultValue={seed?.beforeDatasetId ?? orderedDatasets[0]?.id}>{orderedDatasets.map((item) => <option key={item.id} value={item.id}>{item.dataAsOf} · {item.coverage}</option>)}</select></label><label className="signal-field">比較Bの収録データ<select name="afterDatasetId" required disabled={busy} defaultValue={seed?.afterDatasetId ?? orderedDatasets[orderedDatasets.length - 1]?.id}>{orderedDatasets.map((item) => <option key={item.id} value={item.id}>{item.dataAsOf} · {item.coverage}</option>)}</select></label><label className="signal-field">登録公式サイト<select name="sourceProfileId" required disabled={busy} defaultValue={seed?.sourceProfileId}>{sourceProfiles.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><button className="signal-button" type="submit" disabled={busy}>この条件を保存</button></form>;
+}

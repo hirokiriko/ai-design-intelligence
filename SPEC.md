@@ -1,6 +1,10 @@
 # SPEC.md — AI Design Intelligence（意匠インテリジェンス）
 
+> Issue #17の現在の実装仕様は[Signal UI実装](docs/architecture/signal-ui.md)。保存条件→差分→画像観察候補→登録公式サイトの有限探索→根拠付きシグナル→保存履歴を対象とする。以下のPhase 0は従来の決定的分析に、§7の初回HTML1件案は過去設計に適用する。ルール結果全体をLLM生成へ変更しない。
+
 ## 0. このドキュメントの位置づけ
+- §1〜6は旧Phase 0の仕様・当時の拡張計画を保持する。2026-09-19に決定したGoogle Cloud正式サービスの設計は§7を適用する。文書更新は実装・デプロイの完了を意味しない。
+- main実装、未マージDraft系列、新方針の境界は[Frontend移行設計](docs/architecture/google-cloud-frontend.md)で確認する。mainの画面をDraft最新UIへ読み替えない。
 - 本書は **Codex（Coding Agent）向けの「何を作るか（プロダクト仕様）」**。
 - 「どう作るか（作業規約・技術スタック・完了条件）」は `AGENTS.md`、実装上の落とし穴は `GOTCHAS.md` を参照。
 - 出典：細江氏のコンセプト資料「AI Design Intelligence」＋ 2026年6月のメール指示。
@@ -19,7 +23,7 @@
 
 ---
 
-## 2. スコープ（依頼主＝細江氏の明確な指示。**最優先・逸脱禁止**）
+## 2. Phase 0のスコープ（当初指示・サンプル動作で維持）
 
 メールでの指示を以下の4点に固定する。Codexはこの範囲を超えて機能を勝手に拡張しないこと。
 
@@ -245,9 +249,9 @@ interface AnalysisResult {
 
 ---
 
-## 6. フェーズ計画
+## 6. 当初のフェーズ計画（履歴・Phase 0の動作を保持）
 
-- **Phase 0（今回のゴール／MVP・ルールベースデモ再構築）**
+- **Phase 0（当初のゴール／MVP・ルールベースデモ再構築）**
   - 上記UIを完全実装。`SampleDesignDataSource` ＋ `RuleBasedAnalysisEngine` で **無料・オフライン・静的** に最後まで動く。
   - Phase 0 では LLM連携、APIキー入力、`USE_LLM` による切替を実装しない。
   - `AnalysisEngine` インターフェースだけを将来拡張点として残す。
@@ -261,3 +265,35 @@ interface AnalysisResult {
 - **Phase 2（将来拡張）**
   - WEB／プレス／新聞／株主総会のデータソース（**準備中の項目を活性化**）。利用許諾・著作権の整理が前提。
   - LLM連携は、コスト・キー管理・利用規約・安全な出力検証の方針が固まってから検討する。
+
+## 7. Google Cloud正式サービス（新方針・未実装）
+
+2026-09-19の[Issue #15](https://github.com/hirokiriko/ai-design-intelligence/issues/15)に基づく設計。§2・§6の静的配信・Web/LLM禁止はPhase 0に適用し、新段階の正式基盤はGoogle Cloudとする。費用を抑える原則、データと秘密情報の公開混入禁止、決定的分析の維持は継続する。
+
+### 7.1 基盤と責務
+
+- 画面・API・DB・保存ファイル・主要処理をGoogle Cloud上で完結させ、ローカルPC停止時も利用可能にする。新しい正式URLに自動期限や失効を設けない。
+- Vite/Reactを維持し、Cloud Runの同一originでSPAとAPIを配信する案を第一案とする。Cloud SQL for PostgreSQL、Cloud Storage、Vertex AI上のGeminiへはBackendだけがアクセスする。
+- Frontendは利用者認証を経由したAPIを呼び、検証できる結果を表示する。Google APIのservice account認証は利用者認証と別であり、移行後の画面とAPIの双方で利用者認証を維持する。
+- ローカルADC／Cloud Run service account + IAMをBackendで使用し、APIキー入力・保存UIやSA JSON keyのブラウザ配布は行わない。
+
+### 7.2 既存分析と補足結果の境界
+
+- `RuleBasedAnalysisEngine`による件数・条件・根拠ID・品質判定を維持する。Draft系列のContract Adapter、stable ID、accepted-only分析は統合対象だが、現main実装とは区別する。
+- Contract `0.1.0`に公式URL・AI結果・画像binaryを追加しない。補足結果は別のversioned DTOとしてBackendと契約し、構造・参照ID・表示可能な出典URLを検証する。具体的なendpoint・DTO field・schema versionは後続の契約Issueで確定する。
+- ルール分析の`generatedBy: 'rules'`を維持し、Geminiは独立した補足結果として表示する。AI失敗時は補足の失敗・未生成を表示し、既存結果は利用可能にする。
+- 「デザイン変化」は現時点では特徴語・件数の分析、図面はmetadata表示である。画像比較や画像AIを実装済みとしない。
+
+### 7.3 初回Vertical Sliceの画面導線
+
+1企業・1商品分野の既存シグナルと、承認済みの固定ケースで指定した企業公式HTML1件を照合する。初回は任意URL入力UIを必要としない。導線は「既存結果 → 明示的な照合実行 → 結果と根拠の確認 → 保存結果の再表示」に限定する。
+
+結果では、意匠データ上の事実、公式発表の事実、AI仮説、不明点を分離する。出典URL、公開日（不明なら不明）、取得日、分析日とstable evidence IDを区別し、根拠意匠へ戻れるようにする。AI仮説を企業の確定戦略や法的判断と表示しない。画像を入力しない初回機能で「部位の変化をAIが確認した」と表示しない。
+
+保存済み結果の再表示は認証されたAPIから保存内容を取得し、AIの再実行を伴わない。再実行を将来設ける場合も、通常の表示・reloadと別の明示操作として契約する。取得HTMLやAI応答を生HTMLとして挿入せず、表示用DTOとして検証する。
+
+自動Web検索、複数媒体、画像比較、chat UI、複数モデル切替、ダッシュボード刷新、定期監視、レポート配信は対象外。このIssueでは画面コードを変更せず、「準備中」も解除しない。
+
+### 7.4 完了の区別
+
+本Issueの完了は文書設計・Draft PR・指定検証まで。クラウド作成、実装、デプロイ、実データ配備、利用者認証の変更、既存PR統合は未実施。正式公開の受入は[移行条件](docs/architecture/google-cloud-frontend.md#移行の受入と旧経路の停止条件)に従い、設計完了と公開完了を分けて報告する。

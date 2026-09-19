@@ -140,6 +140,17 @@ CIが失敗した場合は、GitHubのrunとjobを開き、失敗stepを特定�
 - Draft解除とmainへのマージも、それぞれユーザーの別承認を必要とする。
 - GitHub Pagesの手動`workflow_dispatch`は、明示承認なしに実行しない。
 
+### Google Cloud移行の文書作業
+
+[Issue #15](https://github.com/hirokiriko/ai-design-intelligence/issues/15)は最新main起点の文書専用Draft PRとして扱う。Google Cloudを正式基盤とする設計を記載しても、実装・クラウド作成・公開の完了にはしない。
+
+- main実装、関連Draft PR、将来仕様を分け、[移行設計](../architecture/google-cloud-frontend.md)へ確認日時とSHAを記録する。古いPR本文・過去のE2Eを最新headの完全受入根拠にしない。
+- 既存PR #6/#7と統合PR #10を二重採用しない。#10 → #12 → #14の取り込み・競合解消は別の承認された統合作業とし、本Issueで既存PRのcode/base/state/bodyを変更しない。
+- Vercel/Pagesのread-only棚卸しは設定上の役割、active deployment・alias、Git SHA、認証、proxy経路を分ける。確認できない項目は未確認と記録する。SUCCESS checkを現在のProduction疎通確認へ読み替えない。
+- 新経路で固定URL、主要操作、認証拒否、保存結果再表示、PC停止試験が通るまでは旧配信を停止しない。停止や保存データ削除、既存trial期限変更を文書作業から自動実行しない。
+- private Backend情報は公開Issue・PR・文書へ転記しない。公開可能な責務と契約境界だけを記録する。
+- 文書のみでもlint、typecheck、test、`check:no-real-data`、build、`git diff --check`を実行し、最新headのCIと未実施検証をDraft PRへ明記する。
+
 ## データ、秘密情報、ローカル未追跡物
 
 このリポジトリは公開されている。Issue、PR、コメント、コミット、Actionsログへ次を出さない。

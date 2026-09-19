@@ -50,11 +50,13 @@ Cloud Runのservice identityはGoogle APIを呼ぶ実行主体であり、人が
 | Draft #14 middleware | 最新headのmiddlewareはnoindex/no-store headerを設定するが、mainにあるBasic認証判定は含まない | 過去PR本文の「Basic維持」と最新コードは異なる。実配信先の認証を確認するまで、最新DraftでBasic保護済みとはしない |
 | Draft #14 API | `GET /api/trial/design-export` → server-only proxy → 固定Backend経路。Bearer/OIDCはserver側、redirect拒否、timeout/cancel、有限byte上限、streaming、safe status mapping、private/no-store | コード存在はliveの接続・データ配置・利用可能性を証明しない。Frontendに内部Backend URLやcredentialを渡さない |
 | Deployment Protection / Issue #8 | 独立した保護層。Issue #8最新コメントには専用開発環境による単一認証の方針がある | 方針や承認と実施済みを区別する。本Issueでは保護設定もcredentialも変更しない |
-| GitHub Pages設定 | `base: './'`、`pages.yml`にmain pushと手動実行、`gh-pages`への静的成果物配信がある | Vercel middlewareやNode Functionは実行されない。現在の有効URL・配信SHA・稼働状況は別途確認が必要 |
+| GitHub Pages設定 | `base: './'`、`pages.yml`にmain pushと手動実行、`gh-pages`への静的成果物配信がある。GitHub APIでpublic / legacy build、source `gh-pages`の`/`、status `built`を確認 | Vercel middlewareやNode Functionは実行されない。成果物とmain source SHAの対応・HTTP疎通は未確認 |
 
 同日のVercel read-only API棚卸しでは、本体projectのProductionはmain `d75ffd845f5d957d0be206ae11485f2c01780ded`、Previewは#14 `7749aaf91a3fec4837be85117cafabbb8bcc182f`に対応するREADY deploymentがあり、aliasも存在することを確認した。これは管理API上の状態であり、各aliasが現在どの画面を返すか、認証が意図どおり拒否するか、主要操作が成功するかは未試験。本体にはDeployment Protection設定があるが、適用範囲ごとのlive確認は残る。Basic環境変数名の存在だけでも認証が有効とは判断しない。
 
-別のtrial配信先も存在するが、同じ認証構成とはみなさない。期限、最新承認、配信SHA、認証設定、実応答を照合するまで利用可能・保護済みとは記載しない。環境識別子や非公開URLは転載せず、詳細な確認状況はIssueの記録で管理する。GitHub Pagesの有効配信と疎通は未確認。
+別のtrial配信先もREADYであり、metadata上のsource SHAは#14 `7749aaf91a3fec4837be85117cafabbb8bcc182f`と一致した。ただし本体と同じ認証構成とはみなさない。期限、最新承認、認証設定、実応答を照合するまで利用可能・保護済みとは記載しない。環境識別子や非公開URLは転載せず、詳細な確認状況はIssueの記録で管理する。
+
+GitHub Pagesのlatest buildは成果物commit `94934f7b31f518471646f412439ad85c7af9c71c`、status `built`、更新日時`2026-08-10T14:10:33Z`だった。このSHAは`gh-pages`の成果物commitであり、main source SHAとの対応やHTTP疎通は未確認。Pages設定の有効化とbuild metadataの確認を、現在の画面・認証・API動作の受入とはしない。
 
 active deployment、alias、実配信SHA、認証のread-only結果はIssue #15とこの文書PRの検証記録へ残す。公開できないURLや環境識別子は載せず、確認できない項目は未確認とする。GitHub status SUCCESSを現在の本番疎通確認と読み替えない。
 

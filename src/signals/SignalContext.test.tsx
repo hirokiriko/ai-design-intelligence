@@ -5,8 +5,36 @@ import { SignalResult } from './SignalResult';
 import { SignalHistory } from './SignalHistory';
 import { fictionalRun, fictionalRunV2 } from './fixtures';
 import { relationLabels } from './labels';
+import { decodeRun } from './contract';
+import backendReconstruction from './backend-run-v2.1.fixture.json';
 
 describe('saved company and evidence context', () => {
+  it('displays reconstructed collection limits and unknown acquisition without changing saved counts', () => {
+    const run = decodeRun(backendReconstruction);
+    const html = renderToStaticMarkup(createElement(SignalResult, { run }));
+    for (const label of ['比較A · 週次原本からの遡及再構成収録集合', '比較B · 週次原本からの遡及再構成収録集合', '共通の収録開始日', '収録の締切日 / 判定基準', '原本の公開日', '不明（手元での確認日時とは区別）', '手元で原本を確認した日時', '再構成した日時', '事後の補足', '当時の予測実績を示すものではありません', '2026-06-01', '2026-08-09', '2026-09-18', '比較Bの対象2件、収録範囲での新規観測1件。', '個別意匠と商品の対応', '公式資料の探索範囲と不足']) expect(html).toContain(label);
+    expect(html).toContain('自作架空原本による遡及再構成の回帰fixture');
+    expect(html).toContain('後日取得した資料を事後の補足として含みます。当時サービスが取得済みだったことを示しません。');
+    expect(html).not.toContain('当時既知の情報ではありません');
+    expect(html.indexOf('週次原本からの遡及再構成収録集合')).toBeLessThan(html.indexOf('画像からのAI観察候補'));
+    const history = renderToStaticMarkup(createElement(SignalHistory, { runs: [run], state: 'ready', disabled: false, onSelect: () => undefined }));
+    expect(history).toContain('架空意匠ラボ甲合同会社');
+    expect(history).not.toContain('架空データ（旧形式）');
+  });
+  it('shows saved acquisition evidence and absent supplements without fabricating missing collection metadata', () => {
+    const run = decodeRun(structuredClone(backendReconstruction));
+    if (run.schemaVersion !== '2.1.0') throw new Error('Fixture must use 2.1.0');
+    const collection = run.input.context.beforeDataset.collection!;
+    collection.sourceAcquiredFrom = '2026-09-19T00:00:00Z';
+    collection.sourceAcquiredThrough = '2026-09-20T00:00:00Z';
+    collection.retrospectiveSupplements = false;
+    run.input.context.afterDataset.collection = null;
+    const html = renderToStaticMarkup(createElement(SignalResult, { run }));
+    expect(html).toContain('2026-09-19T00:00:00Z 〜 2026-09-20T00:00:00Z');
+    expect(html).toContain('この収録集合には登録されていません。');
+    expect(html).toContain('比較B：収録集合の作成経緯は未記録です。');
+    expect(renderToStaticMarkup(createElement(SignalResult, { run: fictionalRunV2 }))).not.toContain('遡及再構成収録集合');
+  });
   it('leads with the saved company, product, classification, change and official findings', () => {
     const html = renderToStaticMarkup(createElement(SignalResult, { run: fictionalRunV2 }));
     for (const label of ['架空リーフ機器株式会社', '架空のリーフ操作器', '操作機器 / H1', '今回わかったこと', '関連する公式記載', '未確認事項・次に確認する資料', '処理終了は、同一製品', '比較A / Bは資料の役割', '発表日：不明', '更新日：2026-07-02', '発売日：不明', '物品名', '架空操作機器', 'AIが確認した抜粋']) expect(html).toContain(label);

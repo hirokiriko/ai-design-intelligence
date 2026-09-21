@@ -1,0 +1,46 @@
+import type { Run, RunV2, SignalV2 } from './contract';
+import { dataModeLabel, evidenceId, relationLabels } from './labels';
+
+export function EvidenceLinks({ ids }: { ids: string[] }) {
+  return <span className="signal-evidence-links">根拠：{ids.length ? ids.map((id) => <a key={id} href={`#${evidenceId(id)}`}>{id}</a>) : '登録なし'}</span>;
+}
+
+export function SavedContext({ run }: { run: Run }) {
+  if (run.schemaVersion === '1.0.0') return <div className="signal-data-banner">架空データの保存結果（旧形式）<span>保存時の企業・商品表示名とデータ区分の詳細は未記録です。現在のカタログから補完していません。</span></div>;
+  const context = run.input.context;
+  return <section className="signal-saved-context" aria-label="保存時の対象とデータ">
+    <p className="signal-data-banner">{dataModeLabel(context.dataMode)}<span>この実行に保存された区分です。</span></p>
+    <h3>{context.entity.name ?? '企業名不明'} / {context.category.label}</h3>
+    <dl className="signal-metadata"><div><dt>分類体系</dt><dd>{context.category.scheme ?? '未確認'}</dd></div><div><dt>比較A · 基準日</dt><dd>{context.beforeDataset.dataAsOf}<small>{context.beforeDataset.coverage}</small></dd></div><div><dt>比較B · 基準日</dt><dd>{context.afterDataset.dataAsOf}<small>{context.afterDataset.coverage}</small></dd></div></dl>
+    <h4>確認条件に登録された商品情報</h4>
+    {context.knownProducts.length ? <ul>{context.knownProducts.map((product, index) => <li key={index}><strong>{product.name ?? '商品名未確認'}{product.model ? ` / ${product.model}` : ''}</strong><p>{product.evidence}</p><p className="signal-subtle">対応を確認する意匠：{product.recordIds.join('、') || '未登録'}</p></li>)}</ul> : <p className="signal-subtle">商品名・型番は登録されていません。物品名と販売商品名は別の情報です。</p>}
+  </section>;
+}
+
+export function ResultOverview({ run }: { run: Run }) {
+  const signal = run.signal;
+  if (!signal) return null;
+  const context = run.schemaVersion === '2.0.0' ? run.input.context : null;
+  return <section className="signal-overview" aria-label="確認結果の概要"><h3>今回わかったこと</h3>
+    <div><h4>注目する企業・商品領域</h4><p>{context ? `${context.entity.name ?? '企業名不明'} / ${context.category.label}` : run.input.watch.name}</p></div>
+    <div><h4>収録範囲の新規観測・変化</h4><p>{signal.counts.comparable ? `比較Bの対象${signal.counts.after}件、収録範囲での新規観測${signal.counts.newlyObserved}件。` : '収録条件が異なるため、前後の増減を比較できません。'}</p><a href="#signal-design-facts">意匠データの事実へ</a></div>
+    <div><h4>関連する公式記載</h4>{signal.officialFacts.length ? <ul>{signal.officialFacts.map((fact) => <li key={fact.id}><a href={`#${evidenceId(fact.id)}`}>{fact.text}</a></li>)}</ul> : <p>今回の結果に採用された公式記載はありません。未発見・未取得の理由は資料と処理の詳細で確認できます。</p>}</div>
+    <div><h4>未確認事項・次に確認する資料</h4>{signal.questionsForHuman.length ? <ul>{signal.questionsForHuman.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>追加の確認事項は登録されていません。</p>}{signal.limitations.length ? <ul>{signal.limitations.map((text, index) => <li key={index}>{text}</li>)}</ul> : null}</div>
+  </section>;
+}
+
+export function Relationships({ signal }: { signal: SignalV2 }) {
+  return <section><h3>個別意匠と商品の対応</h3><p className="signal-subtle">公式サイトの記載と、個別意匠が同じ製品であることの確認を分けています。</p>
+    {signal.relationships.length ? signal.relationships.map((item) => <article className={`signal-fact signal-relation relation-${item.relation}`} key={item.id} id={`signal-relation-${encodeURIComponent(item.id)}`} tabIndex={-1}><h4>{relationLabels[item.relation]}</h4><p>{item.summary}</p><div><strong>支持する根拠</strong><EvidenceLinks ids={item.supportingEvidenceIds} /></div><div><strong>不一致・反証の根拠</strong><EvidenceLinks ids={item.opposingEvidenceIds} /></div>{item.missingEvidence.length ? <><h5>不足している根拠</h5><ul>{item.missingEvidence.map((text, index) => <li key={index}>{text}</li>)}</ul></> : null}</article>) : <p>個別意匠と商品の対応は評価されていません。</p>}
+  </section>;
+}
+
+export function RecordFact({ fact }: { fact: SignalV2['recordFacts'][number] }) {
+  return <dl className="signal-metadata"><div><dt>物品名</dt><dd>{fact.articleName ?? '不明'}</dd></div><div><dt>出願人</dt><dd>{fact.applicant.name ?? '不明'}</dd></div><div><dt>登録番号 / 出願番号</dt><dd>{fact.registrationNumber ?? '不明'} / {fact.applicationNumber ?? '不明'}</dd></div><div><dt>分類</dt><dd>{fact.classifications.map((item) => `${item.scheme} ${item.code}${item.label ? ` ${item.label}` : ''}`).join(' / ') || '未収録'}</dd></div><div><dt>出願日 / 公報日</dt><dd>{fact.applicationDate ?? '不明'} / {fact.gazetteDate ?? '不明'}</dd></div><div><dt>意匠の説明</dt><dd>{fact.description ?? '説明は未収録'}</dd></div><div><dt>物品の説明</dt><dd>{fact.articleDescription ?? '説明は未収録'}</dd></div><div><dt>データの検証状態</dt><dd>{{ pass: '検証済み', warning: '注意事項あり', quarantined: '保留' }[fact.quality]}</dd></div><div><dt>採用理由</dt><dd>{{ comparison_pair: '画像の比較対象', newly_observed: '収録範囲での新規観測', scope_sample: '対象範囲からの代表資料' }[fact.selectionReason]}</dd></div></dl>;
+}
+
+export function DiscoveryDetails({ run }: { run: RunV2 }) {
+  const discovery = run.signal?.discovery;
+  if (!discovery) return null;
+  return <details className="signal-details"><summary>公式資料の探索範囲と不足</summary><p>{discovery.state === 'not_started' ? '公式資料の探索は開始していません。資料がないことを意味しません。' : '登録された範囲の探索処理は終了しています。個別意匠との対応確認を意味しません。'}</p><p>確認リンク {discovery.scannedLinks}件 · 対象候補 {discovery.eligibleCandidates}件 · 上限等による省略 {discovery.omittedCandidates}件</p><ul>{discovery.limitations.map((text, index) => <li key={index}>{text}</li>)}</ul>{discovery.candidates.map((item) => <div className="signal-fact" key={item.id}><a href={item.url} target="_blank" rel="noopener noreferrer">{item.title || 'タイトル不明'} ↗</a><p>発表日：{item.publishedAt ?? '不明'} · {{ in_period: '対象期間内', outside_period: '対象期間外', unknown: '日付不明' }[item.dateStatus]}</p><p>{item.selectionReason}</p></div>)}</details>;
+}

@@ -1,0 +1,495 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kiriko.example/contracts/signal-v1.0.0.schema.json",
+  "title": "KIRIKO signal 1.0.0",
+  "type": "object",
+  "properties": {
+    "status": {
+      "enum": [
+        "change_detected",
+        "no_change",
+        "insufficient",
+        "comparison_unavailable"
+      ]
+    },
+    "counts": {
+      "type": "object",
+      "properties": {
+        "before": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "after": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "newlyObserved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excludedBefore": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excludedAfter": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "comparable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "before",
+        "after",
+        "newlyObserved",
+        "excludedBefore",
+        "excludedAfter",
+        "comparable"
+      ],
+      "additionalProperties": false
+    },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "before": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1500
+        },
+        "after": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1500
+        }
+      },
+      "required": [
+        "before",
+        "after"
+      ],
+      "additionalProperties": false
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1500
+      },
+      "maxItems": 20
+    },
+    "designFacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "recordIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "maxItems": 10
+          },
+          "field": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "recordIds",
+          "field"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 10
+    },
+    "visualObservations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "part": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "observation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "status": {
+            "enum": [
+              "change_candidate",
+              "no_change",
+              "unknown"
+            ]
+          },
+          "mediaIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "maxItems": 2
+          }
+        },
+        "required": [
+          "id",
+          "part",
+          "observation",
+          "status",
+          "mediaIds"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 10
+    },
+    "officialFacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "sourceId",
+          "quote",
+          "start",
+          "end"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 10
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "maxItems": 20
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1500
+            },
+            "maxItems": 20
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "evidenceIds",
+          "limitations"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 10
+    },
+    "questionsForHuman": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1500
+      },
+      "maxItems": 20
+    },
+    "media": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "recordId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "role": {
+            "enum": [
+              "comparisonA",
+              "comparisonB"
+            ]
+          },
+          "mimeType": {
+            "enum": [
+              "image/png",
+              "image/jpeg"
+            ]
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sourceLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "permission": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "gazetteDate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "applicationDate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "view": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "comparisonStatus": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          }
+        },
+        "required": [
+          "id",
+          "recordId",
+          "label",
+          "role",
+          "mimeType",
+          "width",
+          "height",
+          "sourceLabel",
+          "permission",
+          "gazetteDate",
+          "applicationDate",
+          "view",
+          "comparisonStatus"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 2
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "publishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "retrievedAt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "excerpt": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "excerptStart": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "contentHash": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "retrospective": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "title",
+          "publishedAt",
+          "retrievedAt",
+          "excerpt",
+          "excerptStart",
+          "contentHash",
+          "retrospective"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 3
+    },
+    "toolEvents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "enum": [
+              "list_candidates",
+              "fetch_candidate",
+              "finish"
+            ]
+          },
+          "candidateId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "outcome": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "startedAt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "finishedAt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          }
+        },
+        "required": [
+          "tool",
+          "candidateId",
+          "reason",
+          "outcome",
+          "startedAt",
+          "finishedAt"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 6
+    },
+    "stopReason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1500
+    }
+  },
+  "required": [
+    "status",
+    "counts",
+    "coverage",
+    "limitations",
+    "designFacts",
+    "visualObservations",
+    "officialFacts",
+    "hypotheses",
+    "questionsForHuman",
+    "media",
+    "sources",
+    "toolEvents",
+    "stopReason"
+  ],
+  "additionalProperties": false
+}

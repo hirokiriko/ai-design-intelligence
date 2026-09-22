@@ -1,0 +1,97 @@
+.signals-app { --signal-ink: #172e2c; --signal-accent: #09685d; color: var(--signal-ink); background: #f5f7f5; min-height: 100vh; font-size: 14px; line-height: 1.75; overflow-wrap: anywhere; }
+.signals-app button, .signals-app input, .signals-app select { font: inherit; }
+.signals-app :is(button, a, input, select, summary):focus-visible { outline: 3px solid #087b70; outline-offset: 3px; }
+.signals-app :is(h1, h2, h3, h4, p) { margin: 0; }
+.signals-app h2 { font-size: 19px; font-weight: 700; line-height: 1.5; }
+.signals-app h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+.signals-app h4 { font-weight: 700; }
+.signals-app ul, .signals-app ol { padding-left: 1.4em; list-style: revert; }
+.signals-app button:disabled { opacity: .55; cursor: wait; }
+.signals-app a { color: #00645a; text-decoration: underline; text-underline-offset: 3px; }
+.signal-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; background: white; border-bottom: 1px solid #dce4df; padding: 17px max(24px, calc((100vw - 1200px)/2)); }
+.signal-header > div { display: flex; align-items: center; gap: 12px; font-size: 18px; letter-spacing: .025em; }
+.signal-brand-mark { display: inline-grid; place-items: center; height: 32px; width: 32px; border-radius: 8px; background: #123d36; color: #f9fff7; font-size: 20px; font-family: serif; }
+.signal-header strong span { font-weight: 400; font-size: 14px; color: #49625c; }
+.signal-header-label { color: #526660; font-size: 12px; }
+.signal-main { max-width: 1250px; padding: 32px 24px 48px; margin: auto; }
+.signal-intro { padding: 5px 0 22px; }
+.signal-eyebrow { color: #236e61; letter-spacing: .08em; font-size: 11px; font-weight: 700; margin-bottom: 6px !important; }
+.signal-intro h1 { font-size: clamp(24px, 3vw, 34px); font-weight: 700; letter-spacing: -.025em; line-height: 1.5; }
+.signal-intro > p:last-child { max-width: 750px; color: #576960; margin-top: 10px; }
+.signal-mobile-break { display: none; }
+.signal-data-banner { display: flex; flex-wrap: wrap; gap: 8px 20px; border: 1px solid #cbdcd2; background: #edf4ed; color: #315c45; border-radius: 8px; padding: 9px 14px; font-size: 12px; }
+.signal-data-banner span { color: #55675c; }
+.signal-live { min-height: 36px; padding: 9px 1px; font-size: 12px; color: #5c6b64; }
+.signal-layout { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 22px; align-items: start; }
+.signal-sidebar { display: grid; gap: 18px; min-width: 0; }
+.signal-content { min-width: 0; }
+.signal-panel, .signal-result { background: white; border: 1px solid #dce3de; border-radius: 12px; padding: 24px; box-shadow: 0 3px 15px #142e2111; }
+.signal-panel h2 { margin-bottom: 14px; }
+.signal-field { display: grid; gap: 5px; margin: 14px 0; font-size: 12px; font-weight: 600; }
+.signal-field input, .signal-field select { width: 100%; min-width: 0; min-height: 42px; border: 1px solid #bacbc2; border-radius: 6px; padding: 8px; background: white; color: #193e33; font-weight: 400; }
+.signal-metadata { margin: 16px 0; font-size: 12px; }
+.signal-metadata > div { display: grid; grid-template-columns: 1fr; gap: 2px; margin-top: 11px; }
+.signal-metadata dt { color: #64736c; font-size: 11px; }
+.signal-metadata dd { margin: 0; }
+.signal-metadata dd small { display: block; margin-top: 3px; }
+.signal-button { min-height: 42px; padding: 9px 14px; border: 1px solid #b7cbc0; border-radius: 7px; background: white; cursor: pointer; font-weight: 600 !important; }
+.signal-primary { width: 100%; background: #086b5d; color: white; border-color: #086b5d; margin: 7px 0; }
+.signal-text-button { min-height: 40px; text-align: left; color: #086558; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; font-size: 12px !important; }
+.signal-subtle { color: #5d6e64; font-size: 12px; }
+.signal-history { list-style: none !important; padding: 0 !important; margin: 12px 0 0; }
+.signal-history button { display: grid; width: 100%; padding: 11px; text-align: left; cursor: pointer; border-left: 3px solid transparent; border-bottom: 1px solid #e6ede7; border-radius: 4px; }
+.signal-history button[aria-current] { background: #edf5ef; border-left-color: #1b7159; }
+.signal-history span { font-size: 11px; color: #66756c; }
+.signal-result-title { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.signal-result-title h2 { font-size: 23px; }
+.signal-badge { border-radius: 20px; padding: 4px 10px; background: #e5f3e9; font-size: 11px; height: fit-content; white-space: nowrap; }
+.status-failed, .status-interrupted { background: #faebe8; color: #943c2e; }
+.status-partial { background: #fcf2d7; color: #72590f; }
+.signal-result section { margin-top: 26px; padding-top: 22px; border-top: 1px solid #e5ebe6; }
+.signal-saved-context h3 { margin-top: 14px; }
+.signal-overview { border: 1px solid #d7e3d9 !important; background: #f6faf6; border-radius: 8px; padding: 18px !important; }
+.signal-overview > div + div { margin-top: 18px; }
+.signal-overview h4 { color: #355d4b; margin-bottom: 4px; }
+.signal-relation { border-left: 3px solid #789487; padding: 12px 16px; margin-top: 12px; background: #f5f8f5; }
+.signal-relation > div { margin-top: 12px; }
+.signal-relation h5 { font: inherit; font-weight: 600; margin: 12px 0 0; }
+.relation-unrelated_or_conflicting { border-color: #a97458; background: #fcf6ef; }
+.relation-candidate, .relation-unknown { border-color: #b6a576; background: #fffaf0; }
+.signal-counts { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #d7e3d9; border-radius: 8px; margin: 22px 0 12px; background: #f6faf6; }
+.signal-counts > div { display: grid; padding: 15px; border-right: 1px solid #d7e3d9; }
+.signal-counts > div:last-child { border: none; }
+.signal-counts span { color: #567064; font-size: 11px; }
+.signal-counts strong { font-size: 28px; line-height: 1.4; }
+.signal-counts small { font-size: 12px; font-weight: 400; margin-left: 4px; }
+.signal-fact { padding: 12px 0; }
+.signal-fact + .signal-fact { border-top: 1px dashed #e0e6e0; }
+.signal-observation { border-left: 3px solid #789487; padding-left: 13px; margin: 12px 0; }
+.signal-evidence-links { display: flex; flex-wrap: wrap; gap: 5px 12px; font-size: 11px; color: #607469; margin-top: 6px; }
+.signal-media-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+.signal-media-card { border: 1px solid #dce5df; border-radius: 8px; padding: 14px; min-width: 0; }
+.signal-media-card figcaption { font-size: 12px; }
+.signal-image-button { display: grid; width: 100%; cursor: zoom-in; margin: 12px 0; background: #f4f6f4; padding: 8px; border-radius: 6px; }
+.signal-image-button img { height: 160px; width: 100%; object-fit: contain; }
+.signal-image-button span { font-size: 11px; color: #266355; margin-top: 8px; }
+.signal-image-dialog { max-width: min(1000px, 92vw); max-height: 92vh; border-radius: 10px; padding: 18px; color: #1c3b30; }
+.signal-image-dialog::backdrop { background: #102f29aa; }
+.signal-image-dialog form { text-align: right; }
+.signal-image-dialog img { max-height: 70vh; max-width: 100%; object-fit: contain; }
+.signal-hypotheses { background: #fffaf0; border: 1px solid #e7d8b6 !important; border-radius: 8px; padding: 18px !important; }
+.signal-source { border: 1px solid #dce5df; padding: 16px; margin-top: 12px; border-radius: 8px; }
+.signal-retrospective { color: #785b23; margin: 7px 0 !important; font-size: 12px; }
+.signals-app blockquote { border-left: 3px solid #bccfc2; padding-left: 12px; margin: 12px 0; color: #4d6659; white-space: pre-wrap; }
+.signal-details { border-top: 1px solid #dce5df; padding-top: 14px; margin-top: 18px; }
+.signal-details summary { cursor: pointer; min-height: 32px; color: #496658; font-size: 12px; }
+.signal-details li { margin: 12px 0; }
+.signal-empty { background: #f5f7f4; border: 1px dashed #c5d3c8; padding: 20px; margin-top: 18px; border-radius: 8px; font-size: 12px; }
+.signal-welcome { padding: 54px 38px; min-height: 360px; }
+.signal-welcome-symbol { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; background: #ddecdf; color: #296844; font-size: 22px; margin-bottom: 22px; }
+.signal-welcome ol { margin: 24px 0; color: #436650; }
+.signal-error { margin: 10px 0 20px; padding: 14px 18px; border: 1px solid #dfb4ad; color: #853b31; background: #fff4f1; border-radius: 8px; }
+.signal-watch-form { border-top: 1px solid #dce5df; padding-top: 16px; margin-top: 10px; }
+.signal-legacy { margin-top: 26px; border-top: 1px solid #dce5df; padding-top: 14px; }
+.signal-footer { padding: 20px 24px; border-top: 1px solid #dce5df; background: white; text-align: center; color: #66736b; font-size: 11px; }
+.signal-skip { position: absolute; top: -100px; left: 8px; padding: 10px; background: white; z-index: 10; }
+.signal-skip:focus { top: 8px; }
+@media(max-width: 760px) { .signal-header { padding: 14px 18px; } .signal-header-label { display: none; } .signal-main { padding: 25px 16px; } .signal-layout { grid-template-columns: 1fr; gap: 18px; } .signal-panel, .signal-result { padding: 19px; } .signal-intro h1 { font-size: 25px; } .signal-mobile-break { display: block; } .signal-counts > div { padding: 12px 9px; } .signal-counts strong { font-size: 24px; } .signal-media-grid { grid-template-columns: 1fr; } .signal-welcome { min-height: 260px; } .signal-result-title h2 { font-size: 21px; } }

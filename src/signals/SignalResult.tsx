@@ -11,6 +11,7 @@ function MediaCard({ media, run }: { media: Signal['media'][number]; run: Run })
   const [failed, setFailed] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const path = `/api/v1/media/${encodeURIComponent(media.id)}`;
+  const record = run.schemaVersion === '1.0.0' ? undefined : run.signal?.recordFacts.find((item) => item.recordId === media.recordId);
   return <figure id={evidenceId(media.id)} className="signal-media-card" tabIndex={-1}>
     <figcaption><strong>{media.role === 'comparisonA' ? '比較A' : '比較B'} · {media.label}</strong></figcaption>
     {failed ? <p role="status">画像を取得できません。認証または資料の配置を確認してください。</p> : <button className="signal-image-button" type="button" onClick={() => dialog.current?.showModal()} aria-label={`${media.label}を拡大`}>
@@ -21,8 +22,10 @@ function MediaCard({ media, run }: { media: Signal['media'][number]; run: Run })
     <SignalRecordEvidence recordId={media.recordId} watch={run.input.watch} />
     <dialog ref={dialog} className="signal-image-dialog" aria-label={`${media.label}の拡大画像`}>
       <form method="dialog"><button className="signal-button" autoFocus>閉じる</button></form>
+      <p><strong>{media.role === 'comparisonA' ? '比較A' : '比較B'} · {media.label}</strong></p>
+      <p className="signal-subtle">形状比較とAI観察候補の内容を確かめるための根拠資料です。比較A / Bは資料の役割であり、商品の新旧世代や発売順を示しません。</p>
+      <dl className="signal-metadata"><div><dt>情報源・利用条件</dt><dd>{media.sourceLabel} / {media.permission}</dd></div><div><dt>根拠意匠ID / 登録番号</dt><dd>{media.recordId} / {record?.registrationNumber ?? '不明'}</dd></div><div><dt>公報日 / 出願日</dt><dd>{media.gazetteDate ?? '不明'} / {media.applicationDate ?? '不明'}</dd></div><div><dt>方向・対応条件</dt><dd>{media.view ?? '方向不明'} / {media.comparisonStatus}</dd></div></dl>
       {!failed ? <img src={path} alt={media.label} /> : null}
-      <p>{media.label} · {media.comparisonStatus}</p>
     </dialog>
   </figure>;
 }

@@ -97,3 +97,20 @@
 .signal-skip { position: absolute; top: -100px; left: 8px; padding: 10px; background: white; z-index: 10; }
 .signal-skip:focus { top: 8px; }
 @media(max-width: 760px) { .signal-header { padding: 14px 18px; } .signal-header-label { display: none; } .signal-main { padding: 25px 16px; } .signal-layout { grid-template-columns: 1fr; gap: 18px; } .signal-panel, .signal-result { padding: 19px; } .signal-intro h1 { font-size: 25px; } .signal-mobile-break { display: block; } .signal-counts > div { padding: 12px 9px; } .signal-counts strong { font-size: 24px; } .signal-media-grid { grid-template-columns: 1fr; } .signal-welcome { min-height: 260px; } .signal-result-title h2 { font-size: 21px; } }
+
+@media print {
+  @page { margin: 14mm; }
+  :root, body { background: white; }
+  .signals-app { background: white; min-height: 0; }
+  .signal-header, .signal-intro, .signal-main > .signal-data-banner,
+  .signal-live, .signal-sidebar, .signal-legacy, .signal-footer, .signal-skip { display: none; }
+  .signal-main { max-width: none; padding: 0; margin: 0; }
+  .signal-layout { display: block; }
+  .signal-content, .signal-result { width: 100%; }
+  .signal-result { border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+  .signal-media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .signal-media-card, .signal-source, .signal-relation, .signal-overview > div { break-inside: avoid; }
+  .signal-image-button { background: white; cursor: default; }
+  .signal-image-button span { display: none; }
+  details.signal-details:not([open]) { display: none; }
+}

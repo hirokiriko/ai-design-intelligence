@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Run, Signal, SignalV2 } from './contract';
-import { coveragePhrase, designFactFieldLabel, evidenceId, factsOnlyRun, recordDisplayLabel, runStatusLabel } from './labels';
+import { comparisonCoverageSummary, designFactFieldLabel, designFactText, evidenceId, factsOnlyRun, recordDisplayLabel, runStatusLabel } from './labels';
 import { SignalRecordEvidence } from './SignalRecordEvidence';
 import { DiscoveryDetails, EvidenceLinks, RecordFact, Relationships, ResultOverview, SavedContext } from './SignalContext';
 
@@ -70,9 +70,9 @@ export function SignalResult({ run }: { run: Run }) {
     {signal ? <>
       <ResultOverview run={run} />
       <div className="signal-counts"><div><span>比較Aの対象</span><strong>{signal.counts.before}<small>件</small></strong></div><div><span>比較Bの対象</span><strong>{signal.counts.after}<small>件</small></strong></div><div><span>収録範囲での新規観測</span><strong>{signal.counts.newlyObserved}<small>件</small></strong></div></div>
-      <p className="signal-subtle">比較A：{coveragePhrase(signal.coverage.before)} ／ 比較B：{coveragePhrase(signal.coverage.after)}。{signal.counts.comparable ? '比較可能な収録条件です。' : '収録条件が一致しないため、増減を断定できません。'} 除外：A {signal.counts.excludedBefore}件・B {signal.counts.excludedAfter}件</p>
+      <p className="signal-subtle">{comparisonCoverageSummary(signal)}</p>
       {run.schemaVersion !== '1.0.0' && run.signal ? <Relationships signal={run.signal} factsOnly={factsOnly} /> : null}
-      <section className="signal-facts" id="signal-design-facts"><h3>意匠データの事実</h3>{signal.designFacts.length ? signal.designFacts.map((fact, factIndex) => <div className="signal-fact" id={evidenceId(fact.id)} key={fact.id} tabIndex={-1}><p>{fact.text}</p><p className="signal-subtle">項目：{designFactFieldLabel(fact.field)}</p>{run.schemaVersion !== '1.0.0' ? run.signal?.recordFacts.filter((item) => item.id === fact.id).map((item) => <RecordFact key={item.id} fact={item} />) : null}{fact.recordIds.map((recordId, recordIndex) => {
+      <section className="signal-facts" id="signal-design-facts"><h3>意匠データの事実</h3>{signal.designFacts.length ? signal.designFacts.map((fact, factIndex) => <div className="signal-fact" id={evidenceId(fact.id)} key={fact.id} tabIndex={-1}><p>{designFactText(fact.text, fact.field)}</p><p className="signal-subtle">項目：{designFactFieldLabel(fact.field)}</p>{run.schemaVersion !== '1.0.0' ? run.signal?.recordFacts.filter((item) => item.id === fact.id).map((item) => <RecordFact key={item.id} fact={item} />) : null}{fact.recordIds.map((recordId, recordIndex) => {
         const record = run.schemaVersion === '1.0.0' ? undefined : run.signal?.recordFacts.find((item) => item.recordId === recordId);
         const mediaLabel = signal.media.find((item) => item.recordId === recordId)?.label;
         return <SignalRecordEvidence key={recordId} recordId={recordId} watch={run.input.watch} label={recordDisplayLabel(record, mediaLabel ?? `事実${factIndex + 1}の候補${recordIndex + 1}（物品名未確認）`)} />;

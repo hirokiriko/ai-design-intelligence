@@ -1,4 +1,4 @@
-import type { DataMode, Run, SignalV2 } from './contract';
+import type { DataMode, Run, Signal, SignalV2 } from './contract';
 
 export const runLabels: Record<Run['status'], string> = {
   running: '進行中', complete: '処理終了', partial: '一部完了', failed: 'API・AI処理の失敗', interrupted: '中断',
@@ -18,6 +18,19 @@ export const recordDisplayLabel = (record: { articleName: string | null; registr
   return name;
 };
 export const coveragePhrase = (coverage: string): string => coverage.trim().replace(/[\s。]+$/u, '');
+export const comparisonCoverageSummary = (signal: Pick<Signal, 'coverage' | 'counts'>): string =>
+  `比較A：${coveragePhrase(signal.coverage.before)} ／ 比較B：${coveragePhrase(signal.coverage.after)}。${signal.counts.comparable ? '比較可能な収録条件です。' : '収録条件が一致しないため、増減を断定できません。'} 除外：A ${signal.counts.excludedBefore}件・B ${signal.counts.excludedAfter}件`;
+const readableClassificationSegment = (text: string): string =>
+  text.replace(/\b(JPO_NATIONAL_DESIGN|JPO_D_TERM|LOCARNO|fictional)\s*:/gu, (_match, scheme: string) => `${classificationSchemeLabel(scheme)} `);
+export const designFactText = (text: string, field: string): string => {
+  if (field === 'classifications') return readableClassificationSegment(text);
+  if (field !== 'record') return text;
+  const start = text.indexOf('分類: ');
+  if (start < 0) return text;
+  const descriptionStart = text.indexOf('。説明: ', start);
+  const end = descriptionStart < 0 ? text.length : descriptionStart;
+  return text.slice(0, start) + readableClassificationSegment(text.slice(start, end)) + text.slice(end);
+};
 const designFactFieldLabels: Record<string, string> = {
   articleName: '物品名', registrationNumber: '登録番号', applicationNumber: '出願番号',
   applicationDate: '出願日', gazetteDate: '公報日', classifications: '分類',

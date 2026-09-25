@@ -115,6 +115,19 @@ describe('signal facts and saved result presentation', () => {
     expect(html).not.toContain('legacy-record-one');
     expect(html).not.toContain('legacy-record-two');
   });
+  it('renders saved classification summaries with public scheme names and one comparison sentence', () => {
+    const run = structuredClone(fictionalRunV2);
+    const savedText = '架空のドライヤー。出願人: 架空企業。公報日: 2026-07-01。出願日: 不明。分類: JPO_NATIONAL_DESIGN:B7-3490 (ラベル不明)、JPO_D_TERM:D1、LOCARNO:28。説明: LOCARNO:28 は保存された説明文です。';
+    run.signal!.designFacts[0].field = 'record';
+    run.signal!.designFacts[0].text = savedText;
+    run.signal!.coverage.after = '全国を網羅しない 。 ';
+    const html = renderToStaticMarkup(createElement(SignalResult, { run }));
+    expect(html).toContain('分類: 日本意匠分類 B7-3490 (ラベル不明)、Dターム D1、ロカルノ分類 28。説明: LOCARNO:28 は保存された説明文です。');
+    expect(html).toContain('比較B：全国を網羅しない。比較可能な収録条件です。');
+    expect(html).not.toContain('全国を網羅しない 。');
+    for (const internal of ['分類: JPO_NATIONAL_DESIGN:', '、JPO_D_TERM:', '、LOCARNO:']) expect(html).not.toContain(internal);
+    expect(run.signal!.designFacts[0].text).toBe(savedText);
+  });
   it('shows absent images and failures independently from no-change results', () => {
     const run = structuredClone(fictionalRun);
     run.signal!.media = []; run.signal!.visualObservations = [];

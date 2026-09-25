@@ -65,10 +65,10 @@ describe('saved company and evidence context', () => {
     const run = structuredClone(fictionalRunV2);
     run.input.context.dataMode = 'approved_public';
     const html = renderToStaticMarkup(createElement(SignalResult, { run }));
-    expect(html).toContain('承認済み公開実データ'); expect(html).toContain('模擬モデル（接続・保存の検証）');
+    expect(html).toContain('公開情報由来のデータ'); expect(html).toContain('模擬モデル（接続・保存の検証）');
     expect(html).toContain('架空リーフ機器株式会社');
     const history = renderToStaticMarkup(createElement(SignalHistory, { runs: [run, fictionalRun], state: 'ready', disabled: false, onSelect: () => undefined }));
-    expect(history).toContain('承認済み公開実データ'); expect(history).toContain('架空データ（旧形式）');
+    expect(history).toContain('公開情報由来のデータ'); expect(history).toContain('架空データ（旧形式）');
     expect(renderToStaticMarkup(createElement(SignalResult, { run: fictionalRun }))).toContain('現在のカタログから補完していません');
   });
   it('exposes saved but model-unseen excerpt text separately and reports unknown dates', () => {

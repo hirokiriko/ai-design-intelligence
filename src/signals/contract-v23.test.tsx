@@ -46,6 +46,7 @@ describe('selected daily gazette reconstruction contract 2.3.0', () => {
     expect(decodeRuns({ schemaVersion: '2.3.0', runs: [fictionalRunV22, run] })).toHaveLength(2);
     const html = renderToStaticMarkup(createElement(SignalResult, { run }));
     expect(html).toContain('選定した日刊公報からの遡及再構成収録集合');
+    expect(html).toContain('列挙した公報号の資料を同じ規則で収録');
     expect(html).toContain('選定した公報日：2026-08-09、2026-09-18');
     expect(html).toContain('全公報・全件の収録は示しません');
   });

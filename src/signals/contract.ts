@@ -180,6 +180,20 @@ const runV22Check = object({ ...runShape, schemaVersion: oneOf('2.2.0'), input: 
 const runV23Check = object({ ...runShape, schemaVersion: oneOf('2.3.0'), input: object({ watch: watchCheck, context: contextV23Check, comparisonPair: nullable(comparisonPairCheck) }), signal: nullable(signalV2Check), versions: versionCheck('2.3.0') });
 const hasVersion = (value: unknown, version: string): boolean => typeof value === 'object' && value !== null && 'schemaVersion' in value && value.schemaVersion === version;
 const runCheck: Check = (value) => { (hasVersion(value, '2.3.0') ? runV23Check : hasVersion(value, '2.2.0') ? runV22Check : hasVersion(value, '2.1.0') ? runV21Check : hasVersion(value, '2.0.0') ? runV2Check : runV1Check)(value); };
+const emptySha256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+function validateFactsOnlyRun(run: Run): void {
+  if (run.versions.model !== 'facts-only-deterministic') return;
+  if (run.schemaVersion === '1.0.0' || run.schemaVersion === '2.0.0') fail();
+  const factualRun = run as RunV21 | RunV22 | RunV23;
+  if (factualRun.input.context.dataMode !== 'approved_public' || Object.values(factualRun.usage).some((value) => value !== 0)) fail();
+  if (!factualRun.signal) return;
+  const signal = factualRun.signal;
+  if (signal.media.length || signal.visualObservations.length || signal.officialFacts.length || signal.toolEvents.length || signal.discovery.state !== 'not_started') fail();
+  if (signal.recordFacts.some((fact) => fact.description !== null || fact.articleDescription !== null)) fail();
+  for (const source of signal.sources) {
+    if (source.extractionVersion !== 'manual-public-fact-1.0.0' || source.excerpt !== '' || source.extractedChars !== 0 || source.modelVisibleChars !== 0 || source.truncated || source.bodyHash !== emptySha256 || source.contentHash !== emptySha256) fail();
+  }
+}
 function unique(values: string[]): void { if (new Set(values).size !== values.length) fail(); }
 function validateCollection(dataset: RunContextV23['beforeDataset']): void {
   const collection = dataset.collection;
@@ -246,6 +260,7 @@ export function decodeRun(value: unknown): Run {
   const run = value as Run;
   if (run.watchId !== run.input.watch.id || (run.status === 'complete' && (!run.signal || !run.completedAt)) || (run.status === 'running' && run.completedAt !== null)) fail();
   if (run.schemaVersion !== '1.0.0') validateContext(run);
+  validateFactsOnlyRun(run);
   if ((run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0') && run.input.comparisonPair) {
     const pair = run.input.comparisonPair;
     validateComparisonPair(pair, run.input.watch);

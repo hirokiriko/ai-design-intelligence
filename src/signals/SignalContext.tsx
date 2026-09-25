@@ -1,5 +1,5 @@
 import type { CollectionContextV23, Run, RunV2, RunV21, RunV22, RunV23, SignalV2 } from './contract';
-import { dataModeLabel, evidenceId, relationLabels } from './labels';
+import { dataModeLabel, evidenceId, factsOnlyRun, relationLabels } from './labels';
 
 export function EvidenceLinks({ ids }: { ids: string[] }) {
   return <span className="signal-evidence-links">根拠：{ids.length ? ids.map((id) => <a key={id} href={`#${evidenceId(id)}`}>{id}</a>) : '登録なし'}</span>;
@@ -10,7 +10,7 @@ function SavedCollection({ label, collection }: { label: string; collection: Col
   const daily = collection.kind === 'retrospective_selected_daily_gazettes';
   return <div className="signal-fact">
     <h4>{label} · {daily ? '選定した日刊公報からの遡及再構成収録集合' : '週次原本からの遡及再構成収録集合'}</h4>
-    <p>原本の公開日を基準に、{collection.commonStartDate}から{collection.cutoffDate}までの資料を同じ規則で収録しています。</p>
+    <p>{daily ? `原本の公開日を基準に、列挙した公報号の資料を同じ規則で収録しています。最初の号は${collection.commonStartDate}、最後の号は${collection.cutoffDate}です。` : `原本の公開日を基準に、${collection.commonStartDate}から${collection.cutoffDate}までの資料を同じ規則で収録しています。`}</p>
     {daily ? <p className="signal-subtle">選定した公報日：{collection.selectedIssueDates.join('、')}。全公報・全件の収録は示しません。</p> : null}
     <p className="signal-retrospective">当時稼働していたサービスの保存状態や、当時の予測実績を示すものではありません。</p>
     <dl className="signal-metadata">
@@ -30,7 +30,7 @@ export function SavedContext({ run }: { run: Run }) {
   if (run.schemaVersion === '1.0.0') return <div className="signal-data-banner">架空データの保存結果（旧形式）<span>保存時の企業・商品表示名とデータ区分の詳細は未記録です。現在のカタログから補完していません。</span></div>;
   const context = run.input.context;
   return <section className="signal-saved-context" aria-label="保存時の対象とデータ">
-    <p className="signal-data-banner">{dataModeLabel(context.dataMode)}<span>この実行に保存された区分です。</span></p>
+    <p className="signal-data-banner">{factsOnlyRun(run) ? '公開書誌事項の比較（原文・図面なし）' : dataModeLabel(context.dataMode)}<span>この実行に保存された区分です。</span></p>
     <h3>{context.entity.name ?? '企業名不明'} / {context.category.label}</h3>
     <dl className="signal-metadata"><div><dt>分類体系</dt><dd>{context.category.scheme ?? '未確認'}</dd></div><div><dt>比較A · 基準日</dt><dd>{context.beforeDataset.dataAsOf}<small>{context.beforeDataset.coverage}</small></dd></div><div><dt>比較B · 基準日</dt><dd>{context.afterDataset.dataAsOf}<small>{context.afterDataset.coverage}</small></dd></div></dl>
     {run.schemaVersion === '2.1.0' || run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0' ? <><SavedCollection label="比較A" collection={run.input.context.beforeDataset.collection} /><SavedCollection label="比較B" collection={run.input.context.afterDataset.collection} /></> : null}
@@ -47,7 +47,7 @@ export function ResultOverview({ run }: { run: Run }) {
   return <section className="signal-overview" aria-label="確認結果の概要"><h3>今回わかったこと</h3>
     <div><h4>注目する企業・商品領域</h4><p>{context ? `${context.entity.name ?? '企業名不明'} / ${context.category.label}` : run.input.watch.name}</p></div>
     <div><h4>収録範囲の新規観測・変化</h4><p>{signal.counts.comparable ? `比較Bの対象${signal.counts.after}件、収録範囲での新規観測${signal.counts.newlyObserved}件。` : '収録条件が異なるため、前後の増減を比較できません。'}</p><a href="#signal-design-facts">意匠データの事実へ</a></div>
-    <div><h4>関連する公式記載</h4>{signal.officialFacts.length ? <ul>{signal.officialFacts.map((fact) => <li key={fact.id}><a href={`#${evidenceId(fact.id)}`}>{fact.text}</a></li>)}</ul> : <p>今回の結果に採用された公式記載はありません。未発見・未取得の理由は資料と処理の詳細で確認できます。</p>}</div>
+    <div><h4>関連する公式記載</h4>{signal.officialFacts.length ? <ul>{signal.officialFacts.map((fact) => <li key={fact.id}><a href={`#${evidenceId(fact.id)}`}>{fact.text}</a></li>)}</ul> : <p>{factsOnlyRun(run) ? '記事本文は取得・分析していません。手動確認した出典リンクは下に表示します。' : '今回の結果に採用された公式記載はありません。未発見・未取得の理由は資料と処理の詳細で確認できます。'}</p>}</div>
     <div><h4>未確認事項・次に確認する資料</h4>{signal.questionsForHuman.length ? <ul>{signal.questionsForHuman.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>追加の確認事項は登録されていません。</p>}{signal.limitations.length ? <ul>{signal.limitations.map((text, index) => <li key={index}>{text}</li>)}</ul> : null}</div>
   </section>;
 }

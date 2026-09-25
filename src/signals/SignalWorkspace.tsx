@@ -122,7 +122,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
     if (!bootstrap || !selectedWatch || mutation.current || historyState === 'loading' || !selectionReady) return;
     const comparisonPairId = supportsPairs(bootstrap.schemaVersion) ? selectedPairId : '';
     mutation.current = true; revision.current += 1; setBusy(true); setError('');
-    setNotice('バックエンドが差分・画像観察・登録公式サイトの確認を実行しています。');
+    setNotice('バックエンドが登録済みデータの差分と資料を確認しています。');
     if (!request.current || request.current.watchId !== watchId || request.current.intent !== intent || request.current.comparisonPairId !== comparisonPairId) request.current = { watchId, intent, comparisonPairId, id: crypto.randomUUID() };
     try {
       const saved = await api.start(watchId, intent, request.current.id, bootstrap.csrfToken, comparisonPairId || undefined);
@@ -148,7 +148,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
     <a href="#signal-main" className="signal-skip">確認条件と結果へ移動</a>
     <header className="signal-header"><div><span className="signal-brand-mark" aria-hidden="true">K</span><strong>KIRIKO <span>Design Signals</span></strong></div><span className="signal-header-label">企業・商品の変化を確認</span></header>
     <main id="signal-main" className="signal-main">
-      <div className="signal-intro"><p className="signal-eyebrow">変化を見つけ、根拠に戻る</p><h1>次の検討につながる、<br className="signal-mobile-break" />企業と商品のシグナル。</h1><p>保存した企業・商品領域で、前後の意匠データと公式資料を確認します。管理者が週次・月次で更新した収録データが対象です。</p></div>
+      <div className="signal-intro"><p className="signal-eyebrow">変化を見つけ、根拠に戻る</p><h1>次の検討につながる、<br className="signal-mobile-break" />企業と商品のシグナル。</h1><p>保存した企業・商品領域で、前後の収録データと登録済みの公式資料を確認します。収録日と採用範囲は保存結果ごとに示します。</p></div>
       <div className="signal-data-banner">保存結果のデータ区分は、各実行に保存された情報で表示します。<span>常時監視・自動通知ではありません。</span></div>
       <p className="signal-live" role="status" aria-live="polite">{notice}</p>
       {error ? <div className="signal-error" role="alert"><p>{error}</p>{!bootstrap ? <button type="button" className="signal-button" onClick={() => window.location.reload()}>認証・設定を確認して再読み込み</button> : null}</div> : null}

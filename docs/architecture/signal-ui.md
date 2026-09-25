@@ -16,9 +16,17 @@
 
 現在の状態：架空fixtureによる1.0.0 / 2.0.0 / 2.1.0混在履歴、遡及再構成の由来・不明点、対応区分、日付・抜粋・参照不一致の単体回帰を追加した実装候補。次のアクション：最新候補の実APIによる保存・履歴・reload、データ更新後の別実行を統合確認する。架空試験を承認済み実企業ケースの実測完了とは扱わない。
 
+## Issue #21：登録済み比較組の選択
+
+Backend #26の公開契約 `contracts/run-v2.2.0.schema.json` と `contracts/comparison-pairs-v2.2.0.schema.json` に従う。新規run `2.2.0` は選んだ比較組のIDと公開metadataを `input.comparisonPair` に固定し、`null` も明示して保存する。旧run `1.0.0` / `2.0.0` / `2.1.0` の形と意味は変更せず、後のcatalogから組情報を補わない。Contract `0.1.0` と既存ルール分析も維持する。
+
+保存条件を選ぶと、その企業・分類・前後datasetで使える登録済み比較組だけをGETで取得する。利用者は次の実行に使う組と比較A/Bの対象・登録時の条件を確認し、明示的な「更新を確認」で実行する。組の選択や履歴・reloadはGETまたは画面内操作だけで、AIを起動しない。条件やcatalogを更新したときは選択を消して候補を再取得する。候補取得失敗や未選択の組がある場合は実行を止め、最終的な対象照合はBackendが行う。
+
+閲覧中の結果は保存された組のmetadataから表示し、次の実行の選択と区別する。同じ条件の別組、旧run、画像なし、参照エラーを別状態として扱う。任意画像URL・アップロード・比較編集・新しい公開共有URLは設けない。
+
 ## Issue #17で引き継いだ導線
 
-親DeliveryはBackend #15。画面はVite/React、既存ルール分析は`generatedBy: rules`、元データはContract `0.1.0`を維持する。初期実装の保存条件と保存結果は補足API `1.0.0`を使用していた。保存済みの旧形式runは架空運用のもので、新形式の環境区分で書き換えない。新規実行の契約は上記Issue #19の`2.1.0`を参照する。
+親DeliveryはBackend #15。画面はVite/React、既存ルール分析は`generatedBy: rules`、元データはContract `0.1.0`を維持する。初期実装の保存条件と保存結果は補足API `1.0.0`を使用していた。保存済みの旧形式runは架空運用のもので、新形式の環境区分で書き換えない。新規実行の契約は上記Issue #21の`2.2.0`を参照する。
 
 ## 実装した導線
 
@@ -31,8 +39,9 @@
 ## 同一origin API
 
 - `GET /api/v1/bootstrap`: schemaVersion、dataMode、CSRF token、catalog、watches
+- `GET /api/v1/watches/{id}/comparison-pairs`: 条件に使用可能な登録済み比較組の公開metadata
 - `POST /api/v1/watches`: 条件名とBackend identity、dataset、source profile IDを保存
-- `POST /api/v1/watches/{id}/runs`: requestIdと`check|reanalyze`
+- `POST /api/v1/watches/{id}/runs`: requestIdと`check|reanalyze`、組選択時はcomparisonPairId
 - `GET /api/v1/runs?watchId={id}`、`GET /api/v1/runs/{id}`: 保存済み結果
 - `GET /api/v1/media/{id}`: 公開DTOにはlocatorや署名URLを含めない
 - `GET /api/v1/datasets/{id}/export`: 元のContract `0.1.0`。既存ルール分析にも使用

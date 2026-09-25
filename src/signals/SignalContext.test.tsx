@@ -4,11 +4,24 @@ import { describe, expect, it } from 'vitest';
 import { SignalResult } from './SignalResult';
 import { SignalHistory } from './SignalHistory';
 import { fictionalRun, fictionalRunV2 } from './fixtures';
+import { fictionalRunV22 } from './fixtures-v22';
 import { relationLabels } from './labels';
 import { decodeRun } from './contract';
 import backendReconstruction from './backend-run-v2.1.fixture.json';
 
 describe('saved company and evidence context', () => {
+  it('shows the saved 2.2.0 pair and reconstruction without using current catalog labels', () => {
+    const run = structuredClone(fictionalRunV22);
+    run.input.comparisonPair!.label = '保存時の架空比較組';
+    const html = renderToStaticMarkup(createElement(SignalResult, { run }));
+    expect(html).toContain('この実行に保存された比較組');
+    expect(html).toContain('保存時の架空比較組');
+    expect(html).toContain('週次原本からの遡及再構成収録集合');
+    expect(html).toContain('比較Aの対象');
+    expect(html).toContain('比較Bの対象');
+    run.input.comparisonPair = null;
+    expect(renderToStaticMarkup(createElement(SignalResult, { run }))).toContain('現在の候補から過去の入力を補完していません');
+  });
   it('displays reconstructed collection limits and unknown acquisition without changing saved counts', () => {
     const run = decodeRun(backendReconstruction);
     const html = renderToStaticMarkup(createElement(SignalResult, { run }));

@@ -1,4 +1,4 @@
-import type { CollectionContext, Run, RunV2, RunV21, SignalV2 } from './contract';
+import type { CollectionContext, Run, RunV2, RunV21, RunV22, SignalV2 } from './contract';
 import { dataModeLabel, evidenceId, relationLabels } from './labels';
 
 export function EvidenceLinks({ ids }: { ids: string[] }) {
@@ -31,7 +31,8 @@ export function SavedContext({ run }: { run: Run }) {
     <p className="signal-data-banner">{dataModeLabel(context.dataMode)}<span>この実行に保存された区分です。</span></p>
     <h3>{context.entity.name ?? '企業名不明'} / {context.category.label}</h3>
     <dl className="signal-metadata"><div><dt>分類体系</dt><dd>{context.category.scheme ?? '未確認'}</dd></div><div><dt>比較A · 基準日</dt><dd>{context.beforeDataset.dataAsOf}<small>{context.beforeDataset.coverage}</small></dd></div><div><dt>比較B · 基準日</dt><dd>{context.afterDataset.dataAsOf}<small>{context.afterDataset.coverage}</small></dd></div></dl>
-    {run.schemaVersion === '2.1.0' ? <><SavedCollection label="比較A" collection={run.input.context.beforeDataset.collection} /><SavedCollection label="比較B" collection={run.input.context.afterDataset.collection} /></> : null}
+    {run.schemaVersion === '2.1.0' || run.schemaVersion === '2.2.0' ? <><SavedCollection label="比較A" collection={run.input.context.beforeDataset.collection} /><SavedCollection label="比較B" collection={run.input.context.afterDataset.collection} /></> : null}
+    {run.schemaVersion === '2.2.0' ? <div className="signal-saved-pair"><h4>この実行に保存された比較組</h4>{run.input.comparisonPair ? <><p><strong>{run.input.comparisonPair.label}</strong></p><p>{run.input.comparisonPair.evidence}</p><dl className="signal-metadata">{run.input.comparisonPair.media.map((media) => <div key={media.id}><dt>{media.role === 'comparisonA' ? '比較A' : '比較B'}の対象</dt><dd>{media.label}<small>意匠 {media.recordId} · {media.view ?? '方向不明'} · {media.comparisonStatus}</small></dd></div>)}</dl></> : <p className="signal-subtle">登録済み比較組の選択は保存されていません。現在の候補から過去の入力を補完していません。</p>}</div> : null}
     <h4>確認条件に登録された商品情報</h4>
     {context.knownProducts.length ? <ul>{context.knownProducts.map((product, index) => <li key={index}><strong>{product.name ?? '商品名未確認'}{product.model ? ` / ${product.model}` : ''}</strong><p>{product.evidence}</p><p className="signal-subtle">対応を確認する意匠：{product.recordIds.join('、') || '未登録'}</p></li>)}</ul> : <p className="signal-subtle">商品名・型番は登録されていません。物品名と販売商品名は別の情報です。</p>}
   </section>;
@@ -59,7 +60,7 @@ export function RecordFact({ fact }: { fact: SignalV2['recordFacts'][number] }) 
   return <dl className="signal-metadata"><div><dt>物品名</dt><dd>{fact.articleName ?? '不明'}</dd></div><div><dt>出願人</dt><dd>{fact.applicant.name ?? '不明'}</dd></div><div><dt>登録番号 / 出願番号</dt><dd>{fact.registrationNumber ?? '不明'} / {fact.applicationNumber ?? '不明'}</dd></div><div><dt>分類</dt><dd>{fact.classifications.map((item) => `${item.scheme} ${item.code}${item.label ? ` ${item.label}` : ''}`).join(' / ') || '未収録'}</dd></div><div><dt>出願日 / 公報日</dt><dd>{fact.applicationDate ?? '不明'} / {fact.gazetteDate ?? '不明'}</dd></div><div><dt>意匠の説明</dt><dd>{fact.description ?? '説明は未収録'}</dd></div><div><dt>物品の説明</dt><dd>{fact.articleDescription ?? '説明は未収録'}</dd></div><div><dt>データの検証状態</dt><dd>{{ pass: '検証済み', warning: '注意事項あり', quarantined: '保留' }[fact.quality]}</dd></div><div><dt>採用理由</dt><dd>{{ comparison_pair: '画像の比較対象', newly_observed: '収録範囲での新規観測', scope_sample: '対象範囲からの代表資料' }[fact.selectionReason]}</dd></div></dl>;
 }
 
-export function DiscoveryDetails({ run }: { run: RunV2 | RunV21 }) {
+export function DiscoveryDetails({ run }: { run: RunV2 | RunV21 | RunV22 }) {
   const discovery = run.signal?.discovery;
   if (!discovery) return null;
   return <details className="signal-details"><summary>公式資料の探索範囲と不足</summary><p>{discovery.state === 'not_started' ? '公式資料の探索は開始していません。資料がないことを意味しません。' : '登録された範囲の探索処理は終了しています。個別意匠との対応確認を意味しません。'}</p><p>確認リンク {discovery.scannedLinks}件 · 対象候補 {discovery.eligibleCandidates}件 · 上限等による省略 {discovery.omittedCandidates}件</p><ul>{discovery.limitations.map((text, index) => <li key={index}>{text}</li>)}</ul>{discovery.candidates.map((item) => <div className="signal-fact" key={item.id}><a href={item.url} target="_blank" rel="noopener noreferrer">{item.title || 'タイトル不明'} ↗</a><p>発表日：{item.publishedAt ?? '不明'} · {{ in_period: '対象期間内', outside_period: '対象期間外', unknown: '日付不明' }[item.dateStatus]}</p><p>{item.selectionReason}</p></div>)}</details>;

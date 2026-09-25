@@ -90,6 +90,8 @@
 .signal-welcome ol { margin: 24px 0; color: #436650; }
 .signal-error { margin: 10px 0 20px; padding: 14px 18px; border: 1px solid #dfb4ad; color: #853b31; background: #fff4f1; border-radius: 8px; }
 .signal-watch-form { border-top: 1px solid #dce5df; padding-top: 16px; margin-top: 10px; }
+.signal-pair-selector { border-top: 1px solid #dce5df; padding-top: 16px; margin-top: 16px; }
+.signal-saved-pair { border: 1px solid #d7e3d9; border-radius: 8px; background: #f6faf6; padding: 14px; margin-top: 18px; }
 .signal-legacy { margin-top: 26px; border-top: 1px solid #dce5df; padding-top: 14px; }
 .signal-footer { padding: 20px 24px; border-top: 1px solid #dce5df; background: white; text-align: center; color: #66736b; font-size: 11px; }
 .signal-skip { position: absolute; top: -100px; left: 8px; padding: 10px; background: white; z-index: 10; }

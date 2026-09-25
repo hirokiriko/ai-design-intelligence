@@ -1,4 +1,4 @@
-// Backend の公開補足 DTO。保存結果 1.0.0 / 2.0.0 / 2.1.0 を別々に検証する。
+// Backend の公開補足 DTO。保存結果の各版を別々に検証する。
 export interface Watch {
   id: string; name: string; entityId: string; categoryId: string;
   beforeDatasetId: string; afterDatasetId: string; sourceProfileId: string; createdAt: string;
@@ -7,10 +7,21 @@ export type WatchInput = Omit<Watch, 'id' | 'createdAt'>;
 export type DataMode = 'fictional' | 'approved_public';
 export interface Dataset { id: string; dataAsOf: string; coverage: string; sourceFamily: string; recordCount: number; dataMode?: DataMode }
 export interface Bootstrap {
-  schemaVersion: '1.0.0' | '2.0.0' | '2.1.0'; dataMode: 'fictional' | 'public_design' | 'approved_public'; csrfToken: string;
+  schemaVersion: '1.0.0' | '2.0.0' | '2.1.0' | '2.2.0'; dataMode: 'fictional' | 'public_design' | 'approved_public'; csrfToken: string;
   catalog: { entities: { id: string; name: string | null }[]; categories: { id: string; label: string }[]; datasets: Dataset[]; sourceProfiles: { id: string; label: string; dataMode?: DataMode }[] };
   watches: Watch[];
 }
+export interface ComparisonMedia {
+  id: string; recordId: string; label: string; role: 'comparisonA' | 'comparisonB';
+  mimeType: 'image/png' | 'image/jpeg'; width: number; height: number;
+  sourceLabel: string; permission: string; gazetteDate: string | null;
+  applicationDate: string | null; view: string | null; comparisonStatus: string;
+}
+export interface ComparisonPair {
+  id: string; label: string; evidence: string; entityId: string; categoryId: string;
+  beforeDatasetId: string; afterDatasetId: string; media: [ComparisonMedia, ComparisonMedia];
+}
+export interface ComparisonPairs { schemaVersion: '2.2.0'; comparisonPairs: ComparisonPair[] }
 export interface Signal {
   status: 'change_detected' | 'no_change' | 'insufficient' | 'comparison_unavailable';
   counts: { before: number; after: number; newlyObserved: number; excludedBefore: number; excludedAfter: number; comparable: boolean };
@@ -20,7 +31,7 @@ export interface Signal {
   officialFacts: { id: string; text: string; sourceId: string; quote: string; start: number; end: number }[];
   hypotheses: { id: string; text: string; evidenceIds: string[]; limitations: string[] }[];
   questionsForHuman: string[];
-  media: { id: string; recordId: string; label: string; role: 'comparisonA' | 'comparisonB'; mimeType: 'image/png' | 'image/jpeg'; width: number; height: number; sourceLabel: string; permission: string; gazetteDate: string | null; applicationDate: string | null; view: string | null; comparisonStatus: string }[];
+  media: ComparisonMedia[];
   sources: { id: string; url: string; title: string; publishedAt: string | null; retrievedAt: string; excerpt: string; excerptStart: number; contentHash: string; retrospective: boolean }[];
   toolEvents: { tool: string; candidateId: string | null; reason: string; outcome: string; startedAt: string; finishedAt: string }[];
   stopReason: string;
@@ -63,7 +74,10 @@ export interface RunContextV21 extends Omit<RunContext, 'beforeDataset' | 'after
 export interface RunV21 extends Omit<RunV2, 'schemaVersion' | 'input'> {
   schemaVersion: '2.1.0'; input: { watch: Watch; context: RunContextV21 };
 }
-export type Run = RunV1 | RunV2 | RunV21;
+export interface RunV22 extends Omit<RunV21, 'schemaVersion' | 'input'> {
+  schemaVersion: '2.2.0'; input: { watch: Watch; context: RunContextV21; comparisonPair: ComparisonPair | null };
+}
+export type Run = RunV1 | RunV2 | RunV21 | RunV22;
 
 type Check = (value: unknown) => void;
 export class ContractError extends Error { constructor() { super('保存データの形式または根拠の参照を確認できません。表示を停止しました。'); } }
@@ -89,6 +103,14 @@ const object = (shape: Record<string, Check>): Check => (v) => {
 const ids = array(identifier, 20);
 const strings = array(text, 20);
 const watchCheck = object({ id: opaqueId, name: boundedText(120), entityId: catalogId, categoryId: catalogId, beforeDatasetId: opaqueId, afterDatasetId: opaqueId, sourceProfileId: opaqueId, createdAt: date });
+const comparisonMediaCheck = object({ id: identifier, recordId: identifier, label: text, role: oneOf('comparisonA', 'comparisonB'), mimeType: oneOf('image/png', 'image/jpeg'), width: positive, height: positive, sourceLabel: text, permission: text, gazetteDate: nullable(date), applicationDate: nullable(date), view: nullable(text), comparisonStatus: text });
+const comparisonPairCheck = object({ id: opaqueId, label: boundedText(120), evidence: boundedText(500), entityId: catalogId, categoryId: catalogId, beforeDatasetId: opaqueId, afterDatasetId: opaqueId, media: array(comparisonMediaCheck, 2) });
+function validateComparisonPair(pair: ComparisonPair, watch: Watch): void {
+  if (pair.entityId !== watch.entityId || pair.categoryId !== watch.categoryId || pair.beforeDatasetId !== watch.beforeDatasetId || pair.afterDatasetId !== watch.afterDatasetId || pair.media.length !== 2 || pair.media[0].role !== 'comparisonA' || pair.media[1].role !== 'comparisonB' || pair.media[0].id === pair.media[1].id) fail();
+}
+function sameComparisonMedia(left: ComparisonMedia, right: ComparisonMedia): boolean {
+  return (Object.keys(left) as (keyof ComparisonMedia)[]).every((key) => left[key] === right[key]);
+}
 const sourceUrl: Check = (v) => {
   boundedText(2048)(v);
   try {
@@ -105,7 +127,7 @@ const signalShape = {
   visualObservations: array(object({ id: identifier, part: text, observation: text, status: oneOf('change_candidate', 'no_change', 'unknown'), mediaIds: array(identifier, 2) }), 10),
   officialFacts: array(object({ id: identifier, text, sourceId: identifier, quote: boundedText(1000), start: integer, end: integer }), 10),
   hypotheses: array(object({ id: identifier, text, evidenceIds: ids, limitations: strings }), 10), questionsForHuman: strings,
-  media: array(object({ id: identifier, recordId: identifier, label: text, role: oneOf('comparisonA', 'comparisonB'), mimeType: oneOf('image/png', 'image/jpeg'), width: positive, height: positive, sourceLabel: text, permission: text, gazetteDate: nullable(date), applicationDate: nullable(date), view: nullable(text), comparisonStatus: text }), 2),
+  media: array(comparisonMediaCheck, 2),
   sources: array(object({ id: identifier, url: sourceUrl, title: boundedText(300, 0), publishedAt: nullable(date), retrievedAt: date, excerpt: boundedText(20000, 0), excerptStart: integer, contentHash: boundedText(64, 64), retrospective: boolean }), 3),
   toolEvents: array(object({ tool: oneOf('list_candidates', 'fetch_candidate', 'finish'), candidateId: nullable(identifier), reason: text, outcome: text, startedAt: date, finishedAt: date }), 6), stopReason: text,
 };
@@ -134,8 +156,9 @@ const versionCheck = (version: string) => object({ model: boundedText(1000), pro
 const runV1Check = object({ ...runShape, schemaVersion: oneOf('1.0.0'), input: object({ watch: watchCheck }), signal: nullable(signalCheck), versions: versionCheck('1.0.0') });
 const runV2Check = object({ ...runShape, schemaVersion: oneOf('2.0.0'), input: object({ watch: watchCheck, context: contextCheck }), signal: nullable(signalV2Check), versions: versionCheck('2.0.0') });
 const runV21Check = object({ ...runShape, schemaVersion: oneOf('2.1.0'), input: object({ watch: watchCheck, context: contextV21Check }), signal: nullable(signalV2Check), versions: versionCheck('2.1.0') });
+const runV22Check = object({ ...runShape, schemaVersion: oneOf('2.2.0'), input: object({ watch: watchCheck, context: contextV21Check, comparisonPair: nullable(comparisonPairCheck) }), signal: nullable(signalV2Check), versions: versionCheck('2.2.0') });
 const hasVersion = (value: unknown, version: string): boolean => typeof value === 'object' && value !== null && 'schemaVersion' in value && value.schemaVersion === version;
-const runCheck: Check = (value) => { (hasVersion(value, '2.1.0') ? runV21Check : hasVersion(value, '2.0.0') ? runV2Check : runV1Check)(value); };
+const runCheck: Check = (value) => { (hasVersion(value, '2.2.0') ? runV22Check : hasVersion(value, '2.1.0') ? runV21Check : hasVersion(value, '2.0.0') ? runV2Check : runV1Check)(value); };
 function unique(values: string[]): void { if (new Set(values).size !== values.length) fail(); }
 function validateCollection(dataset: RunContextV21['beforeDataset']): void {
   const collection = dataset.collection;
@@ -150,10 +173,10 @@ function validateCollection(dataset: RunContextV21['beforeDataset']): void {
   if (collection.cutoffDate > verifiedSourceDate) fail();
   if (from !== null && through !== null && (Date.parse(from) > Date.parse(through) || Date.parse(through) > Date.parse(verified))) fail();
 }
-function validateContext(run: RunV2 | RunV21): void {
+function validateContext(run: RunV2 | RunV21 | RunV22): void {
   const { watch, context } = run.input;
   if (context.entity.id !== watch.entityId || context.category.id !== watch.categoryId || context.beforeDataset.id !== watch.beforeDatasetId || context.afterDataset.id !== watch.afterDatasetId) fail();
-  if (run.schemaVersion === '2.1.0') {
+  if (run.schemaVersion === '2.1.0' || run.schemaVersion === '2.2.0') {
     const { beforeDataset, afterDataset } = run.input.context;
     validateCollection(beforeDataset); validateCollection(afterDataset);
     const before = beforeDataset.collection; const after = afterDataset.collection;
@@ -185,11 +208,23 @@ function validateContext(run: RunV2 | RunV21): void {
   }
 }
 export function decodeWatch(value: unknown): Watch { watchCheck(value); return value as Watch; }
+export function decodeComparisonPairs(value: unknown, watch: Watch): ComparisonPairs {
+  object({ schemaVersion: oneOf('2.2.0'), comparisonPairs: array(comparisonPairCheck, 100) })(value);
+  const pairs = value as ComparisonPairs;
+  unique(pairs.comparisonPairs.map((pair) => pair.id));
+  for (const pair of pairs.comparisonPairs) validateComparisonPair(pair, watch);
+  return pairs;
+}
 export function decodeRun(value: unknown): Run {
   runCheck(value);
   const run = value as Run;
   if (run.watchId !== run.input.watch.id || (run.status === 'complete' && (!run.signal || !run.completedAt)) || (run.status === 'running' && run.completedAt !== null)) fail();
   if (run.schemaVersion !== '1.0.0') validateContext(run);
+  if (run.schemaVersion === '2.2.0' && run.input.comparisonPair) {
+    const pair = run.input.comparisonPair;
+    validateComparisonPair(pair, run.input.watch);
+    if (run.signal?.media.length && (run.signal.media.length !== 2 || !run.signal.media.every((media, index) => sameComparisonMedia(media, pair.media[index])))) fail();
+  }
   const signal = run.signal;
   if (signal) {
     const groups = [signal.designFacts, signal.visualObservations, signal.officialFacts, signal.hypotheses, signal.media, signal.sources];
@@ -210,14 +245,14 @@ export function decodeRun(value: unknown): Run {
   return run;
 }
 export function decodeRuns(value: unknown): Run[] {
-  object({ schemaVersion: oneOf('1.0.0', '2.0.0', '2.1.0'), runs: array(runCheck) })(value);
+  object({ schemaVersion: oneOf('1.0.0', '2.0.0', '2.1.0', '2.2.0'), runs: array(runCheck) })(value);
   const runs = (value as { runs: unknown[] }).runs.map(decodeRun);
   unique(runs.map((run) => run.id));
   return runs;
 }
 export function decodeBootstrap(value: unknown): Bootstrap {
-  const v2 = hasVersion(value, '2.0.0') || hasVersion(value, '2.1.0');
-  object({ schemaVersion: v2 ? oneOf('2.0.0', '2.1.0') : oneOf('1.0.0'), dataMode: v2 ? dataMode : oneOf('fictional', 'public_design'), csrfToken: text,
+  const v2 = hasVersion(value, '2.0.0') || hasVersion(value, '2.1.0') || hasVersion(value, '2.2.0');
+  object({ schemaVersion: v2 ? oneOf('2.0.0', '2.1.0', '2.2.0') : oneOf('1.0.0'), dataMode: v2 ? dataMode : oneOf('fictional', 'public_design'), csrfToken: text,
     catalog: object({ entities: array(object({ id: catalogId, name: v2 ? nullable(text) : text })), categories: array(object({ id: catalogId, label: text })), datasets: array(object({ id: opaqueId, dataAsOf: date, coverage: text, sourceFamily: text, recordCount: integer, ...(v2 ? { dataMode } : {}) })), sourceProfiles: array(object({ id: opaqueId, label: text, ...(v2 ? { dataMode } : {}) })) }), watches: array(watchCheck) })(value);
   const bootstrap = value as Bootstrap;
   const { entities, categories, datasets, sourceProfiles } = bootstrap.catalog;

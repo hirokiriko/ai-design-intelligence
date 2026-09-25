@@ -36,19 +36,23 @@ function fictionalFactsOnlyRun(): RunV21 {
 }
 
 describe('metadata-only public facts result', () => {
-  it('decodes a saved zero-usage result and describes manual links without AI or excerpts', () => {
+  it('decodes a saved zero-usage result and presents manual reference URLs as text without AI or excerpts', () => {
     const run = decodeRun(fictionalFactsOnlyRun());
     const html = renderToStaticMarkup(createElement(SignalResult, { run }));
     const history = renderToStaticMarkup(createElement(SignalHistory, { runs: [run], state: 'ready', disabled: false, onSelect: () => undefined }));
     expect(html).toContain('公開書誌事項の比較（原文・図面なし）');
     expect(html).toContain('実行時に記事本文・図面を取得せず、AI・Vertexへ送信していません');
-    expect(html).toContain('手動確認した参照リンク');
+    expect(html).toContain('手動確認した参照先・URL');
+    expect(html).toContain('公式URLは保存時の参照先を示す文字情報です');
+    expect(html).toContain(run.signal!.sources[0].url);
+    expect(html).not.toContain(`href="${run.signal!.sources[0].url}"`);
     expect(html).toContain('手動確認日時');
     expect(html).toContain('記事本文・画像は保存せず');
     expect(html).not.toContain('AIが確認した抜粋');
     expect(html).not.toContain('画像からのAI観察候補');
     expect(html).not.toContain('<blockquote>');
     expect(history).toContain('公開書誌事項の比較（原文・図面なし）');
+    expect(renderToStaticMarkup(createElement(SignalResult, { run: fictionalRunV2 }))).toContain(`href="${run.signal!.sources[0].url}"`);
   });
 
   it('rejects an AI or copied-text payload mislabeled as metadata-only', () => {

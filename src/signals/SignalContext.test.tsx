@@ -10,6 +10,16 @@ import { decodeRun } from './contract';
 import backendReconstruction from './backend-run-v2.1.fixture.json';
 
 describe('saved company and evidence context', () => {
+  it('translates saved classification schemes while retaining the classification codes', () => {
+    const run = structuredClone(fictionalRunV2);
+    run.input.context.category.scheme = 'JPO_NATIONAL_DESIGN';
+    run.signal!.recordFacts[0].classifications = [{ scheme: 'JPO_D_TERM', code: 'D-FIXTURE', label: null }];
+    const html = renderToStaticMarkup(createElement(SignalResult, { run }));
+    expect(html).toContain('<dt>分類体系</dt><dd>日本意匠分類</dd>');
+    expect(html).toContain('Dターム D-FIXTURE');
+    expect(html).not.toContain('JPO_NATIONAL_DESIGN');
+    expect(html).not.toContain('JPO_D_TERM');
+  });
   it('shows the saved 2.2.0 pair and reconstruction without using current catalog labels', () => {
     const run = structuredClone(fictionalRunV22);
     run.input.comparisonPair!.label = '保存時の架空比較組';
@@ -103,9 +113,10 @@ describe('saved company and evidence context', () => {
     run.signal!.officialFacts[0].id = '公式記載-1';
     run.signal!.relationships[0].supportingEvidenceIds = ['公式記載-1'];
     const html = renderToStaticMarkup(createElement(SignalResult, { run }));
-    const linkedId = html.match(/href="#([^"]+)">公式記載-1<\/a>/)?.[1];
+    const linkedId = html.match(/href="#([^"]+)">公式記載1<\/a>/)?.[1];
     expect(linkedId).toBeDefined();
     expect(html).toContain(`id="${decodeURIComponent(linkedId!)}"`);
+    expect(html).not.toContain('>公式記載-1</a>');
   });
   it('shows original identifiers and article description separately from a missing design description', () => {
     const run = structuredClone(fictionalRunV2);

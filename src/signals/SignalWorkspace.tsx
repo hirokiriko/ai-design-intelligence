@@ -128,7 +128,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
       const saved = await api.start(watchId, intent, request.current.id, bootstrap.csrfToken, comparisonPairId || undefined);
       request.current = null;
       setRun(saved); setRuns((previous) => [saved, ...previous.filter((item) => item.id !== saved.id)]); setHistoryState('ready'); saveRunLocation(saved.id);
-      setNotice(`確認結果を保存しました。${runStatusLabel(saved)}。`);
+      setNotice(`確認結果を表示しました。${runStatusLabel(saved)}。`);
     } catch (failure) { recoverError(failure); setNotice('通信または確認処理が完了していません。履歴で状態を確認してください。'); }
     finally { mutation.current = false; setBusy(false); }
   };
@@ -180,7 +180,7 @@ function ComparisonPairSelector({ pairs, state, selectedId, busy, onSelect, onRe
     {state === 'error' ? <div role="alert" className="signal-error"><p>比較組の候補を確認できません。実行前に再取得してください。</p><button className="signal-button" type="button" disabled={busy} onClick={onReload}>比較組を再取得</button></div> : null}
     {state === 'ready' && pairs.length === 0 ? <p className="signal-subtle">この条件で選択できる比較組はありません。画像がない結果も保存できます。</p> : null}
     {state === 'ready' && pairs.length > 0 ? <label className="signal-field">次の実行に使う比較組<select value={selectedId} required disabled={busy} onChange={(event) => onSelect(event.target.value)}><option value="">比較組を選択してください</option>{pairs.map((pair) => <option key={pair.id} value={pair.id}>{pair.label}</option>)}</select></label> : null}
-    {selected ? <dl className="signal-metadata"><div><dt>登録時の比較条件・根拠</dt><dd>{selected.evidence}</dd></div>{selected.media.map((media) => <div key={media.id}><dt>{media.role === 'comparisonA' ? '比較A' : '比較B'}の対象</dt><dd>{media.label}<small>意匠 {media.recordId} · {media.view ?? '方向不明'} · {media.comparisonStatus}</small></dd></div>)}</dl> : null}
+    {selected ? <dl className="signal-metadata"><div><dt>登録時の比較条件・根拠</dt><dd>{selected.evidence}</dd></div>{selected.media.map((media) => <div key={media.id}><dt>{media.role === 'comparisonA' ? '比較A' : '比較B'}の対象</dt><dd>{media.label}<small>{media.view ?? '方向不明'} · {media.comparisonStatus}</small></dd></div>)}</dl> : null}
   </div>;
 }
 

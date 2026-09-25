@@ -7,6 +7,23 @@ export const dataModeLabel = (mode: DataMode): string => mode === 'approved_publ
 export const factsOnlyRun = (run: Run): boolean => run.versions.model === 'facts-only-deterministic';
 export const runStatusLabel = (run: Run): string => factsOnlyRun(run) && run.status === 'failed' ? '確認処理の失敗' : runLabels[run.status];
 export const evidenceId = (id: string): string => `signal-evidence-${Array.from(id, (character) => character.codePointAt(0)!.toString(16)).join('-')}`;
+export const classificationSchemeLabel = (scheme: string | null): string => {
+  if (scheme === null) return '未確認';
+  return { JPO_NATIONAL_DESIGN: '日本意匠分類', JPO_D_TERM: 'Dターム', LOCARNO: 'ロカルノ分類', fictional: '架空分類' }[scheme] ?? '分類体系名未確認';
+};
+export const recordDisplayLabel = (record: { articleName: string | null; registrationNumber: string | null; applicationNumber?: string | null } | undefined, fallback: string): string => {
+  const name = record?.articleName ?? fallback;
+  if (record?.registrationNumber) return `${name}（登録番号 ${record.registrationNumber}）`;
+  if (record?.applicationNumber) return `${name}（出願番号 ${record.applicationNumber}）`;
+  return name;
+};
+export const coveragePhrase = (coverage: string): string => coverage.trim().replace(/[\s。]+$/u, '');
+const designFactFieldLabels: Record<string, string> = {
+  articleName: '物品名', registrationNumber: '登録番号', applicationNumber: '出願番号',
+  applicationDate: '出願日', gazetteDate: '公報日', classifications: '分類',
+  description: '意匠の説明', articleDescription: '物品の説明', recordCount: '収録件数',
+};
+export const designFactFieldLabel = (field: string): string => designFactFieldLabels[field] ?? '意匠書誌事項';
 export const relationLabels: Record<SignalV2['relationships'][number]['relation'], string> = {
   direct: '個別意匠と商品の直接対応を確認', category: '商品分野として関連', candidate: '対応の候補・同一製品は未確認', unrelated_or_conflicting: '無関係・矛盾する根拠あり', unknown: '資料不足・対応不明',
 };

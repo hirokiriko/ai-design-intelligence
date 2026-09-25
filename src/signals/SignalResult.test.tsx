@@ -76,11 +76,11 @@ describe('signal facts and saved result presentation', () => {
     const dialogs = [...html.matchAll(/<dialog\b[^>]*>([\s\S]*?)<\/dialog>/g)].map((match) => match[1]);
     expect(dialogs).toHaveLength(2);
     expect(dialogs[0]).toContain('架空の比較A図面 &lt;出所&gt;');
-    expect(dialogs[0]).toContain('record-old / 不明');
+    expect(dialogs[0]).toContain('旧操作機器 / 不明');
     expect(dialogs[0]).toContain('<dt>公報日 / 出願日</dt><dd>不明 / 不明</dd>');
     expect(dialogs[0]).toContain('方向不明 / 縮尺は未確認');
     expect(dialogs[0]).not.toContain('FIXTURE-REG-EXAMPLE');
-    expect(dialogs[1]).toContain('record-new / FIXTURE-REG-EXAMPLE');
+    expect(dialogs[1]).toContain('架空操作機器 / FIXTURE-REG-EXAMPLE');
     expect(dialogs[1]).toContain('<dt>公報日 / 出願日</dt><dd>2026-07-01 / 不明</dd>');
     expect(dialogs[1]).toContain('正面 / 縮尺は未確認');
     for (const dialog of dialogs) {
@@ -89,6 +89,31 @@ describe('signal facts and saved result presentation', () => {
       expect(dialog).toContain('商品の新旧世代や発売順を示しません');
       expect(dialog.indexOf('情報源・利用条件')).toBeLessThan(dialog.indexOf('<img'));
     }
+  });
+  it('uses saved public labels and one sentence boundary without exposing record or dataset IDs', () => {
+    const run = structuredClone(fictionalRunV2);
+    run.signal!.coverage.before = '架空比較Aの範囲。 ';
+    run.signal!.coverage.after = '架空比較Bは全国を網羅しない。 ';
+    run.signal!.relationships[0].supportingEvidenceIds.push('fact-1');
+    const html = renderToStaticMarkup(createElement(SignalResult, { run }));
+    expect(html).toContain('比較A：架空比較Aの範囲 ／ 比較B：架空比較Bは全国を網羅しない。比較可能な収録条件です。');
+    expect(html).toContain('根拠意匠：架空操作機器（登録番号 FIXTURE-REG-EXAMPLE） を確認');
+    expect(html).toContain('<dt>比較A / 比較Bの基準日</dt><dd>2026-06-01 / 2026-07-01</dd>');
+    expect(html).toContain('項目：物品名');
+    expect(html).toContain('>意匠の事実1</a>');
+    expect(html).toContain('>参照先1</a>');
+    expect(html).toContain('<dt>実行日時</dt><dd>2026-07-01T01:00:00Z</dd>');
+    for (const internal of ['record-old', 'record-new', 'dataset-before', 'dataset-after', 'entity-example', 'category-controller', 'source-profile-example', 'fact-1', 'articleName', 'run-example-v2', 'fetch_candidate']) expect(html).not.toContain(internal);
+  });
+  it('keeps multiple legacy evidence controls distinct when public record metadata is unavailable', () => {
+    const run = structuredClone(fictionalRun);
+    run.signal!.media = [];
+    run.signal!.designFacts[0].recordIds = ['legacy-record-one', 'legacy-record-two'];
+    const html = renderToStaticMarkup(createElement(SignalResult, { run }));
+    expect(html).toContain('根拠意匠：事実1の候補1（物品名未確認） を確認');
+    expect(html).toContain('根拠意匠：事実1の候補2（物品名未確認） を確認');
+    expect(html).not.toContain('legacy-record-one');
+    expect(html).not.toContain('legacy-record-two');
   });
   it('shows absent images and failures independently from no-change results', () => {
     const run = structuredClone(fictionalRun);

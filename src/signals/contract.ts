@@ -7,7 +7,7 @@ export type WatchInput = Omit<Watch, 'id' | 'createdAt'>;
 export type DataMode = 'fictional' | 'approved_public';
 export interface Dataset { id: string; dataAsOf: string; coverage: string; sourceFamily: string; recordCount: number; dataMode?: DataMode }
 export interface Bootstrap {
-  schemaVersion: '1.0.0' | '2.0.0' | '2.1.0' | '2.2.0'; dataMode: 'fictional' | 'public_design' | 'approved_public'; csrfToken: string;
+  schemaVersion: '1.0.0' | '2.0.0' | '2.1.0' | '2.2.0' | '2.3.0'; dataMode: 'fictional' | 'public_design' | 'approved_public'; csrfToken: string;
   catalog: { entities: { id: string; name: string | null }[]; categories: { id: string; label: string }[]; datasets: Dataset[]; sourceProfiles: { id: string; label: string; dataMode?: DataMode }[] };
   watches: Watch[];
 }
@@ -21,7 +21,7 @@ export interface ComparisonPair {
   id: string; label: string; evidence: string; entityId: string; categoryId: string;
   beforeDatasetId: string; afterDatasetId: string; media: [ComparisonMedia, ComparisonMedia];
 }
-export interface ComparisonPairs { schemaVersion: '2.2.0'; comparisonPairs: ComparisonPair[] }
+export interface ComparisonPairs { schemaVersion: '2.2.0' | '2.3.0'; comparisonPairs: ComparisonPair[] }
 export interface Signal {
   status: 'change_detected' | 'no_change' | 'insufficient' | 'comparison_unavailable';
   counts: { before: number; after: number; newlyObserved: number; excludedBefore: number; excludedAfter: number; comparable: boolean };
@@ -74,10 +74,22 @@ export interface RunContextV21 extends Omit<RunContext, 'beforeDataset' | 'after
 export interface RunV21 extends Omit<RunV2, 'schemaVersion' | 'input'> {
   schemaVersion: '2.1.0'; input: { watch: Watch; context: RunContextV21 };
 }
+export interface SelectedDailyCollectionContext extends Omit<CollectionContext, 'kind'> {
+  kind: 'retrospective_selected_daily_gazettes';
+  selectedIssueDates: string[];
+}
+export type CollectionContextV23 = CollectionContext | SelectedDailyCollectionContext;
 export interface RunV22 extends Omit<RunV21, 'schemaVersion' | 'input'> {
   schemaVersion: '2.2.0'; input: { watch: Watch; context: RunContextV21; comparisonPair: ComparisonPair | null };
 }
-export type Run = RunV1 | RunV2 | RunV21 | RunV22;
+export interface RunContextV23 extends Omit<RunContext, 'beforeDataset' | 'afterDataset'> {
+  beforeDataset: RunContext['beforeDataset'] & { collection: CollectionContextV23 | null };
+  afterDataset: RunContext['afterDataset'] & { collection: CollectionContextV23 | null };
+}
+export interface RunV23 extends Omit<RunV22, 'schemaVersion' | 'input'> {
+  schemaVersion: '2.3.0'; input: { watch: Watch; context: RunContextV23; comparisonPair: ComparisonPair | null };
+}
+export type Run = RunV1 | RunV2 | RunV21 | RunV22 | RunV23;
 
 type Check = (value: unknown) => void;
 export class ContractError extends Error { constructor() { super('保存データの形式または根拠の参照を確認できません。表示を停止しました。'); } }
@@ -148,24 +160,37 @@ const collectionDate: Check = (value) => { calendarDate(value); if (new Date(val
 const collectionTime: Check = (value) => { date(value); if (!/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?Z$/.test(value as string)) fail(); collectionDate((value as string).slice(0, 10)); };
 const sha256: Check = (value) => { boundedText(64, 64)(value); if (!/^[a-f0-9]{64}$/.test(value as string)) fail(); };
 const family: Check = (value) => { boundedText(80)(value); if (!/^[A-Za-z0-9_-]+$/.test(value as string)) fail(); };
-const collectionCheck = object({ kind: oneOf('retrospective_weekly_reconstruction'), commonStartDate: collectionDate, cutoffDate: collectionDate, cutoffBasis: oneOf('source_publication_date'), reconstructedAt: collectionTime, sourceFamilies: array(family, 10), policySha256: sha256, archiveSetSha256: sha256, sourceAcquiredFrom: nullable(collectionTime), sourceAcquiredThrough: nullable(collectionTime), locallyVerifiedAt: collectionTime, retrospectiveSupplements: boolean, limitations: array(boundedText(500), 10) });
+const collectionShape = { commonStartDate: collectionDate, cutoffDate: collectionDate, cutoffBasis: oneOf('source_publication_date'), reconstructedAt: collectionTime, sourceFamilies: array(family, 10), policySha256: sha256, archiveSetSha256: sha256, sourceAcquiredFrom: nullable(collectionTime), sourceAcquiredThrough: nullable(collectionTime), locallyVerifiedAt: collectionTime, retrospectiveSupplements: boolean, limitations: array(boundedText(500), 10) };
+const collectionCheck = object({ kind: oneOf('retrospective_weekly_reconstruction'), ...collectionShape });
+const selectedDailyCollectionCheck = object({ kind: oneOf('retrospective_selected_daily_gazettes'), ...collectionShape, selectedIssueDates: array(collectionDate, 12) });
+const collectionV23Check: Check = (value) => {
+  if (typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'retrospective_selected_daily_gazettes') selectedDailyCollectionCheck(value);
+  else collectionCheck(value);
+};
 const contextDatasetV21Check = object({ id: opaqueId, dataAsOf: calendarDate, coverage: boundedText(240), collection: nullable(collectionCheck) });
 const contextV21Check = object({ ...contextShape, beforeDataset: contextDatasetV21Check, afterDataset: contextDatasetV21Check });
+const contextDatasetV23Check = object({ id: opaqueId, dataAsOf: calendarDate, coverage: boundedText(240), collection: nullable(collectionV23Check) });
+const contextV23Check = object({ ...contextShape, beforeDataset: contextDatasetV23Check, afterDataset: contextDatasetV23Check });
 const runShape = { id: opaqueId, watchId: opaqueId, status: oneOf('running', 'complete', 'failed', 'partial', 'interrupted'), createdAt: date, completedAt: nullable(date), errorCode: nullable(text), usage: object({ modelRequests: integer, toolCalls: integer, inputTokens: integer, outputTokens: integer }) };
 const versionCheck = (version: string) => object({ model: boundedText(1000), prompt: boundedText(1000), schema: oneOf(version) });
 const runV1Check = object({ ...runShape, schemaVersion: oneOf('1.0.0'), input: object({ watch: watchCheck }), signal: nullable(signalCheck), versions: versionCheck('1.0.0') });
 const runV2Check = object({ ...runShape, schemaVersion: oneOf('2.0.0'), input: object({ watch: watchCheck, context: contextCheck }), signal: nullable(signalV2Check), versions: versionCheck('2.0.0') });
 const runV21Check = object({ ...runShape, schemaVersion: oneOf('2.1.0'), input: object({ watch: watchCheck, context: contextV21Check }), signal: nullable(signalV2Check), versions: versionCheck('2.1.0') });
 const runV22Check = object({ ...runShape, schemaVersion: oneOf('2.2.0'), input: object({ watch: watchCheck, context: contextV21Check, comparisonPair: nullable(comparisonPairCheck) }), signal: nullable(signalV2Check), versions: versionCheck('2.2.0') });
+const runV23Check = object({ ...runShape, schemaVersion: oneOf('2.3.0'), input: object({ watch: watchCheck, context: contextV23Check, comparisonPair: nullable(comparisonPairCheck) }), signal: nullable(signalV2Check), versions: versionCheck('2.3.0') });
 const hasVersion = (value: unknown, version: string): boolean => typeof value === 'object' && value !== null && 'schemaVersion' in value && value.schemaVersion === version;
-const runCheck: Check = (value) => { (hasVersion(value, '2.2.0') ? runV22Check : hasVersion(value, '2.1.0') ? runV21Check : hasVersion(value, '2.0.0') ? runV2Check : runV1Check)(value); };
+const runCheck: Check = (value) => { (hasVersion(value, '2.3.0') ? runV23Check : hasVersion(value, '2.2.0') ? runV22Check : hasVersion(value, '2.1.0') ? runV21Check : hasVersion(value, '2.0.0') ? runV2Check : runV1Check)(value); };
 function unique(values: string[]): void { if (new Set(values).size !== values.length) fail(); }
-function validateCollection(dataset: RunContextV21['beforeDataset']): void {
+function validateCollection(dataset: RunContextV23['beforeDataset']): void {
   const collection = dataset.collection;
   if (!collection) return;
   if (collection.commonStartDate > collection.cutoffDate || collection.cutoffDate !== dataset.dataAsOf || !collection.sourceFamilies.length || !collection.limitations.length) fail();
   unique(collection.sourceFamilies);
   if (collection.sourceFamilies.join(',') !== [...collection.sourceFamilies].sort().join(',')) fail();
+  if (collection.kind === 'retrospective_selected_daily_gazettes') {
+    const dates = collection.selectedIssueDates;
+    if (!dates.length || dates[0] !== collection.commonStartDate || dates[dates.length - 1] !== collection.cutoffDate || dates.some((item, index) => index > 0 && item <= dates[index - 1])) fail();
+  }
   if (collection.limitations.some((item) => Array.from(item).some((char) => char.charCodeAt(0) < 32))) fail();
   const { sourceAcquiredFrom: from, sourceAcquiredThrough: through, locallyVerifiedAt: verified, reconstructedAt: reconstructed } = collection;
   if (Date.parse(verified) > Date.parse(reconstructed) || (from === null) !== (through === null)) fail();
@@ -173,14 +198,15 @@ function validateCollection(dataset: RunContextV21['beforeDataset']): void {
   if (collection.cutoffDate > verifiedSourceDate) fail();
   if (from !== null && through !== null && (Date.parse(from) > Date.parse(through) || Date.parse(through) > Date.parse(verified))) fail();
 }
-function validateContext(run: RunV2 | RunV21 | RunV22): void {
+function validateContext(run: RunV2 | RunV21 | RunV22 | RunV23): void {
   const { watch, context } = run.input;
   if (context.entity.id !== watch.entityId || context.category.id !== watch.categoryId || context.beforeDataset.id !== watch.beforeDatasetId || context.afterDataset.id !== watch.afterDatasetId) fail();
-  if (run.schemaVersion === '2.1.0' || run.schemaVersion === '2.2.0') {
+  if (run.schemaVersion === '2.1.0' || run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0') {
     const { beforeDataset, afterDataset } = run.input.context;
     validateCollection(beforeDataset); validateCollection(afterDataset);
     const before = beforeDataset.collection; const after = afterDataset.collection;
-    if (run.signal?.counts.comparable && ((before === null) !== (after === null) || (before && after && (before.commonStartDate !== after.commonStartDate || before.policySha256 !== after.policySha256 || before.sourceFamilies.join(',') !== after.sourceFamilies.join(','))))) fail();
+    if (run.signal?.counts.comparable && ((before === null) !== (after === null) || (before && after && (before.kind !== after.kind || before.commonStartDate !== after.commonStartDate || before.policySha256 !== after.policySha256 || before.sourceFamilies.join(',') !== after.sourceFamilies.join(','))))) fail();
+    if (run.signal?.counts.comparable && before?.kind === 'retrospective_selected_daily_gazettes' && after?.kind === 'retrospective_selected_daily_gazettes' && before.selectedIssueDates.some((date, index) => after.selectedIssueDates[index] !== date)) fail();
   }
   if (!run.signal) return;
   const signal = run.signal;
@@ -209,7 +235,7 @@ function validateContext(run: RunV2 | RunV21 | RunV22): void {
 }
 export function decodeWatch(value: unknown): Watch { watchCheck(value); return value as Watch; }
 export function decodeComparisonPairs(value: unknown, watch: Watch): ComparisonPairs {
-  object({ schemaVersion: oneOf('2.2.0'), comparisonPairs: array(comparisonPairCheck, 100) })(value);
+  object({ schemaVersion: oneOf('2.2.0', '2.3.0'), comparisonPairs: array(comparisonPairCheck, 100) })(value);
   const pairs = value as ComparisonPairs;
   unique(pairs.comparisonPairs.map((pair) => pair.id));
   for (const pair of pairs.comparisonPairs) validateComparisonPair(pair, watch);
@@ -220,7 +246,7 @@ export function decodeRun(value: unknown): Run {
   const run = value as Run;
   if (run.watchId !== run.input.watch.id || (run.status === 'complete' && (!run.signal || !run.completedAt)) || (run.status === 'running' && run.completedAt !== null)) fail();
   if (run.schemaVersion !== '1.0.0') validateContext(run);
-  if (run.schemaVersion === '2.2.0' && run.input.comparisonPair) {
+  if ((run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0') && run.input.comparisonPair) {
     const pair = run.input.comparisonPair;
     validateComparisonPair(pair, run.input.watch);
     if (run.signal?.media.length && (run.signal.media.length !== 2 || !run.signal.media.every((media, index) => sameComparisonMedia(media, pair.media[index])))) fail();
@@ -245,14 +271,14 @@ export function decodeRun(value: unknown): Run {
   return run;
 }
 export function decodeRuns(value: unknown): Run[] {
-  object({ schemaVersion: oneOf('1.0.0', '2.0.0', '2.1.0', '2.2.0'), runs: array(runCheck) })(value);
+  object({ schemaVersion: oneOf('1.0.0', '2.0.0', '2.1.0', '2.2.0', '2.3.0'), runs: array(runCheck) })(value);
   const runs = (value as { runs: unknown[] }).runs.map(decodeRun);
   unique(runs.map((run) => run.id));
   return runs;
 }
 export function decodeBootstrap(value: unknown): Bootstrap {
-  const v2 = hasVersion(value, '2.0.0') || hasVersion(value, '2.1.0') || hasVersion(value, '2.2.0');
-  object({ schemaVersion: v2 ? oneOf('2.0.0', '2.1.0', '2.2.0') : oneOf('1.0.0'), dataMode: v2 ? dataMode : oneOf('fictional', 'public_design'), csrfToken: text,
+  const v2 = hasVersion(value, '2.0.0') || hasVersion(value, '2.1.0') || hasVersion(value, '2.2.0') || hasVersion(value, '2.3.0');
+  object({ schemaVersion: v2 ? oneOf('2.0.0', '2.1.0', '2.2.0', '2.3.0') : oneOf('1.0.0'), dataMode: v2 ? dataMode : oneOf('fictional', 'public_design'), csrfToken: text,
     catalog: object({ entities: array(object({ id: catalogId, name: v2 ? nullable(text) : text })), categories: array(object({ id: catalogId, label: text })), datasets: array(object({ id: opaqueId, dataAsOf: date, coverage: text, sourceFamily: text, recordCount: integer, ...(v2 ? { dataMode } : {}) })), sourceProfiles: array(object({ id: opaqueId, label: text, ...(v2 ? { dataMode } : {}) })) }), watches: array(watchCheck) })(value);
   const bootstrap = value as Bootstrap;
   const { entities, categories, datasets, sourceProfiles } = bootstrap.catalog;

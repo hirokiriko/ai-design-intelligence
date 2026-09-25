@@ -1,15 +1,17 @@
-import type { CollectionContext, Run, RunV2, RunV21, RunV22, SignalV2 } from './contract';
+import type { CollectionContextV23, Run, RunV2, RunV21, RunV22, RunV23, SignalV2 } from './contract';
 import { dataModeLabel, evidenceId, relationLabels } from './labels';
 
 export function EvidenceLinks({ ids }: { ids: string[] }) {
   return <span className="signal-evidence-links">根拠：{ids.length ? ids.map((id) => <a key={id} href={`#${evidenceId(id)}`}>{id}</a>) : '登録なし'}</span>;
 }
 
-function SavedCollection({ label, collection }: { label: string; collection: CollectionContext | null }) {
+function SavedCollection({ label, collection }: { label: string; collection: CollectionContextV23 | null }) {
   if (!collection) return <p className="signal-subtle">{label}：収録集合の作成経緯は未記録です。</p>;
+  const daily = collection.kind === 'retrospective_selected_daily_gazettes';
   return <div className="signal-fact">
-    <h4>{label} · 週次原本からの遡及再構成収録集合</h4>
+    <h4>{label} · {daily ? '選定した日刊公報からの遡及再構成収録集合' : '週次原本からの遡及再構成収録集合'}</h4>
     <p>原本の公開日を基準に、{collection.commonStartDate}から{collection.cutoffDate}までの資料を同じ規則で収録しています。</p>
+    {daily ? <p className="signal-subtle">選定した公報日：{collection.selectedIssueDates.join('、')}。全公報・全件の収録は示しません。</p> : null}
     <p className="signal-retrospective">当時稼働していたサービスの保存状態や、当時の予測実績を示すものではありません。</p>
     <dl className="signal-metadata">
       <div><dt>共通の収録開始日</dt><dd>{collection.commonStartDate}</dd></div>
@@ -31,8 +33,8 @@ export function SavedContext({ run }: { run: Run }) {
     <p className="signal-data-banner">{dataModeLabel(context.dataMode)}<span>この実行に保存された区分です。</span></p>
     <h3>{context.entity.name ?? '企業名不明'} / {context.category.label}</h3>
     <dl className="signal-metadata"><div><dt>分類体系</dt><dd>{context.category.scheme ?? '未確認'}</dd></div><div><dt>比較A · 基準日</dt><dd>{context.beforeDataset.dataAsOf}<small>{context.beforeDataset.coverage}</small></dd></div><div><dt>比較B · 基準日</dt><dd>{context.afterDataset.dataAsOf}<small>{context.afterDataset.coverage}</small></dd></div></dl>
-    {run.schemaVersion === '2.1.0' || run.schemaVersion === '2.2.0' ? <><SavedCollection label="比較A" collection={run.input.context.beforeDataset.collection} /><SavedCollection label="比較B" collection={run.input.context.afterDataset.collection} /></> : null}
-    {run.schemaVersion === '2.2.0' ? <div className="signal-saved-pair"><h4>この実行に保存された比較組</h4>{run.input.comparisonPair ? <><p><strong>{run.input.comparisonPair.label}</strong></p><p>{run.input.comparisonPair.evidence}</p><dl className="signal-metadata">{run.input.comparisonPair.media.map((media) => <div key={media.id}><dt>{media.role === 'comparisonA' ? '比較A' : '比較B'}の対象</dt><dd>{media.label}<small>意匠 {media.recordId} · {media.view ?? '方向不明'} · {media.comparisonStatus}</small></dd></div>)}</dl></> : <p className="signal-subtle">登録済み比較組の選択は保存されていません。現在の候補から過去の入力を補完していません。</p>}</div> : null}
+    {run.schemaVersion === '2.1.0' || run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0' ? <><SavedCollection label="比較A" collection={run.input.context.beforeDataset.collection} /><SavedCollection label="比較B" collection={run.input.context.afterDataset.collection} /></> : null}
+    {run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0' ? <div className="signal-saved-pair"><h4>この実行に保存された比較組</h4>{run.input.comparisonPair ? <><p><strong>{run.input.comparisonPair.label}</strong></p><p>{run.input.comparisonPair.evidence}</p><dl className="signal-metadata">{run.input.comparisonPair.media.map((media) => <div key={media.id}><dt>{media.role === 'comparisonA' ? '比較A' : '比較B'}の対象</dt><dd>{media.label}<small>意匠 {media.recordId} · {media.view ?? '方向不明'} · {media.comparisonStatus}</small></dd></div>)}</dl></> : <p className="signal-subtle">登録済み比較組の選択は保存されていません。現在の候補から過去の入力を補完していません。</p>}</div> : null}
     <h4>確認条件に登録された商品情報</h4>
     {context.knownProducts.length ? <ul>{context.knownProducts.map((product, index) => <li key={index}><strong>{product.name ?? '商品名未確認'}{product.model ? ` / ${product.model}` : ''}</strong><p>{product.evidence}</p><p className="signal-subtle">対応を確認する意匠：{product.recordIds.join('、') || '未登録'}</p></li>)}</ul> : <p className="signal-subtle">商品名・型番は登録されていません。物品名と販売商品名は別の情報です。</p>}
   </section>;
@@ -60,7 +62,7 @@ export function RecordFact({ fact }: { fact: SignalV2['recordFacts'][number] }) 
   return <dl className="signal-metadata"><div><dt>物品名</dt><dd>{fact.articleName ?? '不明'}</dd></div><div><dt>出願人</dt><dd>{fact.applicant.name ?? '不明'}</dd></div><div><dt>登録番号 / 出願番号</dt><dd>{fact.registrationNumber ?? '不明'} / {fact.applicationNumber ?? '不明'}</dd></div><div><dt>分類</dt><dd>{fact.classifications.map((item) => `${item.scheme} ${item.code}${item.label ? ` ${item.label}` : ''}`).join(' / ') || '未収録'}</dd></div><div><dt>出願日 / 公報日</dt><dd>{fact.applicationDate ?? '不明'} / {fact.gazetteDate ?? '不明'}</dd></div><div><dt>意匠の説明</dt><dd>{fact.description ?? '説明は未収録'}</dd></div><div><dt>物品の説明</dt><dd>{fact.articleDescription ?? '説明は未収録'}</dd></div><div><dt>データの検証状態</dt><dd>{{ pass: '検証済み', warning: '注意事項あり', quarantined: '保留' }[fact.quality]}</dd></div><div><dt>採用理由</dt><dd>{{ comparison_pair: '画像の比較対象', newly_observed: '収録範囲での新規観測', scope_sample: '対象範囲からの代表資料' }[fact.selectionReason]}</dd></div></dl>;
 }
 
-export function DiscoveryDetails({ run }: { run: RunV2 | RunV21 | RunV22 }) {
+export function DiscoveryDetails({ run }: { run: RunV2 | RunV21 | RunV22 | RunV23 }) {
   const discovery = run.signal?.discovery;
   if (!discovery) return null;
   return <details className="signal-details"><summary>公式資料の探索範囲と不足</summary><p>{discovery.state === 'not_started' ? '公式資料の探索は開始していません。資料がないことを意味しません。' : '登録された範囲の探索処理は終了しています。個別意匠との対応確認を意味しません。'}</p><p>確認リンク {discovery.scannedLinks}件 · 対象候補 {discovery.eligibleCandidates}件 · 上限等による省略 {discovery.omittedCandidates}件</p><ul>{discovery.limitations.map((text, index) => <li key={index}>{text}</li>)}</ul>{discovery.candidates.map((item) => <div className="signal-fact" key={item.id}><a href={item.url} target="_blank" rel="noopener noreferrer">{item.title || 'タイトル不明'} ↗</a><p>発表日：{item.publishedAt ?? '不明'} · {{ in_period: '対象期間内', outside_period: '対象期間外', unknown: '日付不明' }[item.dateStatus]}</p><p>{item.selectionReason}</p></div>)}</details>;

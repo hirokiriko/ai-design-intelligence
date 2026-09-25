@@ -8,6 +8,7 @@ import './signals.css';
 
 interface Props { api?: SignalApi; renderAnalysis?: (datasetId: string) => ReactNode }
 type PairState = 'loading' | 'ready' | 'error';
+const supportsPairs = (version: Bootstrap['schemaVersion'] | undefined) => version === '2.2.0' || version === '2.3.0';
 const selectedRunId = () => typeof window === 'undefined' ? null : new URL(window.location.href).searchParams.get('run');
 function saveRunLocation(id: string | null): void {
   const url = new URL(window.location.href);
@@ -39,16 +40,17 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
   const request = useRef<{ watchId: string; intent: 'check' | 'reanalyze'; comparisonPairId: string; id: string } | null>(null);
   const selectedWatch = bootstrap?.watches.find((item) => item.id === watchId);
   const actionPending = busy || historyState === 'loading';
-  const selectionReady = bootstrap?.schemaVersion !== '2.2.0' || (pairState === 'ready' && (comparisonPairs.length === 0 || comparisonPairs.some((pair) => pair.id === selectedPairId)));
+  const selectionReady = !supportsPairs(bootstrap?.schemaVersion) || (pairState === 'ready' && (comparisonPairs.length === 0 || comparisonPairs.some((pair) => pair.id === selectedPairId)));
 
   const loadComparisonPairs = useCallback(async (watch: Watch | undefined, version: Bootstrap['schemaVersion']) => {
     const current = ++pairRevision.current;
     setComparisonPairs([]); setSelectedPairId('');
-    if (!watch || version !== '2.2.0') { setPairState('ready'); return; }
+    if (!watch || !supportsPairs(version)) { setPairState('ready'); return; }
     setPairState('loading');
     try {
       const loaded = await api.comparisonPairs(watch);
       if (current !== pairRevision.current) return;
+      if (loaded.schemaVersion !== version) throw new ContractError();
       setComparisonPairs(loaded.comparisonPairs); setPairState('ready');
     } catch {
       if (current === pairRevision.current) setPairState('error');
@@ -118,7 +120,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
   };
   const startRun = async (intent: 'check' | 'reanalyze') => {
     if (!bootstrap || !selectedWatch || mutation.current || historyState === 'loading' || !selectionReady) return;
-    const comparisonPairId = bootstrap.schemaVersion === '2.2.0' ? selectedPairId : '';
+    const comparisonPairId = supportsPairs(bootstrap.schemaVersion) ? selectedPairId : '';
     mutation.current = true; revision.current += 1; setBusy(true); setError('');
     setNotice('バックエンドが差分・画像観察・登録公式サイトの確認を実行しています。');
     if (!request.current || request.current.watchId !== watchId || request.current.intent !== intent || request.current.comparisonPairId !== comparisonPairId) request.current = { watchId, intent, comparisonPairId, id: crypto.randomUUID() };
@@ -154,14 +156,14 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
         <aside className="signal-sidebar" aria-label="保存条件と履歴">
           <section className="signal-panel"><p className="signal-eyebrow">確認条件</p><h2>保存した確認条件</h2>
             {bootstrap.watches.length ? <label className="signal-field">確認する条件<select value={watchId} disabled={busy} onChange={(event) => changeWatch(event.target.value)}>{bootstrap.watches.map((watch) => <option key={watch.id} value={watch.id}>{watch.name}</option>)}</select></label> : <p>最初の確認条件を保存してください。</p>}
-            {selectedWatch ? <><WatchSummary watch={selectedWatch} bootstrap={bootstrap} />{bootstrap.schemaVersion === '2.2.0' ? <ComparisonPairSelector pairs={comparisonPairs} state={pairState} selectedId={selectedPairId} busy={actionPending} onSelect={setSelectedPairId} onReload={() => void loadComparisonPairs(selectedWatch, bootstrap.schemaVersion)} /> : null}<button className="signal-button signal-primary" type="button" disabled={actionPending || !selectionReady || run?.status === 'running'} onClick={() => void startRun('check')}>{busy ? '確認しています…' : '更新を確認'}</button><p className="signal-subtle">{bootstrap.schemaVersion === '2.2.0' ? '同じ条件・同じデータ・同じ比較組の確認済み結果がある場合は、保存結果を表示します。比較組の選択や変更だけではAIを実行しません。' : '同じ条件・同じデータの確認済み結果がある場合は、保存結果を表示します。'}</p></> : null}
+            {selectedWatch ? <><WatchSummary watch={selectedWatch} bootstrap={bootstrap} />{supportsPairs(bootstrap.schemaVersion) ? <ComparisonPairSelector pairs={comparisonPairs} state={pairState} selectedId={selectedPairId} busy={actionPending} onSelect={setSelectedPairId} onReload={() => void loadComparisonPairs(selectedWatch, bootstrap.schemaVersion)} /> : null}<button className="signal-button signal-primary" type="button" disabled={actionPending || !selectionReady || run?.status === 'running'} onClick={() => void startRun('check')}>{busy ? '確認しています…' : '更新を確認'}</button><p className="signal-subtle">{supportsPairs(bootstrap.schemaVersion) ? '同じ条件・同じデータ・同じ比較組の確認済み結果がある場合は、保存結果を表示します。比較組の選択や変更だけではAIを実行しません。' : '同じ条件・同じデータの確認済み結果がある場合は、保存結果を表示します。'}</p></> : null}
             {selectedWatch ? <button className="signal-text-button" type="button" disabled={actionPending} onClick={() => void refreshDatasets()}>同じ企業・商品条件で収録データを選び直す</button> : null}
             <button className="signal-text-button" type="button" disabled={busy} aria-expanded={showCreate} onClick={() => setShowCreate(!showCreate)}>{showCreate ? '条件の作成を閉じる' : '＋ 確認条件を保存'}</button>
             {showCreate || !bootstrap.watches.length ? <WatchForm key={`${selectedWatch?.id ?? 'new'}-${createRevision}`} bootstrap={bootstrap} seed={selectedWatch} busy={actionPending} onSave={saveWatch} /> : null}
           </section>
           <section className="signal-panel"><h2>保存履歴</h2><button className="signal-text-button" type="button" disabled={busy || !watchId} onClick={() => void loadHistory(watchId, true)}>履歴を再取得</button>
             <SignalHistory runs={runs} selectedId={run?.id} state={historyState} disabled={actionPending} onSelect={(id) => void selectRun(id)} />
-            {run && run.status !== 'running' ? <details className="signal-details"><summary>新しい実行として確認し直す</summary><p className="signal-subtle">{bootstrap.schemaVersion === '2.2.0' ? '過去の結果を残して、上で選んだ比較組でAI・公式確認を新しく実行します。' : '過去の結果を残して、AI・公式確認を新しく実行します。'}</p><button className="signal-button" type="button" disabled={actionPending || !selectionReady} onClick={() => void startRun('reanalyze')}>別の実行として再確認</button></details> : null}
+            {run && run.status !== 'running' ? <details className="signal-details"><summary>新しい実行として確認し直す</summary><p className="signal-subtle">{supportsPairs(bootstrap.schemaVersion) ? '過去の結果を残して、上で選んだ比較組でAI・公式確認を新しく実行します。' : '過去の結果を残して、AI・公式確認を新しく実行します。'}</p><button className="signal-button" type="button" disabled={actionPending || !selectionReady} onClick={() => void startRun('reanalyze')}>別の実行として再確認</button></details> : null}
           </section>
         </aside>
         <div className="signal-content">{run ? <SignalResult key={run.id} run={run} /> : <section className="signal-panel signal-welcome"><span aria-hidden="true" className="signal-welcome-symbol">↗</span><h2>気になる変化を、根拠とともに。</h2><p>保存条件を選び「更新を確認」を押してください。</p><ol><li>意匠データの差分</li><li>画像からの観察候補</li><li>公式資料と関連仮説</li></ol><p className="signal-subtle">変化なし・資料不足も結果として保存されます。</p></section>}</div>

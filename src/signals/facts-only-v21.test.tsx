@@ -43,6 +43,8 @@ describe('metadata-only public facts result', () => {
     expect(html).toContain('公開書誌事項の比較（原文・図面なし）');
     expect(html).toContain('実行時に記事本文・図面を取得せず、AI・Vertexへ送信していません');
     expect(html).toContain('手動確認した参照先・URL');
+    expect(html).toContain('手動確認した参照先 1件 · 自動探索の確認リンク 0件');
+    expect(html).not.toContain('手動確認した参照先 0件');
     expect(html).toContain('公式URLは保存時の参照先を示す文字情報です');
     expect(html).toContain(run.signal!.sources[0].url);
     expect(html).not.toContain(`href="${run.signal!.sources[0].url}"`);

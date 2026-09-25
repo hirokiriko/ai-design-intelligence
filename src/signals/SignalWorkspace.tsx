@@ -42,6 +42,13 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
   const actionPending = busy || historyState === 'loading';
   const selectionReady = !supportsPairs(bootstrap?.schemaVersion) || (pairState === 'ready' && (comparisonPairs.length === 0 || comparisonPairs.some((pair) => pair.id === selectedPairId)));
 
+  const recoverError = useCallback((failure: unknown) => {
+    setError(message(failure));
+    if (failure instanceof SignalApiError && ['401', '403'].includes(failure.code)) {
+      setBootstrap(null); setRuns([]); setRun(null);
+    }
+  }, []);
+
   const loadComparisonPairs = useCallback(async (watch: Watch | undefined, version: Bootstrap['schemaVersion']) => {
     const current = ++pairRevision.current;
     setComparisonPairs([]); setSelectedPairId('');
@@ -52,10 +59,13 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
       if (current !== pairRevision.current) return;
       if (loaded.schemaVersion !== version) throw new ContractError();
       setComparisonPairs(loaded.comparisonPairs); setPairState('ready');
-    } catch {
-      if (current === pairRevision.current) setPairState('error');
+    } catch (failure) {
+      if (current === pairRevision.current) {
+        setPairState('error');
+        if (failure instanceof SignalApiError && ['401', '403'].includes(failure.code)) recoverError(failure);
+      }
     }
-  }, [api]);
+  }, [api, recoverError]);
 
   useEffect(() => {
     let active = true;
@@ -74,12 +84,6 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
     return () => { active = false; revision.current += 1; pairRevision.current += 1; };
   }, [api, loadComparisonPairs]);
 
-  const recoverError = (failure: unknown) => {
-    setError(message(failure));
-    if (failure instanceof SignalApiError && ['401', '403'].includes(failure.code)) {
-      setBootstrap(null); setRuns([]); setRun(null);
-    }
-  };
   const loadHistory = async (id: string, preserveRun = false) => {
     const current = ++revision.current;
     setError(''); setHistoryState('loading'); setNotice('保存履歴を読み込んでいます。AIは実行しません。');

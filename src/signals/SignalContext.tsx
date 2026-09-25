@@ -76,8 +76,9 @@ export function RecordFact({ fact }: { fact: SignalV2['recordFacts'][number] }) 
 }
 
 export function DiscoveryDetails({ run }: { run: RunV2 | RunV21 | RunV22 | RunV23 }) {
-  const discovery = run.signal?.discovery;
+  const signal = run.signal;
+  const discovery = signal?.discovery;
   if (!discovery) return null;
   const factsOnly = factsOnlyRun(run);
-  return <details className="signal-details"><summary>公式資料の探索範囲と不足</summary><p>{discovery.state === 'not_started' ? '公式資料の探索は開始していません。資料がないことを意味しません。' : '登録された範囲の探索処理は終了しています。個別意匠との対応確認を意味しません。'}</p><p>{factsOnly ? '手動確認した参照先' : '確認リンク'} {discovery.scannedLinks}件 · 対象候補 {discovery.eligibleCandidates}件 · 上限等による省略 {discovery.omittedCandidates}件</p><ul>{discovery.limitations.map((text, index) => <li key={index}>{text}</li>)}</ul>{discovery.candidates.map((item) => <div className="signal-fact" key={item.id}>{factsOnly ? <><strong>{item.title || 'タイトル不明'}</strong><p className="signal-subtle">公式URL：{item.url}</p></> : <a href={item.url} target="_blank" rel="noopener noreferrer">{item.title || 'タイトル不明'} ↗</a>}<p>発表日：{item.publishedAt ?? '不明'} · {{ in_period: '対象期間内', outside_period: '対象期間外', unknown: '日付不明' }[item.dateStatus]}</p><p>{item.selectionReason}</p></div>)}</details>;
+  return <details className="signal-details"><summary>公式資料の探索範囲と不足</summary><p>{factsOnly ? '公式記事の自動探索・本文取得は行っていません。手動で確認した参照先は下に表示します。' : discovery.state === 'not_started' ? '公式資料の探索は開始していません。資料がないことを意味しません。' : '登録された範囲の探索処理は終了しています。個別意匠との対応確認を意味しません。'}</p><p>{factsOnly ? `手動確認した参照先 ${signal.sources.length}件 · 自動探索の確認リンク ${discovery.scannedLinks}件` : `確認リンク ${discovery.scannedLinks}件 · 対象候補 ${discovery.eligibleCandidates}件 · 上限等による省略 ${discovery.omittedCandidates}件`}</p><ul>{discovery.limitations.map((text, index) => <li key={index}>{text}</li>)}</ul>{discovery.candidates.map((item) => <div className="signal-fact" key={item.id}>{factsOnly ? <><strong>{item.title || 'タイトル不明'}</strong><p className="signal-subtle">公式URL：{item.url}</p></> : <a href={item.url} target="_blank" rel="noopener noreferrer">{item.title || 'タイトル不明'} ↗</a>}<p>発表日：{item.publishedAt ?? '不明'} · {{ in_period: '対象期間内', outside_period: '対象期間外', unknown: '日付不明' }[item.dateStatus]}</p><p>{item.selectionReason}</p></div>)}</details>;
 }

@@ -101,6 +101,15 @@ describe('signal facts and saved result presentation', () => {
     expect(html).not.toContain(status);
     expect(run.signal!.media[0].comparisonStatus).toBe(status);
   });
+  it('shows a Japanese status for an unknown saved comparison code without changing the run', () => {
+    const run = structuredClone(fictionalRunV22);
+    for (const media of run.input.comparisonPair!.media) media.comparisonStatus = 'orientation_unverified';
+    for (const media of run.signal!.media) media.comparisonStatus = 'orientation_unverified';
+    const html = renderToStaticMarkup(createElement(SignalResult, { run }));
+    expect(html).toContain('比較条件の詳細は未確認');
+    expect(html).not.toContain('orientation_unverified');
+    expect(run.input.comparisonPair!.media[0].comparisonStatus).toBe('orientation_unverified');
+  });
   it('uses saved public labels and one sentence boundary without exposing record or dataset IDs', () => {
     const run = structuredClone(fictionalRunV2);
     run.signal!.coverage.before = '架空比較Aの範囲。 ';

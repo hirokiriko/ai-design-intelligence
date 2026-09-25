@@ -34,6 +34,13 @@ describe('signal same-origin API boundary', () => {
     expect(fetcher.mock.calls[1][0]).toBe(`/api/v1/watches/${watch.id}/runs`);
     expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({ intent: 'check', requestId: 'selected-request', comparisonPairId: 'fixture-pair-one' });
   });
+  it.each([401, 403])('preserves comparison-pair authentication status %s for reauthentication', async (status) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('private backend details', { status })));
+    await expect(signalApi.comparisonPairs(fictionalRunV22.input.watch)).rejects.toMatchObject({
+      code: String(status),
+      message: expect.stringContaining('再読み込み'),
+    });
+  });
   it.each([401, 403, 404, 409, 429, 500])('handles HTTP %s without showing private error bodies', async (status) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('private backend details', { status })));
     await expect(signalApi.bootstrap()).rejects.toBeInstanceOf(SignalApiError);

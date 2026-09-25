@@ -47,13 +47,13 @@ export function ResultOverview({ run }: { run: Run }) {
   return <section className="signal-overview" aria-label="確認結果の概要"><h3>今回わかったこと</h3>
     <div><h4>注目する企業・商品領域</h4><p>{context ? `${context.entity.name ?? '企業名不明'} / ${context.category.label}` : run.input.watch.name}</p></div>
     <div><h4>収録範囲の新規観測・変化</h4><p>{signal.counts.comparable ? `比較Bの対象${signal.counts.after}件、収録範囲での新規観測${signal.counts.newlyObserved}件。` : '収録条件が異なるため、前後の増減を比較できません。'}</p><a href="#signal-design-facts">意匠データの事実へ</a></div>
-    <div><h4>関連する公式記載</h4>{signal.officialFacts.length ? <ul>{signal.officialFacts.map((fact) => <li key={fact.id}><a href={`#${evidenceId(fact.id)}`}>{fact.text}</a></li>)}</ul> : <p>{factsOnlyRun(run) ? '記事本文は取得・分析していません。手動確認した出典リンクは下に表示します。' : '今回の結果に採用された公式記載はありません。未発見・未取得の理由は資料と処理の詳細で確認できます。'}</p>}</div>
+    <div><h4>{factsOnlyRun(run) ? '参照先と記事本文' : '関連する公式記載'}</h4>{signal.officialFacts.length ? <ul>{signal.officialFacts.map((fact) => <li key={fact.id}><a href={`#${evidenceId(fact.id)}`}>{fact.text}</a></li>)}</ul> : <p>{factsOnlyRun(run) ? '記事本文は取得・分析していません。手動確認した参照リンクは下に表示します。' : '今回の結果に採用された公式記載はありません。未発見・未取得の理由は資料と処理の詳細で確認できます。'}</p>}</div>
     <div><h4>未確認事項・次に確認する資料</h4>{signal.questionsForHuman.length ? <ul>{signal.questionsForHuman.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>追加の確認事項は登録されていません。</p>}{signal.limitations.length ? <ul>{signal.limitations.map((text, index) => <li key={index}>{text}</li>)}</ul> : null}</div>
   </section>;
 }
 
-export function Relationships({ signal }: { signal: SignalV2 }) {
-  return <section><h3>個別意匠と商品の対応</h3><p className="signal-subtle">公式サイトの記載と、個別意匠が同じ製品であることの確認を分けています。</p>
+export function Relationships({ signal, factsOnly = false }: { signal: SignalV2; factsOnly?: boolean }) {
+  return <section><h3>個別意匠と商品の対応</h3><p className="signal-subtle">{factsOnly ? '参照リンクと個別意匠が同じ製品を指すことは確認していません。' : '公式サイトの記載と、個別意匠が同じ製品であることの確認を分けています。'}</p>
     {signal.relationships.length ? signal.relationships.map((item) => <article className={`signal-fact signal-relation relation-${item.relation}`} key={item.id} id={`signal-relation-${encodeURIComponent(item.id)}`} tabIndex={-1}><h4>{relationLabels[item.relation]}</h4><p>{item.summary}</p><div><strong>支持する根拠</strong><EvidenceLinks ids={item.supportingEvidenceIds} /></div><div><strong>不一致・反証の根拠</strong><EvidenceLinks ids={item.opposingEvidenceIds} /></div>{item.missingEvidence.length ? <><h5>不足している根拠</h5><ul>{item.missingEvidence.map((text, index) => <li key={index}>{text}</li>)}</ul></> : null}</article>) : <p>個別意匠と商品の対応は評価されていません。</p>}
   </section>;
 }

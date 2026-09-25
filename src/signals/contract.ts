@@ -188,7 +188,9 @@ function validateFactsOnlyRun(run: Run): void {
   if (factualRun.input.context.dataMode !== 'approved_public' || Object.values(factualRun.usage).some((value) => value !== 0)) fail();
   if (!factualRun.signal) return;
   const signal = factualRun.signal;
-  if (signal.media.length || signal.visualObservations.length || signal.officialFacts.length || signal.toolEvents.length || signal.discovery.state !== 'not_started') fail();
+  if (signal.media.length || signal.visualObservations.length || signal.officialFacts.length || signal.hypotheses.length || signal.toolEvents.length || signal.discovery.state !== 'not_started' || signal.discovery.scannedLinks !== 0 || signal.discovery.eligibleCandidates !== 0 || signal.discovery.omittedCandidates !== 0 || signal.discovery.candidates.length) fail();
+  if (signal.relationships.some((relation) => relation.relation !== 'unknown' || relation.supportingEvidenceIds.length || relation.opposingEvidenceIds.length)) fail();
+  if (factualRun.input.context.knownProducts.length) fail();
   if (signal.recordFacts.some((fact) => fact.description !== null || fact.articleDescription !== null)) fail();
   for (const source of signal.sources) {
     if (source.extractionVersion !== 'manual-public-fact-1.0.0' || source.excerpt !== '' || source.extractedChars !== 0 || source.modelVisibleChars !== 0 || source.truncated || source.bodyHash !== emptySha256 || source.contentHash !== emptySha256) fail();

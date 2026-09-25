@@ -42,7 +42,7 @@ describe('metadata-only public facts result', () => {
     const history = renderToStaticMarkup(createElement(SignalHistory, { runs: [run], state: 'ready', disabled: false, onSelect: () => undefined }));
     expect(html).toContain('公開書誌事項の比較（原文・図面なし）');
     expect(html).toContain('実行時に記事本文・図面を取得せず、AI・Vertexへ送信していません');
-    expect(html).toContain('手動確認した公式資料のリンク');
+    expect(html).toContain('手動確認した参照リンク');
     expect(html).toContain('手動確認日時');
     expect(html).toContain('記事本文・画像は保存せず');
     expect(html).not.toContain('AIが確認した抜粋');
@@ -61,5 +61,20 @@ describe('metadata-only public facts result', () => {
     const mediaRun = fictionalFactsOnlyRun();
     mediaRun.signal!.media = structuredClone(fictionalRunV2.signal!.media);
     expect(() => decodeRun(mediaRun)).toThrow();
+    const claimRun = fictionalFactsOnlyRun();
+    claimRun.signal!.relationships = [{ id: 'relation-claim', relation: 'direct', summary: '架空の直接対応', supportingEvidenceIds: ['fact-1'], opposingEvidenceIds: [], missingEvidence: [] }];
+    expect(() => decodeRun(claimRun)).toThrow();
+    const hypothesisRun = fictionalFactsOnlyRun();
+    hypothesisRun.signal!.hypotheses = [{ id: 'hypothesis-claim', text: '架空の関連仮説', evidenceIds: ['fact-1'], limitations: [] }];
+    expect(() => decodeRun(hypothesisRun)).toThrow();
+  });
+
+  it('does not call a deterministic failure an AI failure', () => {
+    const run = fictionalFactsOnlyRun();
+    run.status = 'failed';
+    run.signal = null;
+    const html = renderToStaticMarkup(createElement(SignalResult, { run: decodeRun(run) }));
+    expect(html).toContain('確認処理の失敗');
+    expect(html).not.toContain('API・AI処理の失敗');
   });
 });

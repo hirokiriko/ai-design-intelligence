@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 import { signalApi, SignalApiError, type SignalApi } from './api';
 import { ContractError, type Bootstrap, type ComparisonPair, type Run, type Watch, type WatchInput } from './contract';
 import { SignalResult } from './SignalResult';
-import { dataModeLabel, factsOnlyRun, runStatusLabel } from './labels';
+import { comparisonStatusLabel, dataModeLabel, factsOnlyRun, runStatusLabel } from './labels';
 import { SignalHistory, type HistoryState } from './SignalHistory';
 import './signals.css';
 
@@ -173,14 +173,14 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
   </div>;
 }
 
-function ComparisonPairSelector({ pairs, state, selectedId, busy, onSelect, onReload }: { pairs: ComparisonPair[]; state: PairState; selectedId: string; busy: boolean; onSelect: (id: string) => void; onReload: () => void }) {
+export function ComparisonPairSelector({ pairs, state, selectedId, busy, onSelect, onReload }: { pairs: ComparisonPair[]; state: PairState; selectedId: string; busy: boolean; onSelect: (id: string) => void; onReload: () => void }) {
   const selected = pairs.find((pair) => pair.id === selectedId);
   return <div className="signal-pair-selector"><p className="signal-subtle">次の実行で使う登録済み比較組を選択します。閲覧中の保存結果は変わりません。</p>
     {state === 'loading' ? <p role="status">比較組の候補を読み込んでいます。</p> : null}
     {state === 'error' ? <div role="alert" className="signal-error"><p>比較組の候補を確認できません。実行前に再取得してください。</p><button className="signal-button" type="button" disabled={busy} onClick={onReload}>比較組を再取得</button></div> : null}
     {state === 'ready' && pairs.length === 0 ? <p className="signal-subtle">この条件で選択できる比較組はありません。画像がない結果も保存できます。</p> : null}
     {state === 'ready' && pairs.length > 0 ? <label className="signal-field">次の実行に使う比較組<select value={selectedId} required disabled={busy} onChange={(event) => onSelect(event.target.value)}><option value="">比較組を選択してください</option>{pairs.map((pair) => <option key={pair.id} value={pair.id}>{pair.label}</option>)}</select></label> : null}
-    {selected ? <dl className="signal-metadata"><div><dt>登録時の比較条件・根拠</dt><dd>{selected.evidence}</dd></div>{selected.media.map((media) => <div key={media.id}><dt>{media.role === 'comparisonA' ? '比較A' : '比較B'}の対象</dt><dd>{media.label}<small>{media.view ?? '方向不明'} · {media.comparisonStatus}</small></dd></div>)}</dl> : null}
+    {selected ? <dl className="signal-metadata"><div><dt>登録時の比較条件・根拠</dt><dd>{selected.evidence}</dd></div>{selected.media.map((media) => <div key={media.id}><dt>{media.role === 'comparisonA' ? '比較A' : '比較B'}の対象</dt><dd>{media.label}<small>{media.view ?? '方向不明'} · {comparisonStatusLabel(media.comparisonStatus)}</small></dd></div>)}</dl> : null}
   </div>;
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Run, Signal, SignalV2 } from './contract';
-import { comparisonCoverageSummary, designFactFieldLabel, designFactText, evidenceId, factsOnlyRun, recordDisplayLabel, runStatusLabel } from './labels';
+import { comparisonCoverageSummary, comparisonStatusLabel, designFactFieldLabel, designFactText, evidenceId, factsOnlyRun, recordDisplayLabel, runStatusLabel } from './labels';
 import { SignalRecordEvidence } from './SignalRecordEvidence';
 import { DiscoveryDetails, EvidenceLinks, RecordFact, Relationships, ResultOverview, SavedContext } from './SignalContext';
 
@@ -15,16 +15,16 @@ function MediaCard({ media, run }: { media: Signal['media'][number]; run: Run })
   return <figure id={evidenceId(media.id)} className="signal-media-card" tabIndex={-1}>
     <figcaption><strong>{media.role === 'comparisonA' ? '比較A' : '比較B'} · {media.label}</strong></figcaption>
     {failed ? <p role="status">画像を取得できません。認証または資料の配置を確認してください。</p> : <button className="signal-image-button" type="button" onClick={() => dialog.current?.showModal()} aria-label={`${media.label}を拡大`}>
-      <img src={path} width={media.width} height={media.height} alt={`${media.label}。${media.view ?? '方向不明'}。${media.comparisonStatus}`} onError={() => setFailed(true)} />
+      <img src={path} width={media.width} height={media.height} alt={`${media.label}。${media.view ?? '方向不明'}。${comparisonStatusLabel(media.comparisonStatus)}`} onError={() => setFailed(true)} />
       <span>画像を拡大</span>
     </button>}
-    <dl className="signal-metadata"><div><dt>登録番号</dt><dd>{record?.registrationNumber ?? '不明'}</dd></div><div><dt>公報日</dt><dd>{media.gazetteDate ?? '不明'}</dd></div><div><dt>出願日</dt><dd>{media.applicationDate ?? '不明'}</dd></div><div><dt>方向・対応条件</dt><dd>{media.view ?? '方向不明'} / {media.comparisonStatus}</dd></div><div><dt>情報源・利用条件</dt><dd>{media.sourceLabel} / {media.permission}</dd></div></dl>
+    <dl className="signal-metadata"><div><dt>登録番号</dt><dd>{record?.registrationNumber ?? '不明'}</dd></div><div><dt>公報日</dt><dd>{media.gazetteDate ?? '不明'}</dd></div><div><dt>出願日</dt><dd>{media.applicationDate ?? '不明'}</dd></div><div><dt>方向・対応条件</dt><dd>{media.view ?? '方向不明'} / {comparisonStatusLabel(media.comparisonStatus)}</dd></div><div><dt>情報源・利用条件</dt><dd>{media.sourceLabel} / {media.permission}</dd></div></dl>
     <SignalRecordEvidence recordId={media.recordId} watch={run.input.watch} label={recordDisplayLabel(record, media.label)} />
     <dialog ref={dialog} className="signal-image-dialog" aria-label={`${media.label}の拡大画像`}>
       <form method="dialog"><button className="signal-button" autoFocus>閉じる</button></form>
       <p><strong>{media.role === 'comparisonA' ? '比較A' : '比較B'} · {media.label}</strong></p>
       <p className="signal-subtle">形状比較とAI観察候補の内容を確かめるための根拠資料です。比較A / Bは資料の役割であり、商品の新旧世代や発売順を示しません。</p>
-      <dl className="signal-metadata"><div><dt>情報源・利用条件</dt><dd>{media.sourceLabel} / {media.permission}</dd></div><div><dt>物品名 / 登録番号</dt><dd>{record?.articleName ?? media.label} / {record?.registrationNumber ?? '不明'}</dd></div><div><dt>公報日 / 出願日</dt><dd>{media.gazetteDate ?? '不明'} / {media.applicationDate ?? '不明'}</dd></div><div><dt>方向・対応条件</dt><dd>{media.view ?? '方向不明'} / {media.comparisonStatus}</dd></div></dl>
+      <dl className="signal-metadata"><div><dt>情報源・利用条件</dt><dd>{media.sourceLabel} / {media.permission}</dd></div><div><dt>物品名 / 登録番号</dt><dd>{record?.articleName ?? media.label} / {record?.registrationNumber ?? '不明'}</dd></div><div><dt>公報日 / 出願日</dt><dd>{media.gazetteDate ?? '不明'} / {media.applicationDate ?? '不明'}</dd></div><div><dt>方向・対応条件</dt><dd>{media.view ?? '方向不明'} / {comparisonStatusLabel(media.comparisonStatus)}</dd></div></dl>
       {!failed ? <img src={path} alt={media.label} /> : null}
     </dialog>
   </figure>;

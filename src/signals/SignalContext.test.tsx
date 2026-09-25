@@ -2,6 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { SignalResult } from './SignalResult';
+import { SavedContext } from './SignalContext';
 import { SignalHistory } from './SignalHistory';
 import { fictionalRun, fictionalRunV2 } from './fixtures';
 import { fictionalRunV22 } from './fixtures-v22';
@@ -31,6 +32,14 @@ describe('saved company and evidence context', () => {
     expect(html).toContain('比較Bの対象');
     run.input.comparisonPair = null;
     expect(renderToStaticMarkup(createElement(SignalResult, { run }))).toContain('現在の候補から過去の入力を補完していません');
+  });
+  it('explains the saved fictional comparison status without rewriting the saved input', () => {
+    const run = structuredClone(fictionalRunV22);
+    const status = run.input.comparisonPair!.media[0].comparisonStatus;
+    const html = renderToStaticMarkup(createElement(SavedContext, { run }));
+    expect(html).toContain('管理者が架空資料を対応づけ済み（商品の新旧世代は未確認）');
+    expect(html).not.toContain(status);
+    expect(run.input.comparisonPair!.media[0].comparisonStatus).toBe(status);
   });
   it('displays reconstructed collection limits and unknown acquisition without changing saved counts', () => {
     const run = decodeRun(backendReconstruction);

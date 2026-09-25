@@ -4,6 +4,10 @@ export const runLabels: Record<Run['status'], string> = {
   running: '進行中', complete: '処理終了', partial: '一部完了', failed: 'API・AI処理の失敗', interrupted: '中断',
 };
 export const dataModeLabel = (mode: DataMode): string => mode === 'approved_public' ? '公開情報由来のデータ' : '架空データ · 実在の企業・製品ではありません';
+export const comparisonStatusLabel = (status: string): string =>
+  status === 'administrator_matched_fixture_not_product_generations'
+    ? '管理者が架空資料を対応づけ済み（商品の新旧世代は未確認）'
+    : status;
 export const factsOnlyRun = (run: Run): boolean => run.versions.model === 'facts-only-deterministic';
 export const runStatusLabel = (run: Run): string => factsOnlyRun(run) && run.status === 'failed' ? '確認処理の失敗' : runLabels[run.status];
 export const evidenceId = (id: string): string => `signal-evidence-${Array.from(id, (character) => character.codePointAt(0)!.toString(16)).join('-')}`;

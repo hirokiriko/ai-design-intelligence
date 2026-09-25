@@ -1,5 +1,5 @@
 import type { CollectionContextV23, Run, RunV2, RunV21, RunV22, RunV23, Signal, SignalV2 } from './contract';
-import { classificationSchemeLabel, dataModeLabel, evidenceId, factsOnlyRun, recordDisplayLabel, relationLabels } from './labels';
+import { classificationSchemeLabel, comparisonStatusLabel, dataModeLabel, evidenceId, factsOnlyRun, recordDisplayLabel, relationLabels } from './labels';
 
 function evidenceLabel(signal: Signal, id: string): string {
   const design = signal.designFacts.findIndex((item) => item.id === id);
@@ -47,7 +47,7 @@ export function SavedContext({ run }: { run: Run }) {
     <h3>{context.entity.name ?? '企業名不明'} / {context.category.label}</h3>
     <dl className="signal-metadata"><div><dt>分類体系</dt><dd>{classificationSchemeLabel(context.category.scheme)}</dd></div><div><dt>比較A · 基準日</dt><dd>{context.beforeDataset.dataAsOf}<small>{context.beforeDataset.coverage}</small></dd></div><div><dt>比較B · 基準日</dt><dd>{context.afterDataset.dataAsOf}<small>{context.afterDataset.coverage}</small></dd></div></dl>
     {run.schemaVersion === '2.1.0' || run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0' ? <><SavedCollection label="比較A" collection={run.input.context.beforeDataset.collection} /><SavedCollection label="比較B" collection={run.input.context.afterDataset.collection} /></> : null}
-    {run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0' ? <div className="signal-saved-pair"><h4>この実行に保存された比較組</h4>{run.input.comparisonPair ? <><p><strong>{run.input.comparisonPair.label}</strong></p><p>{run.input.comparisonPair.evidence}</p><dl className="signal-metadata">{run.input.comparisonPair.media.map((media) => <div key={media.id}><dt>{media.role === 'comparisonA' ? '比較A' : '比較B'}の対象</dt><dd>{media.label}<small>{media.view ?? '方向不明'} · {media.comparisonStatus}</small></dd></div>)}</dl></> : <p className="signal-subtle">登録済み比較組の選択は保存されていません。現在の候補から過去の入力を補完していません。</p>}</div> : null}
+    {run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0' ? <div className="signal-saved-pair"><h4>この実行に保存された比較組</h4>{run.input.comparisonPair ? <><p><strong>{run.input.comparisonPair.label}</strong></p><p>{run.input.comparisonPair.evidence}</p><dl className="signal-metadata">{run.input.comparisonPair.media.map((media) => <div key={media.id}><dt>{media.role === 'comparisonA' ? '比較A' : '比較B'}の対象</dt><dd>{media.label}<small>{media.view ?? '方向不明'} · {comparisonStatusLabel(media.comparisonStatus)}</small></dd></div>)}</dl></> : <p className="signal-subtle">登録済み比較組の選択は保存されていません。現在の候補から過去の入力を補完していません。</p>}</div> : null}
     <h4>確認条件に登録された商品情報</h4>
     {context.knownProducts.length ? <ul>{context.knownProducts.map((product, index) => <li key={index}><strong>{product.name ?? '商品名未確認'}{product.model ? ` / ${product.model}` : ''}</strong><p>{product.evidence}</p><p className="signal-subtle">対応を確認する意匠：{product.recordIds.map((recordId, position) => `候補${position + 1} ${recordDisplayLabel(run.signal?.recordFacts.find((fact) => fact.recordId === recordId), '物品名未確認')}`).join('、') || '未登録'}</p></li>)}</ul> : <p className="signal-subtle">商品名・型番は登録されていません。物品名と販売商品名は別の情報です。</p>}
   </section>;

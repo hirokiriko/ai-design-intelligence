@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { SignalResult } from './SignalResult';
 import { fictionalRun, fictionalRunV2 } from './fixtures';
+import { fictionalRunV22 } from './fixtures-v22';
 import { evidenceId } from './labels';
 
 const officialFactCard = (html: string, id: string) => html.split(`id="${evidenceId(id)}"`)[1]?.split('</div>')[0] ?? '';
@@ -89,6 +90,16 @@ describe('signal facts and saved result presentation', () => {
       expect(dialog).toContain('商品の新旧世代や発売順を示しません');
       expect(dialog.indexOf('情報源・利用条件')).toBeLessThan(dialog.indexOf('<img'));
     }
+  });
+  it('uses the fictional comparison explanation in image text, metadata and enlargement', () => {
+    const run = structuredClone(fictionalRunV22);
+    const status = run.signal!.media[0].comparisonStatus;
+    const html = renderToStaticMarkup(createElement(SignalResult, { run }));
+    expect(html).toContain(`alt="${run.signal!.media[0].label}。${run.signal!.media[0].view}。管理者が架空資料を対応づけ済み（商品の新旧世代は未確認）"`);
+    expect(html).toContain('方向・対応条件</dt><dd>');
+    expect(html.match(/管理者が架空資料を対応づけ済み（商品の新旧世代は未確認）/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(html).not.toContain(status);
+    expect(run.signal!.media[0].comparisonStatus).toBe(status);
   });
   it('uses saved public labels and one sentence boundary without exposing record or dataset IDs', () => {
     const run = structuredClone(fictionalRunV2);

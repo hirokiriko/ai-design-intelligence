@@ -7,7 +7,8 @@ export type WatchInput = Omit<Watch, 'id' | 'createdAt'>;
 export type DataMode = 'fictional' | 'approved_public';
 export interface Dataset { id: string; dataAsOf: string; coverage: string; sourceFamily: string; recordCount: number; dataMode?: DataMode }
 export interface Bootstrap {
-  schemaVersion: '1.0.0' | '2.0.0' | '2.1.0' | '2.2.0' | '2.3.0'; dataMode: 'fictional' | 'public_design' | 'approved_public'; csrfToken: string;
+  schemaVersion: '1.0.0' | '2.0.0' | '2.1.0' | '2.2.0' | '2.3.0' | '2.4.0'; dataMode: 'fictional' | 'public_design' | 'approved_public'; csrfToken: string;
+  analysisMode?: 'standard' | 'facts_only';
   catalog: { entities: { id: string; name: string | null }[]; categories: { id: string; label: string }[]; datasets: Dataset[]; sourceProfiles: { id: string; label: string; dataMode?: DataMode }[] };
   watches: Watch[];
 }
@@ -294,10 +295,12 @@ export function decodeRuns(value: unknown): Run[] {
   return runs;
 }
 export function decodeBootstrap(value: unknown): Bootstrap {
-  const v2 = hasVersion(value, '2.0.0') || hasVersion(value, '2.1.0') || hasVersion(value, '2.2.0') || hasVersion(value, '2.3.0');
-  object({ schemaVersion: v2 ? oneOf('2.0.0', '2.1.0', '2.2.0', '2.3.0') : oneOf('1.0.0'), dataMode: v2 ? dataMode : oneOf('fictional', 'public_design'), csrfToken: text,
+  const v24 = hasVersion(value, '2.4.0');
+  const v2 = v24 || hasVersion(value, '2.0.0') || hasVersion(value, '2.1.0') || hasVersion(value, '2.2.0') || hasVersion(value, '2.3.0');
+  object({ schemaVersion: v2 ? oneOf('2.0.0', '2.1.0', '2.2.0', '2.3.0', '2.4.0') : oneOf('1.0.0'), dataMode: v2 ? dataMode : oneOf('fictional', 'public_design'), csrfToken: text, ...(v24 ? { analysisMode: oneOf('standard', 'facts_only') } : {}),
     catalog: object({ entities: array(object({ id: catalogId, name: v2 ? nullable(text) : text })), categories: array(object({ id: catalogId, label: text })), datasets: array(object({ id: opaqueId, dataAsOf: date, coverage: text, sourceFamily: text, recordCount: integer, ...(v2 ? { dataMode } : {}) })), sourceProfiles: array(object({ id: opaqueId, label: text, ...(v2 ? { dataMode } : {}) })) }), watches: array(watchCheck) })(value);
   const bootstrap = value as Bootstrap;
+  if (v24 && bootstrap.analysisMode === 'facts_only' && bootstrap.dataMode !== 'approved_public') fail();
   const { entities, categories, datasets, sourceProfiles } = bootstrap.catalog;
   for (const group of [entities, categories, datasets, sourceProfiles, bootstrap.watches]) unique(group.map((item) => item.id));
   for (const watch of bootstrap.watches) {

@@ -48,7 +48,7 @@ describe('saved company and evidence context', () => {
     expect(html).toContain('自作架空原本による遡及再構成の回帰fixture');
     expect(html).toContain('後日取得した資料を事後の補足として含みます。当時サービスが取得済みだったことを示しません。');
     expect(html).not.toContain('当時既知の情報ではありません');
-    expect(html.indexOf('週次原本からの遡及再構成収録集合')).toBeLessThan(html.indexOf('画像からのAI観察候補'));
+    expect(html.indexOf('週次原本からの遡及再構成収録集合')).toBeGreaterThan(html.indexOf('画像からのAI観察候補'));
     const history = renderToStaticMarkup(createElement(SignalHistory, { runs: [run], state: 'ready', disabled: false, onSelect: () => undefined }));
     expect(history).toContain('架空意匠ラボ甲合同会社');
     expect(history).not.toContain('架空データ（旧形式）');
@@ -69,7 +69,7 @@ describe('saved company and evidence context', () => {
   });
   it('leads with the saved company, product, classification, change and official findings', () => {
     const html = renderToStaticMarkup(createElement(SignalResult, { run: fictionalRunV2 }));
-    for (const label of ['架空リーフ機器株式会社', '架空のリーフ操作器', '操作機器 / H1', '今回わかったこと', '関連する公式記載', '未確認事項・次に確認する資料', '処理終了は、同一製品', '比較A / Bは資料の役割', '発表日：不明', '更新日：2026-07-02', '発売日：不明', '物品名', '架空操作機器', 'AIが確認した抜粋']) expect(html).toContain(label);
+    for (const label of ['架空リーフ機器株式会社', '架空のリーフ操作器', '操作機器 / H1', '今回わかったこと', '公式発表の事実', '未確認事項・次に確認する資料', '処理終了は、同一製品', '比較A / Bは資料の役割', '発表日：不明', '更新日：2026-07-02', '発売日：不明', '物品名', '架空操作機器', 'AIが確認した抜粋']) expect(html).toContain(label);
     expect(html.indexOf('今回わかったこと')).toBeLessThan(html.indexOf('画像からのAI観察候補'));
   });
   it.each(Object.entries(relationLabels))('distinguishes relationship %s without broad confirmation', (relation, label) => {

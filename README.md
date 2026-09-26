@@ -1,12 +1,16 @@
 # KIRIKO Design Signals
 
-Vite / React / TypeScript のSPAです。Issue #17では、保存条件→差分→画像観察候補→登録公式資料→根拠付きシグナル→保存履歴という画面を、同一originのBackend APIへ接続します。
+競合企業・商品分野の動向を調べる担当者の、資料探し、意匠の整理、変化の確認、企業情報との照合、社内説明を支援します。初期の代表利用者は知財担当者で、企画・開発部門へ根拠のある検討材料を届ける仕事を対象にします。
+
+提供を目指す価値は、企業・商品分野の俯瞰から個別根拠へ進めること、意匠の観察と企業公式情報を照合できること、同じ対象を更新後も追い過去の根拠と結果へ戻れることです。製品定義と評価基準の正本は[SPEC §1](SPEC.md#1-現行製品定義)です。
+
+Vite / React / TypeScript のSPAで、保存条件→差分→画像観察候補→登録公式資料→根拠付きシグナル→保存履歴の画面を、同一originのBackend APIへ接続する構成です。
 
 `VITE_APP_MODE=signals`で新しい画面、未指定または`standard`で従来のサンプル・Contract・ルール分析を起動します。利用者認証、永続保存、実行権限、予算、AI呼出、公式サイトの有限探索はBackendが担当します。FrontendへAPIキーやGoogle credentialを設定しません。
 
-新画面のAPI、採用元、状態と検証境界は[Signal UI実装](docs/architecture/signal-ui.md)を参照してください。クラウドに配備・受入済みという意味ではありません。以下のPhase 0説明は従来の`standard`画面を対象とします。
+このbranchの技術仕様は[Signal UI実装](docs/architecture/signal-ui.md)を参照してください。目指す価値、実装、検証したデータ・モード、実際の公開版は別の状態です。最新の候補SHA・証拠・未達・公開状態は対応するGitHub IssueとPRで確認し、文書やビルドの存在を実資料での価値実証・公開完了とは扱いません。
 
-## 方針
+## 従来のstandard画面の方針（Phase 0）
 
 - Vite + React + TypeScript + Tailwind CSS
 - GitHub Pages 向け `base: './'`
@@ -14,7 +18,7 @@ Vite / React / TypeScript のSPAです。Issue #17では、保存条件→差分
 - RuleBasedAnalysisEngine によるルールベース分析
 - LLM、外部API、バックエンド、スクレイピングは未接続
 
-## 公開URL版
+## 従来のサンプル公開URL版（standard）
 
 公開URLで共有する版は、`src/data/sample-designs.json` のサンプルデータだけで動作します。
 
@@ -25,9 +29,9 @@ Vite / React / TypeScript のSPAです。Issue #17では、保存条件→差分
 - 公報・図面画像本体と外部リンクは未接続です
 - 分析結果は参考情報であり、法的助言ではありません
 
-## 外部説明時の運用メモ
+## 従来のサンプル版を説明する際の運用
 
-パナソニック本社部門向けには、公開URLを先に送らず、特許庁実データを用いたローカル検証版を画面共有で説明します。公開URLはサンプルデータ版として、画面イメージ確認・関係先紹介用に使います。
+サンプル公開URLは画面イメージの確認用です。実データを使う検証や外部説明は、その資料の利用範囲と対応Issueの承認に従い、サンプル版の動作確認と区別します。
 
 ## 開発運用
 
@@ -45,7 +49,7 @@ pnpm run build
 pnpm run dev
 ```
 
-## Vercel デプロイ
+## 従来のstandard画面のVercelデプロイ
 
 Vercel は `vercel.json` に従い、pnpm の固定ロックファイルで `pnpm run build` を実行して `dist` を配信します。全パスはルートの `middleware.ts` で HTTP Basic 認証を必須にしています。
 
@@ -56,7 +60,7 @@ Vercel の Preview と Production の両環境へ、次の値を暗号化され�
 
 認証情報を変更した後は再デプロイし、リダイレクトを追従しないHTTP検査で「未認証 401・誤認証 401・正しい認証 200」を確認します。
 
-## DB 方針
+## 従来のstandard画面とDB取込構成（履歴）
 
 Phase 0 は静的SPAとして動作し、DB・バックエンド・外部APIには接続しません。
 
@@ -66,7 +70,7 @@ DB 側の引継ぎ資料は `../特許ダウンロード手順_0/AGENT_ASSIGNMEN
 
 ローカル設定の雛形は `.env.example` に置いています。DB 接続情報や認証情報はブラウザへ公開される `VITE_*` 変数に入れないでください。
 
-## ローカル実データJSON読込（開発用）
+## standard画面のローカル実データJSON読込（開発用）
 
 公開デモの既定は、従来どおり `src/data/sample-designs.json` のデモ用サンプルデータです。実データは app リポジトリへコピーせず、`src/data`、`public`、`dist`、Git管理下には置きません。
 
@@ -90,4 +94,4 @@ pnpm run check:no-real-data
 
 ## 注意
 
-分析結果は架空のサンプルデータに基づく参考情報であり、法的助言ではありません。
+standardのサンプル分析は架空データに基づく参考情報です。signalsでは保存結果のデータ区分と分析状態を確認してください。いずれも法的助言や企業戦略の断定を行うものではありません。

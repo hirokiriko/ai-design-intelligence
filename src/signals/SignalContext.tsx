@@ -56,13 +56,23 @@ export function SavedContext({ run }: { run: Run }) {
 export function ResultOverview({ run }: { run: Run }) {
   const signal = run.signal;
   if (!signal) return null;
-  const context = run.schemaVersion !== '1.0.0' ? run.input.context : null;
+  const highlights = run.schemaVersion !== '1.0.0' ? run.signal?.recordFacts.filter((fact) => fact.selectionReason === 'newly_observed' || fact.selectionReason === 'comparison_pair').slice(0, 3) ?? [] : [];
   return <section className="signal-overview" aria-label="確認結果の概要"><h3>今回わかったこと</h3>
-    <div><h4>注目する企業・商品領域</h4><p>{context ? `${context.entity.name ?? '企業名不明'} / ${context.category.label}` : run.input.watch.name}</p></div>
-    <div><h4>収録範囲の新規観測・変化</h4><p>{signal.counts.comparable ? `比較Bの対象${signal.counts.after}件、収録範囲での新規観測${signal.counts.newlyObserved}件。` : '収録条件が異なるため、前後の増減を比較できません。'}</p><a href="#signal-design-facts">意匠データの事実へ</a></div>
-    <div><h4>{factsOnlyRun(run) ? '参照先と記事本文' : '関連する公式記載'}</h4>{signal.officialFacts.length ? <ul>{signal.officialFacts.map((fact) => <li key={fact.id}><a href={`#${evidenceId(fact.id)}`}>{fact.text}</a></li>)}</ul> : <p>{factsOnlyRun(run) ? '記事本文は取得・分析していません。手動確認した参照先・URLは下に表示します。' : '今回の結果に採用された公式記載はありません。未発見・未取得の理由は資料と処理の詳細で確認できます。'}</p>}</div>
-    <div><h4>未確認事項・次に確認する資料</h4>{signal.questionsForHuman.length ? <ul>{signal.questionsForHuman.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>追加の確認事項は登録されていません。</p>}{signal.limitations.length ? <ul>{signal.limitations.map((text, index) => <li key={index}>{text}</li>)}</ul> : null}</div>
+    <div><h4>収録範囲の新規観測・変化</h4><p>{signal.counts.comparable ? `比較Bの対象${signal.counts.after}件、収録範囲での新規観測${signal.counts.newlyObserved}件。` : '収録条件が異なるため、前後の増減を比較できません。'}</p><p className="signal-subtle">収録件数の差は、形状の変化や商品の世代差を示しません。</p></div>
+    {highlights.length ? <div><h4>詳しく見る意匠</h4><ul>{highlights.map((fact) => <li key={fact.id}><a href={`#${evidenceId(fact.id)}`}>{recordDisplayLabel(fact, '物品名未確認')}</a> · {fact.selectionReason === 'newly_observed' ? '収録範囲で新しく確認' : '画像の比較対象'}</li>)}</ul></div> : null}
+    <nav className="signal-evidence-links" aria-label="確認結果の根拠へ"><a href="#signal-design-facts">意匠データの事実へ</a><a href="#signal-images">画像と観察へ</a><a href="#signal-official">公式発表へ</a><a href="#signal-next-checks">次の確認事項へ</a></nav>
   </section>;
+}
+
+export function SavedTarget({ run }: { run: Run }) {
+  if (run.schemaVersion === '1.0.0') return <p className="signal-data-banner">架空データの保存結果（旧形式）<span>保存時の企業・商品表示名は未記録です。</span></p>;
+  const context = run.input.context;
+  const collection = 'collection' in context.afterDataset ? context.afterDataset.collection : null;
+  return <div className="signal-target">
+    <p className="signal-data-banner">{factsOnlyRun(run) ? '公開書誌事項の比較（原文・図面なし）' : dataModeLabel(context.dataMode)}</p>
+    <p className="signal-subtle">比較A {context.beforeDataset.dataAsOf} → 比較B {context.afterDataset.dataAsOf}</p>
+    {collection ? <p className="signal-subtle">{collection.kind === 'retrospective_selected_daily_gazettes' ? '選定した公報号の範囲を後日再構成した比較です。全国の全公報・全意匠は含みません。' : '収録した週次原本を後日再構成した比較です。当時の予測実績は示しません。'}</p> : null}
+  </div>;
 }
 
 export function Relationships({ signal, factsOnly = false }: { signal: SignalV2; factsOnly?: boolean }) {

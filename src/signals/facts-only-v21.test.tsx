@@ -41,6 +41,8 @@ describe('metadata-only public facts result', () => {
     const html = renderToStaticMarkup(createElement(SignalResult, { run }));
     const history = renderToStaticMarkup(createElement(SignalHistory, { runs: [run], state: 'ready', disabled: false, onSelect: () => undefined }));
     expect(html).toContain('公開書誌事項の比較（原文・図面なし）');
+    expect(html).toContain('書誌情報のみの比較・画像/記事分析は未実施');
+    expect(html).toContain('保存された総合判定：収録範囲で変化を確認');
     expect(html).toContain('実行時に記事本文・図面を取得せず、AI・Vertexへ送信していません');
     expect(html).toContain('手動確認した参照先・URL');
     expect(html).toContain('手動確認した参照先 1件 · 自動探索の確認リンク 0件');

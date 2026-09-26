@@ -1,4 +1,14 @@
-# Signal UI — Frontend Issue #17
+# Signal UI — 画面とAPIの技術仕様
+
+製品定義の正本は[SPEC §1](../../SPEC.md#1-現行製品定義)。本書は、その仕事と価値を既存の条件保存・実行・根拠・履歴へつなぐ技術仕様であり、branchの実装、架空検証、実資料評価、公開状態を同一視しない。最新の証拠と未達は対応IssueとPRへ記録する。
+
+## 利用者の問いに沿った表示
+
+結果は「対象と今回分かったこと → 比較画像と観察 → 企業公式発表 → 検討材料と未確認事項 → 収録・処理の詳細」の順にする。企業・商品分野を人が読める名称で示し、根拠意匠、画像、公式出典、過去結果へ進める。条件や注意書きの重複を減らし、重要な限界は対応する結論の近くに短く残す。収録コード、処理時刻、内部情報は必要時に開く詳細へ置く。
+
+書誌限定の入口はbootstrap `2.4.0`の必須`analysisMode`（`standard` / `facts_only`）で判断する。保存runとその他のenvelopeは従来のversionを維持し、この追加だけで保存値を変更しない。旧bootstrapのモードは推測せず、保存結果はそのrunの保存された入力・状態に従って表示する。
+
+`facts_only`は「書誌情報のみの比較・画像/記事分析は未実施」と分かる表示にする。入力なしの未実施、取得失敗、分析したが判断不能、変化なしを分ける。確認済みの公式発表は、個別意匠との対応が未確認でも独立した事実として示し、画像観察・公式事実・関連仮説の根拠を混ぜない。Frontendで分析文や対応関係を創作せず、安全に判定できない状態はBackendの公開契約で定義する。
 
 ## Issue #19：保存された対象・対応・不明点の表示
 
@@ -14,7 +24,7 @@
 
 「同じ企業・商品条件で収録データを選び直す」はcatalogをGETで再取得し、現在の企業・商品条件を引き継いだ新しい条件フォームを開く。利用者がデータを選択して別watchを保存した後、明示的な「更新を確認」で実行する。元watchと過去runは更新しない。
 
-現在の状態：架空fixtureによる1.0.0 / 2.0.0 / 2.1.0混在履歴、遡及再構成の由来・不明点、対応区分、日付・抜粋・参照不一致の単体回帰を追加した実装候補。次のアクション：最新候補の実APIによる保存・履歴・reload、データ更新後の別実行を統合確認する。架空試験を承認済み実企業ケースの実測完了とは扱わない。
+架空fixtureによる1.0.0 / 2.0.0 / 2.1.0混在履歴、遡及再構成の由来・不明点、対応区分、日付・抜粋・参照不一致を回帰確認する。実APIによる保存・履歴・reload、データ更新後の別実行を統合確認し、架空試験を実企業ケースの価値実証とは扱わない。
 
 ## Issue #21：登録済み比較組の選択
 
@@ -42,7 +52,7 @@ Backend #26の公開契約 `contracts/run-v2.2.0.schema.json` と `contracts/com
 
 ## 同一origin API
 
-- `GET /api/v1/bootstrap`: schemaVersion、dataMode、CSRF token、catalog、watches
+- `GET /api/v1/bootstrap`: schemaVersion、dataMode、analysisMode（2.4.0）、CSRF token、catalog、watches
 - `GET /api/v1/watches/{id}/comparison-pairs`: 条件に使用可能な登録済み比較組の公開metadata
 - `POST /api/v1/watches`: 条件名とBackend identity、dataset、source profile IDを保存
 - `POST /api/v1/watches/{id}/runs`: requestIdと`check|reanalyze`、組選択時はcomparisonPairId
@@ -68,6 +78,8 @@ Windowsではmiseを通して既存pnpm lockを使う。新画面のビルドは
 
 必須検証はlint、typecheck、test、check:no-real-data、build、check:client-bundle-safety。新画面は実Backend＋架空データで条件保存→実行→根拠→履歴→reloadまで確認し、reloadと履歴表示のAI増分0をBackend countersでも照合する。SSR/HTTPモックのテストだけでは永続保存の証拠にしない。
 
+### 初期実装の検証記録（現在の候補の証拠には流用しない）
+
 2026-09-19のローカル検証では、miseのNode 24 / pnpmを使ったlocked install、lint、typecheck、25ファイル233テスト、standard/signals両build、no-real-data、client bundle safetyが成功。既存サンプルの分析→件数→根拠→解除focusの回帰もブラウザで確認した。
 
 実BackendとPostgreSQL、架空データ、明示した模擬モデルで、条件保存→実行→画像拡大→Contract根拠→履歴→reload→別ブラウザ再表示を確認。二重クリックの実行POSTは1件、履歴・reloadではPOSTなし、保存runは同一内容、PC 1280×720 / mobile 390×844で横overflowなし、正常経路のconsole/page/request errorは0だった。watch切替後のURLとreload、履歴読込中の競合も修正・再確認した。遅延GETと503注入による表示検証は補助証拠として区別し、保存成功の証拠にはしていない。
@@ -76,4 +88,4 @@ Windowsではmiseを通して既存pnpm lockを使う。新画面のビルドは
 
 2.1.0の追補では、28ファイル261テスト、lint、typecheck、standard/signals両build、安全チェックが成功。専用ローカルPostgreSQLへの架空run保存とAPI読戻し、再読込、別ブラウザでの表示を確認した。後続の架空収録データを別条件で保存すると比較Bは2件から3件、新規観測は1件から2件となり、元runのJSON・usage・件数は変わらない。履歴・再読込はGETのみで、モデル呼び出しと資料取得の増分は0。既存2.0.0保存DBの4runも不変だった。1.0.0/2.0.0/2.1.0の混在履歴は契約テストで確認しており、この追補のブラウザ経路は2.1.0の架空runが対象である。
 
-現在の状態：ローカルで検証済みの実装候補。GitHub CI、クラウドE2E、固定URLでの認証とPC停止後の継続利用は別の受入証拠が必要。次のアクション：親Deliveryの統合コンテナと最新headで再確認し、承認境界内でD工程へ引き継ぐ。旧PRの過去SHAのCIやE2Eを新候補の証拠として流用しない。
+最新の実装状態、候補SHA、データ区分、画面・保存結果の証拠、未達と次の操作は対応IssueとPRを参照する。CI、クラウドE2E、実資料での価値実証、本人の業務評価、固定URLでPC停止後も利用できることはそれぞれの受入証拠が必要である。旧PRの過去SHAのCIやE2Eを新候補の証拠として流用しない。

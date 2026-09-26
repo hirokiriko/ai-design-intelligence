@@ -44,6 +44,9 @@
 .signal-history span { font-size: 11px; color: #66756c; }
 .signal-result-title { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
 .signal-result-title h2 { font-size: 23px; }
+.signal-target { display: grid; gap: 8px; }
+.signal-mode-note { border-left: 3px solid #789487; padding: 9px 12px; margin: 14px 0 !important; background: #f6faf6; font-size: 12px; }
+.signal-next-checks { margin: 20px 0; }
 .signal-badge { border-radius: 20px; padding: 4px 10px; background: #e5f3e9; font-size: 11px; height: fit-content; white-space: nowrap; }
 .status-failed, .status-interrupted { background: #faebe8; color: #943c2e; }
 .status-partial { background: #fcf2d7; color: #72590f; }

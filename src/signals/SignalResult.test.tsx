@@ -151,7 +151,7 @@ describe('signal facts and saved result presentation', () => {
   it('shows absent images and failures independently from no-change results', () => {
     const run = structuredClone(fictionalRun);
     run.signal!.media = []; run.signal!.visualObservations = [];
-    expect(renderToStaticMarkup(createElement(SignalResult, { run }))).toContain('画像は未取得です');
+    expect(renderToStaticMarkup(createElement(SignalResult, { run }))).toContain('保存結果に画像はありません');
     run.status = 'failed'; run.signal = null;
     const html = renderToStaticMarkup(createElement(SignalResult, { run }));
     expect(html).toContain('API・AI処理の失敗');

@@ -2,13 +2,13 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 import { signalApi, SignalApiError, type SignalApi } from './api';
 import { ContractError, type Bootstrap, type ComparisonPair, type Run, type Watch, type WatchInput } from './contract';
 import { SignalResult } from './SignalResult';
-import { comparisonStatusLabel, dataModeLabel, factsOnlyRun, runStatusLabel } from './labels';
+import { comparisonPairsVersion, comparisonStatusLabel, dataModeLabel, runStatusLabel } from './labels';
 import { SignalHistory, type HistoryState } from './SignalHistory';
 import './signals.css';
 
 interface Props { api?: SignalApi; renderAnalysis?: (datasetId: string) => ReactNode }
 type PairState = 'loading' | 'ready' | 'error';
-const supportsPairs = (version: Bootstrap['schemaVersion'] | undefined) => version === '2.2.0' || version === '2.3.0';
+const supportsPairs = (version: Bootstrap['schemaVersion'] | undefined) => comparisonPairsVersion(version) !== null;
 const selectedRunId = () => typeof window === 'undefined' ? null : new URL(window.location.href).searchParams.get('run');
 function saveRunLocation(id: string | null): void {
   const url = new URL(window.location.href);
@@ -57,7 +57,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
     try {
       const loaded = await api.comparisonPairs(watch);
       if (current !== pairRevision.current) return;
-      if (loaded.schemaVersion !== version) throw new ContractError();
+      if (loaded.schemaVersion !== comparisonPairsVersion(version)) throw new ContractError();
       setComparisonPairs(loaded.comparisonPairs); setPairState('ready');
     } catch (failure) {
       if (current === pairRevision.current) {
@@ -159,6 +159,8 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
       {bootstrap ? <div className="signal-layout">
         <aside className="signal-sidebar" aria-label="保存条件と履歴">
           <section className="signal-panel"><p className="signal-eyebrow">確認条件</p><h2>保存した確認条件</h2>
+            <AnalysisModeNotice bootstrap={bootstrap} />
+            <p className="signal-subtle">{bootstrap.catalog.entities.length === 1 ? '現在の登録対象は1社です。この企業の収録範囲を確認します。' : `現在の登録対象は${bootstrap.catalog.entities.length}社です。登録された企業・商品分野だけを選択できます。`}</p>
             {bootstrap.watches.length ? <label className="signal-field">確認する条件<select value={watchId} disabled={busy} onChange={(event) => changeWatch(event.target.value)}>{bootstrap.watches.map((watch) => <option key={watch.id} value={watch.id}>{watch.name}</option>)}</select></label> : <p>最初の確認条件を保存してください。</p>}
             {selectedWatch ? <><WatchSummary watch={selectedWatch} bootstrap={bootstrap} />{supportsPairs(bootstrap.schemaVersion) ? <ComparisonPairSelector pairs={comparisonPairs} state={pairState} selectedId={selectedPairId} busy={actionPending} onSelect={setSelectedPairId} onReload={() => void loadComparisonPairs(selectedWatch, bootstrap.schemaVersion)} /> : null}<button className="signal-button signal-primary" type="button" disabled={actionPending || !selectionReady || run?.status === 'running'} onClick={() => void startRun('check')}>{busy ? '確認しています…' : '更新を確認'}</button><p className="signal-subtle">{supportsPairs(bootstrap.schemaVersion) ? '同じ条件・同じデータ・同じ比較組の確認済み結果がある場合は、保存結果を表示します。比較組の選択や変更だけではAIを実行しません。' : '同じ条件・同じデータの確認済み結果がある場合は、保存結果を表示します。'}</p></> : null}
             {selectedWatch ? <button className="signal-text-button" type="button" disabled={actionPending} onClick={() => void refreshDatasets()}>同じ企業・商品条件で収録データを選び直す</button> : null}
@@ -167,7 +169,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
           </section>
           <section className="signal-panel"><h2>保存履歴</h2><button className="signal-text-button" type="button" disabled={busy || !watchId} onClick={() => void loadHistory(watchId, true)}>履歴を再取得</button>
             <SignalHistory runs={runs} selectedId={run?.id} state={historyState} disabled={actionPending} onSelect={(id) => void selectRun(id)} />
-            {run && run.status !== 'running' ? <details className="signal-details"><summary>新しい実行として確認し直す</summary><p className="signal-subtle">{factsOnlyRun(run) ? '過去の結果を残して、登録済み書誌事項を新しい実行として再比較します。記事取得・AI呼出は行いません。' : supportsPairs(bootstrap.schemaVersion) ? '過去の結果を残して、上で選んだ比較組でAI・公式確認を新しく実行します。' : '過去の結果を残して、AI・公式確認を新しく実行します。'}</p><button className="signal-button" type="button" disabled={actionPending || !selectionReady} onClick={() => void startRun('reanalyze')}>別の実行として再確認</button></details> : null}
+            {run && run.status !== 'running' ? <details className="signal-details"><summary>新しい実行として確認し直す</summary><p className="signal-subtle">{bootstrap.analysisMode === 'facts_only' ? '過去の結果を残して、登録済み書誌事項を新しい実行として再比較します。記事取得・AI呼出は行いません。' : bootstrap.analysisMode === 'standard' ? '過去の結果を残して、登録資料による分析を新しく実行します。AI・公式確認を含む場合があります。' : '過去の結果を残して、新しい確認処理を実行します。この接続先の分析モードは未記録です。'}</p><button className="signal-button" type="button" disabled={actionPending || !selectionReady} onClick={() => void startRun('reanalyze')}>別の実行として再確認</button></details> : null}
           </section>
         </aside>
         <div className="signal-content">{run ? <SignalResult key={run.id} run={run} /> : <section className="signal-panel signal-welcome"><span aria-hidden="true" className="signal-welcome-symbol">↗</span><h2>気になる変化を、根拠とともに。</h2><p>保存条件を選び「更新を確認」を押してください。</p><ol><li>意匠データの差分</li><li>登録資料に画像がある場合の観察候補</li><li>参照先と未確認事項</li></ol><p className="signal-subtle">変化なし・資料不足も結果として保存されます。</p></section>}</div>
@@ -175,6 +177,10 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
       {renderAnalysis && selectedWatch ? <section className="signal-legacy"><button className="signal-text-button" type="button" disabled={busy} aria-expanded={showAnalysis} onClick={() => setShowAnalysis(!showAnalysis)}>既存の市場・企業ルール分析 {showAnalysis ? 'を閉じる' : 'を開く'}</button>{showAnalysis ? renderAnalysis(selectedWatch.afterDatasetId) : null}</section> : null}
     </main><footer className="signal-footer">参考情報です。収録範囲外や最新の法的状態は示しません。事実・AI観察候補・関連仮説を区別して確認してください。</footer>
   </div>;
+}
+
+export function AnalysisModeNotice({ bootstrap }: { bootstrap: Bootstrap }) {
+  return <p className="signal-mode-note">{bootstrap.analysisMode === 'facts_only' ? <><strong>書誌情報のみの比較</strong><br />画像/記事分析は未実施となります。「更新を確認」では登録済み書誌事項を比較し、画像・記事取得やAI呼出は行いません。</> : bootstrap.analysisMode === 'standard' ? <><strong>登録資料を使う分析</strong><br />画像観察と公式情報の照合に対応する経路です。今回の入力で実施できた内容は保存結果に示します。</> : <>この接続先の分析モードは未記録です。過去の保存結果や比較組の有無からは推測しません。</>}</p>;
 }
 
 export function ComparisonPairSelector({ pairs, state, selectedId, busy, onSelect, onReload }: { pairs: ComparisonPair[]; state: PairState; selectedId: string; busy: boolean; onSelect: (id: string) => void; onReload: () => void }) {

@@ -12,7 +12,13 @@ export const comparisonStatusLabel = (status: string): string => {
   return /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(status) ? status : '比較条件の詳細は未確認';
 };
 export const factsOnlyRun = (run: Run): boolean => run.versions.model === 'facts-only-deterministic';
-export const runStatusLabel = (run: Run): string => factsOnlyRun(run) && run.status === 'failed' ? '確認処理の失敗' : runLabels[run.status];
+export const runStatusLabel = (run: Run): string => {
+  if (run.status !== 'failed') return runLabels[run.status];
+  if (factsOnlyRun(run)) return '確認処理の失敗';
+  if (run.errorCode === 'MODEL_ASSESSMENT_RELATIONSHIP_INVALID') return 'AI応答の検証失敗（仮説と根拠の対応）';
+  if (run.errorCode === 'MODEL_ASSESSMENT_TEXT_INVALID') return 'AI応答の検証失敗（確認事項の説明）';
+  return runLabels.failed;
+};
 export const evidenceId = (id: string): string => `signal-evidence-${Array.from(id, (character) => character.codePointAt(0)!.toString(16)).join('-')}`;
 export const classificationSchemeLabel = (scheme: string | null): string => {
   if (scheme === null) return '未確認';

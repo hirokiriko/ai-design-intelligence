@@ -46,7 +46,7 @@ Backend #26の公開契約 `contracts/run-v2.2.0.schema.json` と `contracts/com
 
 保存した企業・商品分類・前後の収録範囲・登録公式サイトを選び、「更新を確認」で1回の明示実行を要求する。企業はBackendが提供したIDで選択し、表示名から企業を新設しない。二重操作を防ぎ、通信結果が不確定な再試行では同じrequest IDを使う。
 
-結果は意匠データの事実、画像からのAI観察候補、公式発表の事実、関連仮説、不明点を分ける。公報日・出願日・公開日・取得日と事後照合を表示する。画像は認証内media APIから取得し、拡大と根拠意匠確認だけを行う。未取得画像を生成しない。根拠意匠は保存runの前後datasetをContract Adapterで検証して読み直す。
+結果は意匠データの事実、画像からのAI観察候補、公式発表の事実、関連仮説、不明点を分ける。公報日・出願日・公開日・取得日と事後照合を表示する。画像は認証内media APIから取得し、拡大と根拠意匠確認だけを行う。未取得画像を生成しない。`2.0.0`以降の根拠意匠は、同じ保存runの検証済み`recordFacts`へ進み、確認のためにdatasetを再取得しない。保存されていない項目は補完しない。旧`1.0.0`だけは従来どおり保存runの前後datasetをContract Adapterで検証して読み直す。
 
 保存履歴とURLの`?run=<id>`からのreloadはGETだけ。ブラウザのlocalStorageやIndexedDBへ結果を永続化しない。別の実行として再確認する操作は履歴読込から分離し、過去runを上書きしない。進行中・中断・API/AI失敗・資料不足・変化なしを区別する。
 
@@ -58,7 +58,7 @@ Backend #26の公開契約 `contracts/run-v2.2.0.schema.json` と `contracts/com
 - `POST /api/v1/watches/{id}/runs`: requestIdと`check|reanalyze`、組選択時はcomparisonPairId
 - `GET /api/v1/runs?watchId={id}`、`GET /api/v1/runs/{id}`: 保存済み結果
 - `GET /api/v1/media/{id}`: 公開DTOにはlocatorや署名URLを含めない
-- `GET /api/v1/datasets/{id}/export`: 元のContract `0.1.0`。既存ルール分析にも使用
+- `GET /api/v1/datasets/{id}/export`: 元のContract `0.1.0`。旧`1.0.0`の根拠確認と既存ルール分析に使用
 
 正式なfield契約の正本はBackendの公開補足schema。未知version・未知field・不正URL・不正な参照ID・抜粋の不一致は表示を止める。出典URLはHTTPSのみで、userinfo、port、query、内部host、IP直書きを拒否する。外部/AI文字列はReactのtextとして描画し、HTMLを実行しない。
 

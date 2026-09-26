@@ -1,7 +1,10 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { fictionalRunV2 } from './fixtures';
+import { fictionalRun, fictionalRunV2 } from './fixtures';
+import { fictionalRunV22 } from './fixtures-v22';
+import { evidenceId } from './labels';
+import { SignalResult } from './SignalResult';
 import { RecordEvidenceDetails, SignalRecordEvidence } from './SignalRecordEvidence';
 
 describe('human-readable design evidence', () => {
@@ -19,9 +22,38 @@ describe('human-readable design evidence', () => {
   };
 
   it('shows a public identity in the disclosure button while retaining its lookup key internally', () => {
-    const html = renderToStaticMarkup(createElement(SignalRecordEvidence, { recordId: 'internal-record-v1', watch, label: '架空の操作器（登録番号 FIXTURE-REG-01）' }));
+    const run = structuredClone(fictionalRun);
+    run.input.watch = watch;
+    const html = renderToStaticMarkup(createElement(SignalRecordEvidence, { recordId: 'internal-record-v1', run, label: '架空の操作器（登録番号 FIXTURE-REG-01）' }));
     expect(html).toContain('根拠意匠：架空の操作器（登録番号 FIXTURE-REG-01） を確認');
     expect(html).not.toContain('internal-record-v1');
+  });
+
+  it.each([fictionalRunV2, fictionalRunV22])('links modern saved evidence to the same run without an acquisition control ($schemaVersion)', (run) => {
+    const before = JSON.stringify(run);
+    const fact = run.signal!.recordFacts[0];
+    const html = renderToStaticMarkup(createElement(SignalRecordEvidence, { recordId: fact.recordId, run, label: '架空操作機器' }));
+    expect(html).toContain(`href="#${evidenceId(fact.id)}"`);
+    expect(html).toContain('保存された根拠意匠：架空操作機器 を表示');
+    expect(html).not.toContain('<button');
+    expect(html).not.toContain('aria-expanded');
+    expect(JSON.stringify(run)).toBe(before);
+  });
+
+  it('leaves missing modern record details unavailable without offering a current-dataset fallback', () => {
+    const html = renderToStaticMarkup(createElement(SignalRecordEvidence, { recordId: 'missing-record', run: fictionalRunV2, label: '架空の比較A資料' }));
+    expect(html).toContain('この実行に根拠意匠の詳細は保存されていません');
+    expect(html).not.toContain('<button');
+    expect(html).not.toContain('href=');
+  });
+
+  it('renders saved facts once and points media to their existing fragment', () => {
+    const html = renderToStaticMarkup(createElement(SignalResult, { run: fictionalRunV2 }));
+    expect(html.match(/<dt>物品の説明<\/dt>/g)).toHaveLength(1);
+    expect(html.match(/保存された根拠意匠：架空操作機器/g)).toHaveLength(1);
+    expect(html).toContain(`id="${evidenceId('fact-1')}"`);
+    expect(html).toContain('元の収録データの再取得・再検証は行いません');
+    expect(html).not.toContain('class="signal-record-evidence"');
   });
 
   it('shows comparison sides, public numbers and classification codes without dataset IDs or raw schemes', () => {

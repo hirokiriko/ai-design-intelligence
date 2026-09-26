@@ -76,9 +76,9 @@ export function SavedTarget({ run }: { run: Run }) {
 }
 
 export function Relationships({ signal, factsOnly = false }: { signal: SignalV2; factsOnly?: boolean }) {
-  return <section><h3>個別意匠と商品の対応</h3><p className="signal-subtle">{factsOnly ? '参照リンクと個別意匠が同じ製品を指すことは確認していません。' : '公式サイトの記載と、個別意匠が同じ製品であることの確認を分けています。'}</p>
+  return <details className="signal-details" data-print-evidence><summary>個別意匠と商品の対応（{signal.relationships.length}件）</summary><p className="signal-subtle">{factsOnly ? '参照リンクと個別意匠が同じ製品を指すことは確認していません。' : '公式サイトの記載と、個別意匠が同じ製品であることの確認を分けています。'}</p>
     {signal.relationships.length ? signal.relationships.map((item) => <article className={`signal-fact signal-relation relation-${item.relation}`} key={item.id} id={`signal-relation-${encodeURIComponent(item.id)}`} tabIndex={-1}><h4>{relationLabels[item.relation]}</h4><p>{item.summary}</p><div><strong>支持する根拠</strong><EvidenceLinks ids={item.supportingEvidenceIds} signal={signal} /></div><div><strong>不一致・反証の根拠</strong><EvidenceLinks ids={item.opposingEvidenceIds} signal={signal} /></div>{item.missingEvidence.length ? <><h5>不足している根拠</h5><ul>{item.missingEvidence.map((text, index) => <li key={index}>{text}</li>)}</ul></> : null}</article>) : <p>個別意匠と商品の対応は評価されていません。</p>}
-  </section>;
+  </details>;
 }
 
 export function RecordFact({ fact }: { fact: SignalV2['recordFacts'][number] }) {

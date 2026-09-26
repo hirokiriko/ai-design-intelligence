@@ -117,7 +117,7 @@ describe('signal facts and saved result presentation', () => {
     run.signal!.relationships[0].supportingEvidenceIds.push('fact-1');
     const html = renderToStaticMarkup(createElement(SignalResult, { run }));
     expect(html).toContain('比較A：架空比較Aの範囲 ／ 比較B：架空比較Bは全国を網羅しない。比較可能な収録条件です。');
-    expect(html).toContain('根拠意匠：架空操作機器（登録番号 FIXTURE-REG-EXAMPLE） を確認');
+    expect(html).toContain('保存された根拠意匠：架空操作機器（登録番号 FIXTURE-REG-EXAMPLE） を表示');
     expect(html).toContain('<dt>比較A / 比較Bの基準日</dt><dd>2026-06-01 / 2026-07-01</dd>');
     expect(html).toContain('項目：物品名');
     expect(html).toContain('>意匠の事実1</a>');

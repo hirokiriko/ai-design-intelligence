@@ -76,6 +76,22 @@ describe('product questions and saved evidence', () => {
     expect(html).toContain(run.signal!.questionsForHuman[0]);
   });
 
+  it('keeps a concise hypothesis visible and preserves every caveat in counted printable disclosures', () => {
+    const run = structuredClone(fictionalRunV2);
+    const before = JSON.stringify(run);
+    const html = renderToStaticMarkup(createElement(SignalResult, { run }));
+    const hypothesis = run.signal!.hypotheses[0];
+    expect(html).toContain('関連仮説 · 未確認');
+    expect(html.indexOf(hypothesis.text)).toBeLessThan(html.indexOf('<summary>この仮説の限界'));
+    expect(html).toContain('<details class="signal-details" data-print-evidence="true"><summary>この仮説の限界（1件）</summary>');
+    expect(html).toContain('<details class="signal-details" data-print-evidence="true"><summary>個別意匠と商品の対応（1件）</summary>');
+    expect(html).toContain('<details class="signal-details" data-print-evidence="true"><summary>次に確認する資料・未確認事項（2件）</summary><div id="signal-next-checks"');
+    for (const saved of [...hypothesis.limitations, ...run.signal!.questionsForHuman, ...run.signal!.limitations, ...run.signal!.relationships[0].missingEvidence, run.signal!.relationships[0].summary]) expect(html).toContain(saved);
+    expect(html).toContain(`href="#${evidenceId(hypothesis.evidenceIds[0])}"`);
+    expect(html).not.toContain('data-print-evidence="true" open=');
+    expect(JSON.stringify(run)).toBe(before);
+  });
+
   it.each([['unknown', '判断不能'], ['no_change', '変化は見られない']] as const)('only displays explicit image assessment %s', (status, label) => {
     const run = structuredClone(fictionalRunV2);
     run.signal!.visualObservations[0].status = status;

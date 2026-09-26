@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { adaptBackendDesignExport, type BackendRecordViewModel } from '../data/BackendContractDataSource';
 import { requestJson } from './api';
-import type { Watch } from './contract';
-import { classificationSchemeLabel } from './labels';
+import type { Run, Watch } from './contract';
+import { classificationSchemeLabel, evidenceId } from './labels';
 
 type EvidenceRecord = Pick<BackendRecordViewModel, 'articleName' | 'applicants' | 'gazetteDate' | 'applicationDate' | 'registrationNumber' | 'applicationNumber' | 'classifications' | 'description' | 'articleDescription' | 'adapterDisposition'>;
 type EvidenceEntry = { datasetId: string; record: EvidenceRecord };
@@ -24,7 +24,14 @@ export function RecordEvidenceDetails({ entries, watch }: { entries: EvidenceEnt
   });
 }
 
-export function SignalRecordEvidence({ recordId, watch, label }: { recordId: string; watch: Watch; label: string }) {
+export function SignalRecordEvidence({ recordId, run, label }: { recordId: string; run: Run; label: string }) {
+  if (run.schemaVersion === '1.0.0') return <LegacyRecordEvidence recordId={recordId} watch={run.input.watch} label={label} />;
+  const fact = run.signal?.recordFacts.find((item) => item.recordId === recordId);
+  if (!fact) return <p className="signal-subtle">{label}：この実行に根拠意匠の詳細は保存されていません。</p>;
+  return <a className="signal-text-button" href={`#${evidenceId(fact.id)}`}>保存された根拠意匠：{label} を表示</a>;
+}
+
+function LegacyRecordEvidence({ recordId, watch, label }: { recordId: string; watch: Watch; label: string }) {
   const [records, setRecords] = useState<EvidenceEntry[] | null>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -45,5 +52,5 @@ export function SignalRecordEvidence({ recordId, watch, label }: { recordId: str
     } catch { setError('対応する収録データと根拠意匠を検証できません。情報を補わず表示を停止しました。'); }
     finally { setLoading(false); }
   };
-  return <div className="signal-record-evidence"><button type="button" className="signal-text-button" aria-expanded={open} disabled={loading} onClick={() => void load()}>根拠意匠：{label} {open ? 'を閉じる' : 'を確認'}</button>{open ? <div className="signal-record-detail">{loading ? <p role="status">根拠意匠を取得しています。AIは実行しません。</p> : null}{error ? <p role="alert">{error}</p> : null}{records ? <RecordEvidenceDetails entries={records} watch={watch} /> : null}</div> : null}</div>;
+  return <div className="signal-record-evidence"><button type="button" className="signal-text-button" aria-expanded={open} disabled={loading} onClick={() => void load()}>根拠意匠：{label} {open ? 'を閉じる' : 'を確認'}</button>{open ? <div className="signal-record-detail"><p className="signal-subtle">旧形式の結果です。実行に指定された元の収録データを再取得し、根拠意匠を検証します。</p>{loading ? <p role="status">根拠意匠を取得しています。AIは実行しません。</p> : null}{error ? <p role="alert">{error}</p> : null}{records ? <RecordEvidenceDetails entries={records} watch={watch} /> : null}</div> : null}</div>;
 }

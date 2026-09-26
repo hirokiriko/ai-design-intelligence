@@ -1,10 +1,63 @@
-import type { DataMode, Run, SignalV2 } from './contract';
+import type { Bootstrap, DataMode, Run, Signal, SignalV2 } from './contract';
+
+export const comparisonPairsVersion = (version: Bootstrap['schemaVersion'] | undefined) => version === '2.4.0' ? '2.3.0' : version === '2.2.0' || version === '2.3.0' ? version : null;
 
 export const runLabels: Record<Run['status'], string> = {
   running: '進行中', complete: '処理終了', partial: '一部完了', failed: 'API・AI処理の失敗', interrupted: '中断',
 };
-export const dataModeLabel = (mode: DataMode): string => mode === 'approved_public' ? '承認済み公開実データ' : '架空データ · 実在の企業・製品ではありません';
+export const dataModeLabel = (mode: DataMode): string => mode === 'approved_public' ? '公開情報由来のデータ' : '架空データ · 実在の企業・製品ではありません';
+export const comparisonStatusLabel = (status: string): string => {
+  if (status === 'administrator_matched_fixture_not_product_generations') return '管理者が架空資料を対応づけ済み（商品の新旧世代は未確認）';
+  if (status === 'scale_unknown') return '縮尺は未確認';
+  return /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(status) ? status : '比較条件の詳細は未確認';
+};
+export const factsOnlyRun = (run: Run): boolean => run.versions.model === 'facts-only-deterministic';
+export const runStatusLabel = (run: Run): string => {
+  if (run.status !== 'failed') return runLabels[run.status];
+  if (factsOnlyRun(run)) return '確認処理の失敗';
+  if (run.errorCode === 'MODEL_ASSESSMENT_RELATIONSHIP_INVALID') return 'AI応答の検証失敗（仮説と根拠の対応）';
+  if (run.errorCode === 'MODEL_ASSESSMENT_TEXT_INVALID') return 'AI応答の検証失敗（確認事項の説明）';
+  return runLabels.failed;
+};
 export const evidenceId = (id: string): string => `signal-evidence-${Array.from(id, (character) => character.codePointAt(0)!.toString(16)).join('-')}`;
+export const classificationSchemeLabel = (scheme: string | null): string => {
+  if (scheme === null) return '未確認';
+  return { JPO_NATIONAL_DESIGN: '日本意匠分類', JPO_D_TERM: 'Dターム', LOCARNO: 'ロカルノ分類', fictional: '架空分類' }[scheme] ?? '分類体系名未確認';
+};
+export const recordDisplayLabel = (record: { articleName: string | null; registrationNumber: string | null; applicationNumber?: string | null } | undefined, fallback: string): string => {
+  const name = record?.articleName ?? fallback;
+  if (record?.registrationNumber) return `${name}（登録番号 ${record.registrationNumber}）`;
+  if (record?.applicationNumber) return `${name}（出願番号 ${record.applicationNumber}）`;
+  return name;
+};
+export const savedResultTarget = (run: Run): string => {
+  if (run.schemaVersion === '1.0.0') return run.input.watch.name;
+  const { entity, category } = run.input.context;
+  const records = run.signal?.recordFacts ?? [];
+  const codeOnly = records.some((record) => record.classifications.some((classification) => classification.code === category.label));
+  const names = codeOnly ? [...new Set(records.flatMap((record) => record.articleName ? [record.articleName] : []))] : [];
+  return `${entity.name ?? '企業名不明'} / ${names.length ? `対象物品：${names.join('・')}` : category.label}`;
+};
+export const coveragePhrase = (coverage: string): string => coverage.trim().replace(/[\s。]+$/u, '');
+export const comparisonCoverageSummary = (signal: Pick<Signal, 'coverage' | 'counts'>): string =>
+  `比較A：${coveragePhrase(signal.coverage.before)} ／ 比較B：${coveragePhrase(signal.coverage.after)}。${signal.counts.comparable ? '比較可能な収録条件です。' : '収録条件が一致しないため、増減を断定できません。'} 除外：A ${signal.counts.excludedBefore}件・B ${signal.counts.excludedAfter}件`;
+const readableClassificationSegment = (text: string): string =>
+  text.replace(/\b(JPO_NATIONAL_DESIGN|JPO_D_TERM|LOCARNO|fictional)\s*:/gu, (_match, scheme: string) => `${classificationSchemeLabel(scheme)} `);
+export const designFactText = (text: string, field: string): string => {
+  if (field === 'classifications') return readableClassificationSegment(text);
+  if (field !== 'record') return text;
+  const start = text.indexOf('分類: ');
+  if (start < 0) return text;
+  const descriptionStart = text.indexOf('。説明: ', start);
+  const end = descriptionStart < 0 ? text.length : descriptionStart;
+  return text.slice(0, start) + readableClassificationSegment(text.slice(start, end)) + text.slice(end);
+};
+const designFactFieldLabels: Record<string, string> = {
+  articleName: '物品名', registrationNumber: '登録番号', applicationNumber: '出願番号',
+  applicationDate: '出願日', gazetteDate: '公報日', classifications: '分類',
+  description: '意匠の説明', articleDescription: '物品の説明', recordCount: '収録件数',
+};
+export const designFactFieldLabel = (field: string): string => designFactFieldLabels[field] ?? '意匠書誌事項';
 export const relationLabels: Record<SignalV2['relationships'][number]['relation'], string> = {
   direct: '個別意匠と商品の直接対応を確認', category: '商品分野として関連', candidate: '対応の候補・同一製品は未確認', unrelated_or_conflicting: '無関係・矛盾する根拠あり', unknown: '資料不足・対応不明',
 };

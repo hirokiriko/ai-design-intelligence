@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Run, Signal, SignalV2 } from './contract';
-import { comparisonCoverageSummary, comparisonStatusLabel, designFactFieldLabel, designFactText, evidenceId, factsOnlyRun, recordDisplayLabel, runStatusLabel } from './labels';
+import { comparisonCoverageSummary, comparisonStatusLabel, designFactFieldLabel, designFactText, evidenceId, factsOnlyRun, recordDisplayLabel, runStatusLabel, savedResultTarget } from './labels';
 import { SignalRecordEvidence } from './SignalRecordEvidence';
 import { DiscoveryDetails, EvidenceLinks, RecordFact, Relationships, ResultOverview, SavedContext, SavedTarget } from './SignalContext';
 
@@ -70,7 +70,7 @@ export function SignalResult({ run }: { run: Run }) {
   const factsOnly = factsOnlyRun(run);
   const target = run.schemaVersion === '1.0.0' ? run.input.watch.name : `${run.input.context.entity.name ?? '企業名不明'} / ${run.input.context.category.label}`;
   return <article ref={result} className="signal-result" aria-labelledby="signal-result-heading">
-    <div className="signal-result-title"><div><p className="signal-eyebrow">保存された確認結果</p><h2 ref={heading} tabIndex={-1} id="signal-result-heading">{target}</h2></div><span className={`signal-badge status-${run.status}`}>{runStatusLabel(run)}</span></div>
+    <div className="signal-result-title"><div><p className="signal-eyebrow">保存された確認結果</p><h2 ref={heading} tabIndex={-1} id="signal-result-heading">{savedResultTarget(run)}</h2></div><span className={`signal-badge status-${run.status}`}>{runStatusLabel(run)}</span></div>
     <SavedTarget run={run} />
     {factsOnly ? <p className="signal-mode-note"><strong>書誌情報のみの比較・画像/記事分析は未実施</strong><br />実行時に記事本文・図面を取得せず、AI・Vertexへ送信していません。</p> : signal ? <p className="signal-mode-note"><strong>{statusLabels[signal.status]}</strong></p> : null}
     {run.versions.model === 'fixture-controller' || run.versions.model.startsWith('fictional-') ? <p className="signal-data-banner">模擬モデル（接続・保存の検証） · 実際の画像AI・公式サイト取得の評価結果ではありません。</p> : null}

@@ -2,13 +2,48 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ContractError, decodeBootstrap, decodeRun, decodeRuns } from './contract';
-import { fictionalBootstrapV2, fictionalRunV2 } from './fixtures';
+import { fictionalBootstrapV2, fictionalRun, fictionalRunV2 } from './fixtures';
 import { fictionalRunV22 } from './fixtures-v22';
-import { comparisonPairsVersion, evidenceId } from './labels';
+import { comparisonPairsVersion, evidenceId, savedResultTarget } from './labels';
 import { SignalResult } from './SignalResult';
 import { AnalysisModeNotice } from './SignalWorkspace';
 
 describe('product questions and saved evidence', () => {
+  it('uses an exact saved article name for a code-only category and preserves the original classification in details', () => {
+    const run = structuredClone(fictionalRunV2);
+    run.input.context.category.label = 'EXAMPLE-99';
+    run.signal!.recordFacts[0].classifications[0].code = 'EXAMPLE-99';
+    const before = JSON.stringify(run);
+    const html = renderToStaticMarkup(createElement(SignalResult, { run }));
+    expect(html).toContain('id="signal-result-heading">架空リーフ機器株式会社 / 対象物品：架空操作機器</h2>');
+    expect(html).toContain('<h3>架空リーフ機器株式会社 / EXAMPLE-99</h3>');
+    expect(html).toContain('<dt>企業 / 分類</dt><dd>架空リーフ機器株式会社 / EXAMPLE-99</dd>');
+    expect(JSON.stringify(run)).toBe(before);
+  });
+
+  it('lists distinct saved article names instead of inventing a product group', () => {
+    const run = structuredClone(fictionalRunV2);
+    run.input.context.category.label = 'EXAMPLE-99';
+    const first = run.signal!.recordFacts[0];
+    first.classifications[0].code = 'EXAMPLE-99';
+    run.signal!.recordFacts.push({ ...first, id: 'fact-other', recordId: 'record-other', articleName: '架空調整機器' });
+    run.signal!.recordFacts.push({ ...first, id: 'fact-repeat', recordId: 'record-repeat' });
+    expect(savedResultTarget(run)).toBe('架空リーフ機器株式会社 / 対象物品：架空操作機器・架空調整機器');
+  });
+
+  it('keeps descriptive categories, unknown article names, unmatched labels, and legacy saved targets unchanged', () => {
+    expect(savedResultTarget(fictionalRunV2)).toBe('架空リーフ機器株式会社 / 操作機器 / H1');
+    expect(savedResultTarget(fictionalRun)).toBe(fictionalRun.input.watch.name);
+    const run = structuredClone(fictionalRunV2);
+    run.input.context.category.label = 'EXAMPLE-99';
+    expect(savedResultTarget(run)).toBe('架空リーフ機器株式会社 / EXAMPLE-99');
+    run.signal!.recordFacts[0].classifications[0].code = 'EXAMPLE-99';
+    run.signal!.recordFacts[0].articleName = null;
+    expect(savedResultTarget(run)).toBe('架空リーフ機器株式会社 / EXAMPLE-99');
+    run.signal = null;
+    expect(savedResultTarget(run)).toBe('架空リーフ機器株式会社 / EXAMPLE-99');
+  });
+
   it('leads with the saved target and findings, then images, official facts, and next checks before processing details', () => {
     const run = structuredClone(fictionalRunV22);
     const before = JSON.stringify(run);

@@ -24,6 +24,14 @@ export const recordDisplayLabel = (record: { articleName: string | null; registr
   if (record?.applicationNumber) return `${name}（出願番号 ${record.applicationNumber}）`;
   return name;
 };
+export const savedResultTarget = (run: Run): string => {
+  if (run.schemaVersion === '1.0.0') return run.input.watch.name;
+  const { entity, category } = run.input.context;
+  const records = run.signal?.recordFacts ?? [];
+  const codeOnly = records.some((record) => record.classifications.some((classification) => classification.code === category.label));
+  const names = codeOnly ? [...new Set(records.flatMap((record) => record.articleName ? [record.articleName] : []))] : [];
+  return `${entity.name ?? '企業名不明'} / ${names.length ? `対象物品：${names.join('・')}` : category.label}`;
+};
 export const coveragePhrase = (coverage: string): string => coverage.trim().replace(/[\s。]+$/u, '');
 export const comparisonCoverageSummary = (signal: Pick<Signal, 'coverage' | 'counts'>): string =>
   `比較A：${coveragePhrase(signal.coverage.before)} ／ 比較B：${coveragePhrase(signal.coverage.after)}。${signal.counts.comparable ? '比較可能な収録条件です。' : '収録条件が一致しないため、増減を断定できません。'} 除外：A ${signal.counts.excludedBefore}件・B ${signal.counts.excludedAfter}件`;

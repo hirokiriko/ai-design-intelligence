@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Run, Signal, SignalV2 } from './contract';
-import { candidateFailureLabel, comparisonCoverageSummary, comparisonStatusLabel, designFactFieldLabel, designFactText, evidenceId, factsOnlyRun, quoteFailureLabel, recordDisplayLabel, runStatusLabel, savedResultTarget } from './labels';
+import { candidateFailureLabel, comparisonCoverageSummary, comparisonStatusLabel, designFactFieldLabel, designFactText, evidenceId, factsOnlyRun, quoteFailureLabel, recordDisplayLabel, relationshipFailureLabel, runStatusLabel, savedResultTarget } from './labels';
 import { SignalRecordEvidence } from './SignalRecordEvidence';
 import { DiscoveryDetails, EvidenceLinks, RecordFact, Relationships, ResultOverview, SavedContext, SavedTarget } from './SignalContext';
 
@@ -69,7 +69,7 @@ export function SignalResult({ run }: { run: Run }) {
   const signal = run.signal;
   const factsOnly = factsOnlyRun(run);
   const incomplete = run.status !== 'complete';
-  const failureDetail = quoteFailureLabel(run) ?? candidateFailureLabel(run);
+  const failureDetail = quoteFailureLabel(run) ?? candidateFailureLabel(run) ?? relationshipFailureLabel(run);
   const target = run.schemaVersion === '1.0.0' ? run.input.watch.name : `${run.input.context.entity.name ?? '企業名不明'} / ${run.input.context.category.label}`;
   return <article ref={result} className="signal-result" aria-labelledby="signal-result-heading">
     <div className="signal-result-title"><div><p className="signal-eyebrow">保存された確認結果</p><h2 ref={heading} tabIndex={-1} id="signal-result-heading">{savedResultTarget(run)}</h2></div><span className={`signal-badge status-${run.status}`}>{runStatusLabel(run)}</span></div>

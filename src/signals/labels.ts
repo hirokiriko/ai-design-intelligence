@@ -30,6 +30,21 @@ const candidateFailureLabels: Record<string, string> = {
 };
 export const candidateFailureLabel = (run: Run): string | null =>
   (run.status === 'failed' || run.status === 'partial') && !factsOnlyRun(run) && run.errorCode !== null && Object.prototype.hasOwnProperty.call(candidateFailureLabels, run.errorCode) ? candidateFailureLabels[run.errorCode] : null;
+const relationshipFailureLabels: Record<string, string> = {
+  MODEL_EVIDENCE_RELATIONSHIP_INVALID: '根拠対応の検証で停止しました。詳細条件は記録されていません。',
+  MODEL_EVIDENCE_RELATIONSHIP_SUPPORT_UNKNOWN: '支持に指定された参照先を、検証済みの根拠から確認できませんでした。',
+  MODEL_EVIDENCE_RELATIONSHIP_OPPOSITION_UNKNOWN: '反証に指定された参照先を、検証済みの根拠から確認できませんでした。',
+  MODEL_EVIDENCE_RELATIONSHIP_OVERLAP: '同じ根拠が支持と反証の両方に指定されていました。',
+  MODEL_EVIDENCE_RELATIONSHIP_DIRECT_SUPPORT_MISSING: '直接対応の判定に必要な支持根拠が指定されていませんでした。',
+  MODEL_EVIDENCE_RELATIONSHIP_DIRECT_DESIGN_MISSING: '直接対応の支持根拠に意匠事実が含まれていませんでした。',
+  MODEL_EVIDENCE_RELATIONSHIP_DIRECT_OFFICIAL_MISSING: '直接対応の支持根拠に検証済みの公式事実が含まれていませんでした。',
+  MODEL_EVIDENCE_RELATIONSHIP_DIRECT_CONTRADICTED: '直接対応の判定に、反証または未確認事項が残っていました。',
+  MODEL_EVIDENCE_RELATIONSHIP_CATEGORY_OFFICIAL_MISSING: '商品分野としての関連を支える検証済みの公式事実がありませんでした。',
+  MODEL_EVIDENCE_RELATIONSHIP_MISSING_EVIDENCE_REQUIRED: '対応が未確認の判定に、次に必要な資料の説明がありませんでした。',
+  MODEL_EVIDENCE_RELATIONSHIP_OPPOSITION_REQUIRED: '無関係・矛盾の判定に反証根拠が指定されていませんでした。',
+};
+export const relationshipFailureLabel = (run: Run): string | null =>
+  (run.status === 'failed' || run.status === 'partial') && !factsOnlyRun(run) && run.errorCode !== null && Object.prototype.hasOwnProperty.call(relationshipFailureLabels, run.errorCode) ? relationshipFailureLabels[run.errorCode] : null;
 export const dataModeLabel = (mode: DataMode): string => mode === 'approved_public' ? '公開情報由来のデータ' : '架空データ · 実在の企業・製品ではありません';
 export const comparisonStatusLabel = (status: string): string => {
   if (status === 'administrator_matched_fixture_not_product_generations') return '管理者が架空資料を対応づけ済み（商品の新旧世代は未確認）';
@@ -40,6 +55,7 @@ export const factsOnlyRun = (run: Run): boolean => run.versions.model === 'facts
 export const runStatusLabel = (run: Run): string => {
   if (quoteFailureLabel(run)) return '引用の検証で停止／分析は未完了';
   if (candidateFailureLabel(run)) return '資料選択の検証で停止／分析は未完了';
+  if (relationshipFailureLabel(run)) return '根拠対応の検証で停止／分析は未完了';
   if (run.status !== 'failed') return runLabels[run.status];
   if (factsOnlyRun(run)) return '確認処理の失敗';
   if (run.errorCode === 'MODEL_ASSESSMENT_RELATIONSHIP_INVALID') return 'AI応答の検証失敗（仮説と根拠の対応）';

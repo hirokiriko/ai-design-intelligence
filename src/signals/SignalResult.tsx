@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Run, Signal, SignalV2 } from './contract';
-import { comparisonCoverageSummary, comparisonStatusLabel, designFactFieldLabel, designFactText, evidenceId, factsOnlyRun, quoteFailureLabel, recordDisplayLabel, runStatusLabel, savedResultTarget } from './labels';
+import { candidateFailureLabel, comparisonCoverageSummary, comparisonStatusLabel, designFactFieldLabel, designFactText, evidenceId, factsOnlyRun, quoteFailureLabel, recordDisplayLabel, runStatusLabel, savedResultTarget } from './labels';
 import { SignalRecordEvidence } from './SignalRecordEvidence';
 import { DiscoveryDetails, EvidenceLinks, RecordFact, Relationships, ResultOverview, SavedContext, SavedTarget } from './SignalContext';
 
@@ -69,7 +69,7 @@ export function SignalResult({ run }: { run: Run }) {
   const signal = run.signal;
   const factsOnly = factsOnlyRun(run);
   const incomplete = run.status !== 'complete';
-  const quoteFailure = quoteFailureLabel(run);
+  const failureDetail = quoteFailureLabel(run) ?? candidateFailureLabel(run);
   const target = run.schemaVersion === '1.0.0' ? run.input.watch.name : `${run.input.context.entity.name ?? '企業名不明'} / ${run.input.context.category.label}`;
   return <article ref={result} className="signal-result" aria-labelledby="signal-result-heading">
     <div className="signal-result-title"><div><p className="signal-eyebrow">保存された確認結果</p><h2 ref={heading} tabIndex={-1} id="signal-result-heading">{savedResultTarget(run)}</h2></div><span className={`signal-badge status-${run.status}`}>{runStatusLabel(run)}</span></div>
@@ -112,6 +112,6 @@ export function SignalResult({ run }: { run: Run }) {
     <details className="signal-details" data-print-evidence><summary>収録条件と保存対象の詳細</summary><SavedContext run={run} /></details>
     {run.schemaVersion !== '1.0.0' ? <DiscoveryDetails run={run} /> : null}
     {signal ? <details className="signal-details"><summary>短い実行履歴と終了理由</summary>{!incomplete ? <p>保存された総合判定：{statusLabels[signal.status]}</p> : null}<ol>{signal.toolEvents.map((event, index) => <li key={index}><strong>{event.tool === 'finish' ? incomplete ? '途中段階の記録' : '終了 / 不足' : event.tool === 'list_candidates' ? '公式候補確認' : '追加確認'}</strong> · {event.outcome}<p>{event.reason}</p><p className="signal-subtle">{event.startedAt} → {event.finishedAt}</p></li>)}</ol><p><strong>{incomplete ? '停止前の検討状況' : '終了 / 不足'}</strong>：{signal.stopReason}</p></details> : null}
-    <details className="signal-details" data-print-evidence><summary>保存条件・実行情報</summary><dl className="signal-metadata">{quoteFailure ? <div><dt>保存された停止理由</dt><dd>{quoteFailure}</dd></div> : null}<div><dt>実行日時</dt><dd>{run.createdAt}</dd></div><div><dt>終了日時</dt><dd>{run.completedAt ?? '未完了'}</dd></div><div><dt>企業 / 分類</dt><dd>{run.schemaVersion === '1.0.0' ? '旧版には表示名未記録' : target}</dd></div><div><dt>比較A / 比較Bの基準日</dt><dd>{run.schemaVersion === '1.0.0' ? '旧版には基準日未記録' : `${run.input.context.beforeDataset.dataAsOf} / ${run.input.context.afterDataset.dataAsOf}`}</dd></div><div><dt>AIモデル</dt><dd>{run.versions.model}</dd></div><div><dt>AI呼出 / 確認処理</dt><dd>{run.usage.modelRequests} / {run.usage.toolCalls}</dd></div><div><dt>入力 / 出力トークン</dt><dd>{run.usage.inputTokens} / {run.usage.outputTokens}</dd></div></dl>{run.status === 'complete' ? <p className="signal-subtle">処理終了は、同一製品・商品化やすべての根拠の確認が済んだことを意味しません。</p> : null}<p className="signal-subtle">保存履歴の再表示・再読み込みではAIを呼び出しません。過去の結果は上書きしません。</p></details>
+    <details className="signal-details" data-print-evidence><summary>保存条件・実行情報</summary><dl className="signal-metadata">{failureDetail ? <div><dt>保存された停止理由</dt><dd>{failureDetail}</dd></div> : null}<div><dt>実行日時</dt><dd>{run.createdAt}</dd></div><div><dt>終了日時</dt><dd>{run.completedAt ?? '未完了'}</dd></div><div><dt>企業 / 分類</dt><dd>{run.schemaVersion === '1.0.0' ? '旧版には表示名未記録' : target}</dd></div><div><dt>比較A / 比較Bの基準日</dt><dd>{run.schemaVersion === '1.0.0' ? '旧版には基準日未記録' : `${run.input.context.beforeDataset.dataAsOf} / ${run.input.context.afterDataset.dataAsOf}`}</dd></div><div><dt>AIモデル</dt><dd>{run.versions.model}</dd></div><div><dt>AI呼出 / 確認処理</dt><dd>{run.usage.modelRequests} / {run.usage.toolCalls}</dd></div><div><dt>入力 / 出力トークン</dt><dd>{run.usage.inputTokens} / {run.usage.outputTokens}</dd></div></dl>{run.status === 'complete' ? <p className="signal-subtle">処理終了は、同一製品・商品化やすべての根拠の確認が済んだことを意味しません。</p> : null}<p className="signal-subtle">保存履歴の再表示・再読み込みではAIを呼び出しません。過去の結果は上書きしません。</p></details>
   </article>;
 }

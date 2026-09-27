@@ -16,6 +16,20 @@ const quoteFailureLabels: Record<string, string> = {
 };
 export const quoteFailureLabel = (run: Run): string | null =>
   (run.status === 'failed' || run.status === 'partial') && !factsOnlyRun(run) && run.errorCode !== null && Object.prototype.hasOwnProperty.call(quoteFailureLabels, run.errorCode) ? quoteFailureLabels[run.errorCode] : null;
+const candidateFailureLabels: Record<string, string> = {
+  MODEL_CANDIDATE_NOT_ALLOWED: '資料選択の検証で停止しました。詳細条件は記録されていません。',
+  MODEL_CANDIDATE_SELECTION_EMPTY: '確認する資料が選択されていませんでした。',
+  MODEL_CANDIDATE_SELECTION_DUPLICATE: '同じ資料が重複して選択されていました。',
+  MODEL_CANDIDATE_OUT_OF_SCOPE: '今回選択できる範囲外の資料が指定されていました。',
+  MODEL_CANDIDATE_ALREADY_FETCHED: '取得済みの資料が再び選択されていました。',
+  MODEL_CANDIDATE_ALREADY_ATTEMPTED: '取得を試みた資料が再び選択されていました。',
+  MODEL_CANDIDATE_SELECTION_LIMIT: '一度に確認できる資料数の上限を超えていました。',
+  MODEL_ADDITIONAL_SELECTION_LIMIT: '追加確認で選択できる資料は1件ですが、件数が一致しませんでした。',
+  MODEL_ADDITIONAL_MISSING_REQUIRED: '追加確認に必要な引用・日付・対象の対応について、不足理由が指定されていませんでした。',
+  MODEL_ACTION_NOT_ALLOWED: '現在の確認段階では実行できない操作が指定されていました。',
+};
+export const candidateFailureLabel = (run: Run): string | null =>
+  (run.status === 'failed' || run.status === 'partial') && !factsOnlyRun(run) && run.errorCode !== null && Object.prototype.hasOwnProperty.call(candidateFailureLabels, run.errorCode) ? candidateFailureLabels[run.errorCode] : null;
 export const dataModeLabel = (mode: DataMode): string => mode === 'approved_public' ? '公開情報由来のデータ' : '架空データ · 実在の企業・製品ではありません';
 export const comparisonStatusLabel = (status: string): string => {
   if (status === 'administrator_matched_fixture_not_product_generations') return '管理者が架空資料を対応づけ済み（商品の新旧世代は未確認）';
@@ -25,6 +39,7 @@ export const comparisonStatusLabel = (status: string): string => {
 export const factsOnlyRun = (run: Run): boolean => run.versions.model === 'facts-only-deterministic';
 export const runStatusLabel = (run: Run): string => {
   if (quoteFailureLabel(run)) return '引用の検証で停止／分析は未完了';
+  if (candidateFailureLabel(run)) return '資料選択の検証で停止／分析は未完了';
   if (run.status !== 'failed') return runLabels[run.status];
   if (factsOnlyRun(run)) return '確認処理の失敗';
   if (run.errorCode === 'MODEL_ASSESSMENT_RELATIONSHIP_INVALID') return 'AI応答の検証失敗（仮説と根拠の対応）';

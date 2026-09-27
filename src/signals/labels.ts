@@ -3,8 +3,19 @@ import type { Bootstrap, DataMode, Run, Signal, SignalV2 } from './contract';
 export const comparisonPairsVersion = (version: Bootstrap['schemaVersion'] | undefined) => version === '2.4.0' ? '2.3.0' : version === '2.2.0' || version === '2.3.0' ? version : null;
 
 export const runLabels: Record<Run['status'], string> = {
-  running: '進行中', complete: '処理終了', partial: '一部完了', failed: 'API・AI処理の失敗', interrupted: '中断',
+  running: '進行中', complete: '処理終了', partial: '分析未完了（途中終了）', failed: 'API・AI処理の失敗', interrupted: '中断',
 };
+const quoteFailureLabels: Record<string, string> = {
+  MODEL_EVIDENCE_QUOTE_INVALID: '引用検証の詳細条件は記録されていません。',
+  MODEL_EVIDENCE_QUOTE_DUPLICATE_SOURCE: '同じ資料への複数の引用が含まれていました。',
+  MODEL_EVIDENCE_QUOTE_TOO_LONG: '引用が保存可能な文字数の上限を超えていました。',
+  MODEL_EVIDENCE_QUOTE_NOT_FOUND: '引用と完全に一致する箇所を原文で確認できませんでした。',
+  MODEL_EVIDENCE_QUOTE_AMBIGUOUS: '引用と一致する箇所が複数あり、位置を特定できませんでした。',
+  MODEL_EVIDENCE_QUOTE_OUTSIDE_EXCERPT: '引用がAIに渡した抜粋の範囲外でした。',
+  MODEL_EVIDENCE_QUOTE_POSITION_MISMATCH: '引用と保存する文字位置が一致しませんでした。',
+};
+export const quoteFailureLabel = (run: Run): string | null =>
+  (run.status === 'failed' || run.status === 'partial') && !factsOnlyRun(run) && run.errorCode !== null && Object.prototype.hasOwnProperty.call(quoteFailureLabels, run.errorCode) ? quoteFailureLabels[run.errorCode] : null;
 export const dataModeLabel = (mode: DataMode): string => mode === 'approved_public' ? '公開情報由来のデータ' : '架空データ · 実在の企業・製品ではありません';
 export const comparisonStatusLabel = (status: string): string => {
   if (status === 'administrator_matched_fixture_not_product_generations') return '管理者が架空資料を対応づけ済み（商品の新旧世代は未確認）';
@@ -13,6 +24,7 @@ export const comparisonStatusLabel = (status: string): string => {
 };
 export const factsOnlyRun = (run: Run): boolean => run.versions.model === 'facts-only-deterministic';
 export const runStatusLabel = (run: Run): string => {
+  if (quoteFailureLabel(run)) return '引用の検証で停止／分析は未完了';
   if (run.status !== 'failed') return runLabels[run.status];
   if (factsOnlyRun(run)) return '確認処理の失敗';
   if (run.errorCode === 'MODEL_ASSESSMENT_RELATIONSHIP_INVALID') return 'AI応答の検証失敗（仮説と根拠の対応）';

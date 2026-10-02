@@ -1,4 +1,4 @@
-import { ContractError, decodeBootstrap, decodeRun, decodeRuns, decodeWatch, type WatchInput } from './contract';
+import { ContractError, decodeBootstrap, decodeComparisonPairs, decodeRun, decodeRuns, decodeWatch, type Watch, type WatchInput } from './contract';
 
 export class SignalApiError extends Error {
   constructor(public readonly code: string, message: string) { super(message); }
@@ -10,11 +10,13 @@ export async function requestJson(path: string, options: RequestInit = {}): Prom
   } catch { throw new SignalApiError('connection', '通信が完了していません。保存履歴を再取得して実行状態を確認してください。'); }
   if (!response.ok) {
     const messages: Record<number, string> = {
+      400: '比較組または確認条件が一致しません。登録済みの候補を再取得してください。',
       401: '認証が必要です。管理者から案内された方法で認証し、再読み込みしてください。',
       403: '操作権限またはセッションを確認できません。再読み込みしてからやり直してください。',
       404: '保存結果または確認条件が見つかりません。',
       409: 'すでに実行中です。保存履歴から状態を再取得してください。',
       429: '実行回数または予算の上限に達しました。管理者に確認してください。',
+      422: '比較組または確認条件を検証できません。登録済みの候補を再取得してください。',
     };
     throw new SignalApiError(String(response.status), messages[response.status] ?? '確認処理に失敗しました。保存済みの結果は履歴から再表示できます。');
   }
@@ -25,9 +27,10 @@ export async function requestJson(path: string, options: RequestInit = {}): Prom
 }
 export const signalApi = {
   bootstrap: async () => decodeBootstrap(await requestJson('/bootstrap')),
+  comparisonPairs: async (watch: Watch) => decodeComparisonPairs(await requestJson(`/watches/${encodeURIComponent(watch.id)}/comparison-pairs`), watch),
   saveWatch: async (input: WatchInput, csrfToken: string) => decodeWatch(await requestJson('/watches', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify(input) })),
   runs: async (watchId: string) => decodeRuns(await requestJson(`/runs?watchId=${encodeURIComponent(watchId)}`)),
   run: async (runId: string) => decodeRun(await requestJson(`/runs/${encodeURIComponent(runId)}`)),
-  start: async (watchId: string, intent: 'check' | 'reanalyze', requestId: string, csrfToken: string) => decodeRun(await requestJson(`/watches/${encodeURIComponent(watchId)}/runs`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify({ intent, requestId }) })),
+  start: async (watchId: string, intent: 'check' | 'reanalyze', requestId: string, csrfToken: string, comparisonPairId?: string) => decodeRun(await requestJson(`/watches/${encodeURIComponent(watchId)}/runs`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify({ intent, requestId, ...(comparisonPairId ? { comparisonPairId } : {}) }) })),
 };
 export type SignalApi = typeof signalApi;

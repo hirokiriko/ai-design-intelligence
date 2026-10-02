@@ -1,5 +1,5 @@
 import type { CollectionContextV23, Run, RunV2, RunV21, RunV22, RunV23, Signal, SignalV2 } from './contract';
-import { classificationSchemeLabel, comparisonStatusLabel, dataModeLabel, evidenceId, factsOnlyRun, recordDisplayLabel, relationLabels } from './labels';
+import { classificationSchemeLabel, comparisonStatusLabel, dataModeLabel, evidenceId, factsOnlyRun, partialSourceEvaluationRun, recordDisplayLabel, relationLabels } from './labels';
 
 function evidenceLabel(signal: Signal, id: string): string {
   const design = signal.designFacts.findIndex((item) => item.id === id);
@@ -57,9 +57,10 @@ export function ResultOverview({ run }: { run: Run }) {
   const signal = run.signal;
   if (!signal) return null;
   const incomplete = run.status !== 'complete';
+  const partialEvaluation = partialSourceEvaluationRun(run);
   const highlights = run.schemaVersion !== '1.0.0' ? run.signal?.recordFacts.filter((fact) => fact.selectionReason === 'newly_observed' || fact.selectionReason === 'comparison_pair').slice(0, 3) ?? [] : [];
-  return <section className="signal-overview" aria-label={incomplete ? '保存された途中資料の概要' : '確認結果の概要'}><h3>{incomplete ? '停止前に取得・検証した参考資料' : '今回わかったこと'}</h3>
-    {incomplete ? <p>この実行で最後に検証が済んだ範囲の保存資料です。分析は未完了で、検証済みは内容の正しさを人が確認した意味ではありません。</p> : null}
+  return <section className="signal-overview" aria-label={incomplete ? '保存された途中資料の概要' : '確認結果の概要'}><h3>{partialEvaluation ? '取得済み資料で確認した途中結果' : incomplete ? '停止前に取得・検証した参考資料' : '今回わかったこと'}</h3>
+    {incomplete ? <p>{partialEvaluation ? '一部の公式資料は取得できませんでした。取得済みの資料だけを評価し、検証を通った根拠と検討材料を表示します。全体の分析は未完了で、人による内容評価は別に必要です。' : 'この実行で最後に検証が済んだ範囲の保存資料です。分析は未完了で、検証済みは内容の正しさを人が確認した意味ではありません。'}</p> : null}
     <div><h4>収録範囲の新規観測・変化</h4><p>{signal.counts.comparable ? `比較Bの対象${signal.counts.after}件、収録範囲での新規観測${signal.counts.newlyObserved}件。` : '収録条件が異なるため、前後の増減を比較できません。'}</p><p className="signal-subtle">収録件数の差は、形状の変化や商品の世代差を示しません。</p></div>
     {highlights.length ? <div><h4>詳しく見る意匠</h4><ul>{highlights.map((fact) => <li key={fact.id}><a href={`#${evidenceId(fact.id)}`}>{recordDisplayLabel(fact, '物品名未確認')}</a> · {fact.selectionReason === 'newly_observed' ? '収録範囲で新しく確認' : '画像の比較対象'}</li>)}</ul></div> : null}
     <nav className="signal-evidence-links" aria-label="確認結果の根拠へ"><a href="#signal-design-facts">意匠データの事実へ</a><a href="#signal-images">画像と観察へ</a><a href="#signal-official">公式発表へ</a><a href="#signal-next-checks">次の確認事項へ</a></nav>
@@ -77,9 +78,9 @@ export function SavedTarget({ run }: { run: Run }) {
   </div>;
 }
 
-export function Relationships({ signal, factsOnly = false, incomplete = false }: { signal: SignalV2; factsOnly?: boolean; incomplete?: boolean }) {
-  return <details className="signal-details" data-print-evidence><summary>{incomplete ? '個別意匠と商品の対応の中間候補' : '個別意匠と商品の対応'}（{signal.relationships.length}件）</summary><p className="signal-subtle">{factsOnly ? '参照リンクと個別意匠が同じ製品を指すことは確認していません。' : incomplete ? '停止前の検討状況です。対応についての最終判定ではありません。' : '公式サイトの記載と、個別意匠が同じ製品であることの確認を分けています。'}</p>
-    {signal.relationships.length ? signal.relationships.map((item) => <article className={`signal-fact signal-relation relation-${item.relation}`} key={item.id} id={`signal-relation-${encodeURIComponent(item.id)}`} tabIndex={-1}><h4>{incomplete ? `中間候補 · ${item.relation === 'unknown' ? '対応不明' : relationLabels[item.relation]}` : relationLabels[item.relation]}</h4><p>{item.summary}</p><div><strong>支持する根拠</strong><EvidenceLinks ids={item.supportingEvidenceIds} signal={signal} /></div><div><strong>不一致・反証の根拠</strong><EvidenceLinks ids={item.opposingEvidenceIds} signal={signal} /></div>{item.missingEvidence.length ? <><h5>不足している根拠</h5><ul>{item.missingEvidence.map((text, index) => <li key={index}>{text}</li>)}</ul></> : null}</article>) : <p>個別意匠と商品の対応は評価されていません。</p>}
+export function Relationships({ signal, factsOnly = false, incomplete = false, partialEvaluation = false }: { signal: SignalV2; factsOnly?: boolean; incomplete?: boolean; partialEvaluation?: boolean }) {
+  return <details className="signal-details" data-print-evidence><summary>{partialEvaluation ? '取得済み資料での対応評価（途中結果）' : incomplete ? '個別意匠と商品の対応の中間候補' : '個別意匠と商品の対応'}（{signal.relationships.length}件）</summary><p className="signal-subtle">{factsOnly ? '参照リンクと個別意匠が同じ製品を指すことは確認していません。' : partialEvaluation ? '取得済みの根拠だけを使った対応評価です。取得できなかった資料を含めた最終判定ではありません。' : incomplete ? '停止前の検討状況です。対応についての最終判定ではありません。' : '公式サイトの記載と、個別意匠が同じ製品であることの確認を分けています。'}</p>
+    {signal.relationships.length ? signal.relationships.map((item) => <article className={`signal-fact signal-relation relation-${item.relation}`} key={item.id} id={`signal-relation-${encodeURIComponent(item.id)}`} tabIndex={-1}><h4>{incomplete ? `${partialEvaluation ? '途中結果' : '中間候補'} · ${item.relation === 'unknown' ? '対応不明' : relationLabels[item.relation]}` : relationLabels[item.relation]}</h4><p>{item.summary}</p><div><strong>支持する根拠</strong><EvidenceLinks ids={item.supportingEvidenceIds} signal={signal} /></div><div><strong>不一致・反証の根拠</strong><EvidenceLinks ids={item.opposingEvidenceIds} signal={signal} /></div>{item.missingEvidence.length ? <><h5>不足している根拠</h5><ul>{item.missingEvidence.map((text, index) => <li key={index}>{text}</li>)}</ul></> : null}</article>) : <p>個別意匠と商品の対応は評価されていません。</p>}
   </details>;
 }
 

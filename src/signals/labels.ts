@@ -52,7 +52,27 @@ export const comparisonStatusLabel = (status: string): string => {
   return /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(status) ? status : '比較条件の詳細は未確認';
 };
 export const factsOnlyRun = (run: Run): boolean => run.versions.model === 'facts-only-deterministic';
+const sourceRejectionOutcomes = new Set([
+  ...['ENTRY', 'REDIRECT'].flatMap((stage) => ['CHARACTERS', 'PARSE', 'SCHEME', 'HOST', 'QUERY', 'USERINFO', 'PORT', 'PATH'].map((condition) => `URL_REJECTED_${stage}_${condition}`)),
+  'SOURCE_PATH_NOT_APPROVED_ENTRY', 'SOURCE_PATH_NOT_APPROVED_REDIRECT',
+]);
+const sourceRejectionEvent = (event: Signal['toolEvents'][number]): boolean => event.tool === 'fetch_candidate' && sourceRejectionOutcomes.has(event.outcome);
+export const partialSourceEvaluationRun = (run: Run): boolean => {
+  if (run.status !== 'partial' || factsOnlyRun(run) || !['URL_REJECTED', 'SOURCE_PATH_NOT_APPROVED'].includes(run.errorCode ?? '') || !run.signal) return false;
+  const readableSource = run.signal.sources.some((source) => {
+    const chars = Array.from(source.excerpt);
+    const visible = 'modelVisibleChars' in source && typeof source.modelVisibleChars === 'number' ? source.modelVisibleChars : chars.length;
+    return chars.slice(0, visible).join('').trim().length > 0;
+  });
+  if (!readableSource) return false;
+  const rejectedAt = run.signal.toolEvents.findIndex(sourceRejectionEvent);
+  return rejectedAt >= 0 && run.signal.toolEvents.slice(rejectedAt + 1).some((event) => event.tool === 'finish' && event.outcome === 'ok');
+};
+export const sourceFailureLabel = (run: Run): string | null =>
+  (run.status === 'failed' || run.status === 'partial') && !factsOnlyRun(run) && (['URL_REJECTED', 'SOURCE_PATH_NOT_APPROVED'].includes(run.errorCode ?? '') || run.signal?.toolEvents.some(sourceRejectionEvent))
+    ? '公式資料の取得を許可範囲で停止しました。取得できなかった資料は結果の根拠に使っていません。' : null;
 export const runStatusLabel = (run: Run): string => {
+  if (partialSourceEvaluationRun(run)) return '一部資料を取得できず、取得済み資料で確認した途中結果';
   if (quoteFailureLabel(run)) return '引用の検証で停止／分析は未完了';
   if (candidateFailureLabel(run)) return '資料選択の検証で停止／分析は未完了';
   if (relationshipFailureLabel(run)) return '根拠対応の検証で停止／分析は未完了';

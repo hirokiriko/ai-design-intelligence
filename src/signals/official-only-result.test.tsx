@@ -41,6 +41,9 @@ describe('completed official facts with no grounded hypothesis', () => {
     for (const text of ['API・AI処理の失敗', '分析未完了（途中終了）', '今回の結果に採用された公式発表はありません。']) {
       expect(html).not.toContain(text);
     }
+    for (const marker of ['id="signal-images"', 'id="signal-official"', 'class="signal-hypotheses"']) {
+      expect(html).toContain(marker);
+    }
     expect(html.indexOf('id="signal-images"')).toBeLessThan(html.indexOf('id="signal-official"'));
     expect(html.indexOf('id="signal-official"')).toBeLessThan(html.indexOf('class="signal-hypotheses"'));
     const runs = decodeRuns({ schemaVersion: '2.3.0', runs: [fictionalRunV22, current] });

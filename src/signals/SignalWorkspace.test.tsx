@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { fictionalComparisonPair } from './fixtures-v22';
 import { comparisonStatusLabel } from './labels';
-import { ComparisonPairSelector } from './SignalWorkspace';
+import { ComparisonPairSelector, PendingRunNotice } from './SignalWorkspace';
 
 describe('comparison pair selection', () => {
   it('explains the fictional comparison status while preserving candidate values', () => {
@@ -34,5 +34,30 @@ describe('comparison pair selection', () => {
     expect(comparisonStatusLabel('scale_unknown')).toBe('縮尺は未確認');
     expect(comparisonStatusLabel('同方向を確認')).toBe('同方向を確認');
     expect(comparisonStatusLabel('3D形状の縮尺は未確認')).toBe('3D形状の縮尺は未確認');
+  });
+});
+
+describe('pending run recovery notice', () => {
+  it('offers only outcome lookup after a lost response without exposing the request identifiers', () => {
+    const html = renderToStaticMarkup(createElement(PendingRunNotice, {
+      pending: { watchId: 'private-watch-id', requestId: 'private-request-id' }, busy: false, onRecover: () => undefined,
+    }));
+    expect(html).toContain('新しい実行を開始しません');
+    expect(html).toContain('要求を再送することはありません');
+    expect(html).toContain('保留した実行の状態を確認');
+    expect(html).not.toContain('private-watch-id');
+    expect(html).not.toContain('private-request-id');
+    expect(html).not.toContain('disabled=""');
+  });
+
+  it('disables lookup during another GET and offers no reset when pending storage is unreadable', () => {
+    const waiting = renderToStaticMarkup(createElement(PendingRunNotice, {
+      pending: { watchId: 'watch-example', requestId: 'request-lost' }, busy: true, onRecover: () => undefined,
+    }));
+    expect(waiting).toContain('disabled=""');
+    const unreadable = renderToStaticMarkup(createElement(PendingRunNotice, { pending: 'unavailable', busy: false, onRecover: () => undefined }));
+    expect(unreadable).toContain('保存結果は閲覧できます');
+    expect(unreadable).toContain('新しい実行は開始しません');
+    expect(unreadable).not.toContain('<button');
   });
 });

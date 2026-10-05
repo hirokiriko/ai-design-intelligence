@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { signalApi, SignalApiError, type SignalApi } from './api';
+import { readPendingRunRequest, signalApi, SignalApiError, type PendingRunRequest, type SignalApi } from './api';
 import { ContractError, type Bootstrap, type ComparisonPair, type Run, type Watch, type WatchInput } from './contract';
 import { SignalResult } from './SignalResult';
 import { comparisonPairsVersion, comparisonStatusLabel, dataModeLabel, runStatusLabel } from './labels';
@@ -8,6 +8,11 @@ import './signals.css';
 
 interface Props { api?: SignalApi; renderAnalysis?: (datasetId: string) => ReactNode }
 type PairState = 'loading' | 'ready' | 'error';
+type PendingRequestState = PendingRunRequest | 'unavailable' | null;
+function pendingRequestFromBrowser(): PendingRequestState {
+  if (typeof window === 'undefined') return null;
+  try { return readPendingRunRequest(); } catch { return 'unavailable'; }
+}
 const supportsPairs = (version: Bootstrap['schemaVersion'] | undefined) => comparisonPairsVersion(version) !== null;
 const selectedRunId = () => typeof window === 'undefined' ? null : new URL(window.location.href).searchParams.get('run');
 function saveRunLocation(id: string | null): void {
@@ -34,12 +39,13 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
   const [comparisonPairs, setComparisonPairs] = useState<ComparisonPair[]>([]);
   const [selectedPairId, setSelectedPairId] = useState('');
   const [pairState, setPairState] = useState<PairState>('ready');
+  const [pendingRequest, setPendingRequest] = useState(pendingRequestFromBrowser);
   const mutation = useRef(false);
   const revision = useRef(0);
   const pairRevision = useRef(0);
-  const request = useRef<{ watchId: string; intent: 'check' | 'reanalyze'; comparisonPairId: string; id: string } | null>(null);
   const selectedWatch = bootstrap?.watches.find((item) => item.id === watchId);
   const actionPending = busy || historyState === 'loading';
+  const creationPending = actionPending || pendingRequest !== null;
   const selectionReady = !supportsPairs(bootstrap?.schemaVersion) || (pairState === 'ready' && (comparisonPairs.length === 0 || comparisonPairs.some((pair) => pair.id === selectedPairId)));
 
   const recoverError = useCallback((failure: unknown) => {
@@ -68,18 +74,26 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
   }, [api, recoverError]);
 
   useEffect(() => {
+    const syncPending = () => setPendingRequest(pendingRequestFromBrowser());
+    window.addEventListener('storage', syncPending);
+    return () => window.removeEventListener('storage', syncPending);
+  }, []);
+
+  useEffect(() => {
     let active = true;
     void api.bootstrap().then(async (loaded) => {
       const storedId = selectedRunId();
       const saved = storedId ? await api.run(storedId) : null;
-      const initialWatch = saved?.watchId ?? loaded.watches[0]?.id ?? '';
+      const pending = pendingRequestFromBrowser();
+      const initialWatch = (pending && pending !== 'unavailable' ? pending.watchId : null) ?? saved?.watchId ?? loaded.watches[0]?.id ?? '';
       const history = initialWatch ? await api.runs(initialWatch) : [];
       if (!active) return;
-      const selected = saved ?? history[0] ?? null;
+      const selected = saved?.watchId === initialWatch ? saved : history[0] ?? null;
+      setPendingRequest(pending);
       setBootstrap(loaded); setWatchId(initialWatch); setRuns(history); setRun(selected); setHistoryState('ready');
       void loadComparisonPairs(loaded.watches.find((watch) => watch.id === initialWatch), loaded.schemaVersion);
       saveRunLocation(selected?.id ?? null);
-      setNotice('保存された条件と履歴を読み込みました。更新を確認すると新しい確認処理を開始します。');
+      setNotice(pending ? '前の実行要求を保留しています。保存結果を閲覧し、保留した実行の状態を確認してください。新しい実行は開始しません。' : '保存された条件と履歴を読み込みました。更新を確認すると新しい確認処理を開始します。');
     }).catch((failure: unknown) => { if (active) { setError(message(failure)); setNotice('読込に失敗しました。'); } });
     return () => { active = false; revision.current += 1; pairRevision.current += 1; };
   }, [api, loadComparisonPairs]);
@@ -87,13 +101,37 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
   const loadHistory = async (id: string, preserveRun = false) => {
     const current = ++revision.current;
     setError(''); setHistoryState('loading'); setNotice('保存履歴を読み込んでいます。AIは実行しません。');
+    let recovered: Run | null = null;
     try {
+      let lookupError = '';
+      if (pendingRequest && pendingRequest !== 'unavailable' && pendingRequest.watchId === id) {
+        try {
+          const saved = await api.requestRun(id, pendingRequest.requestId);
+          recovered = saved;
+          if (current !== revision.current) return;
+          setPendingRequest(pendingRequestFromBrowser());
+          setRun(saved); setRuns((previous) => [saved, ...previous.filter((item) => item.id !== saved.id)]); saveRunLocation(saved.id);
+          if (watchId !== id) {
+            setWatchId(id);
+            void loadComparisonPairs(bootstrap?.watches.find((watch) => watch.id === id), bootstrap?.schemaVersion ?? '1.0.0');
+          }
+          setNotice(`要求に対応する保存結果を表示しました。${runStatusLabel(saved)}。AIは実行していません。`);
+        }
+        catch (failure) { lookupError = message(failure); }
+      }
       const history = await api.runs(id);
       if (current !== revision.current) return;
-      const selected = preserveRun ? history.find((item) => item.id === run?.id) ?? history[0] ?? null : history[0] ?? null;
-      setRuns(history); setHistoryState('ready'); setRun(selected); saveRunLocation(selected?.id ?? null);
-      setNotice('保存履歴を再取得しました。AIは実行していません。');
-    } catch (failure) { if (current === revision.current) { setHistoryState('error'); recoverError(failure); } }
+      const recoveredRun = recovered;
+      const selected = recoveredRun ? history.find((item) => item.id === recoveredRun.id) ?? recoveredRun : (preserveRun ? history.find((item) => item.id === run?.id) ?? history[0] ?? null : history[0] ?? null);
+      const pending = pendingRequestFromBrowser();
+      setPendingRequest(pending);
+      setRuns(recovered && selected ? [selected, ...history.filter((item) => item.id !== selected.id)] : history); setHistoryState('ready'); setRun(selected); saveRunLocation(selected?.id ?? null);
+      if (lookupError) setError(lookupError);
+      setNotice(pending ? '保存履歴を再取得しました。前の実行要求の成否はまだ確定していません。要求を再送せず、状態を確認してください。AIは実行していません。' : '保存履歴を再取得しました。AIは実行していません。');
+    } catch (failure) { if (current === revision.current) {
+      setHistoryState('error'); recoverError(failure);
+      if (recovered) setNotice('要求に対応する保存結果は取得しましたが、履歴一覧の再取得には失敗しました。AIは実行していません。');
+    } }
   };
   const changeWatch = (id: string) => {
     setWatchId(id); setRun(null); setRuns([]); setShowAnalysis(false); saveRunLocation(null);
@@ -111,7 +149,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
     } catch (failure) { if (current === revision.current) recoverError(failure); }
   };
   const saveWatch = async (input: WatchInput) => {
-    if (!bootstrap || mutation.current || historyState === 'loading') return;
+    if (!bootstrap || mutation.current || historyState === 'loading' || pendingRequest !== null) return;
     mutation.current = true; revision.current += 1; setBusy(true); setError('');
     try {
       const saved = await api.saveWatch(input, bootstrap.csrfToken);
@@ -123,17 +161,16 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
     finally { mutation.current = false; setBusy(false); }
   };
   const startRun = async (intent: 'check' | 'reanalyze') => {
-    if (!bootstrap || !selectedWatch || mutation.current || historyState === 'loading' || !selectionReady) return;
+    if (!bootstrap || !selectedWatch || mutation.current || historyState === 'loading' || pendingRequest !== null || !selectionReady) return;
     const comparisonPairId = supportsPairs(bootstrap.schemaVersion) ? selectedPairId : '';
     mutation.current = true; revision.current += 1; setBusy(true); setError('');
     setNotice('バックエンドが登録済みデータの差分と資料を確認しています。');
-    if (!request.current || request.current.watchId !== watchId || request.current.intent !== intent || request.current.comparisonPairId !== comparisonPairId) request.current = { watchId, intent, comparisonPairId, id: crypto.randomUUID() };
     try {
-      const saved = await api.start(watchId, intent, request.current.id, bootstrap.csrfToken, comparisonPairId || undefined);
-      request.current = null;
+      const saved = await api.start(watchId, intent, crypto.randomUUID(), bootstrap.csrfToken, comparisonPairId || undefined);
+      setPendingRequest(pendingRequestFromBrowser());
       setRun(saved); setRuns((previous) => [saved, ...previous.filter((item) => item.id !== saved.id)]); setHistoryState('ready'); saveRunLocation(saved.id);
       setNotice(`確認結果を表示しました。${runStatusLabel(saved)}。`);
-    } catch (failure) { recoverError(failure); setNotice('通信または確認処理が完了していません。履歴で状態を確認してください。'); }
+    } catch (failure) { setPendingRequest(pendingRequestFromBrowser()); recoverError(failure); setNotice('通信または確認処理が完了していません。要求を再送せず、保存履歴で状態を確認してください。'); }
     finally { mutation.current = false; setBusy(false); }
   };
   const refreshDatasets = async () => {
@@ -156,20 +193,21 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
       <div className="signal-data-banner">保存結果のデータ区分は、各実行に保存された情報で表示します。<span>常時監視・自動通知ではありません。</span></div>
       <p className="signal-live" role="status" aria-live="polite">{notice}</p>
       {error ? <div className="signal-error" role="alert"><p>{error}</p>{!bootstrap ? <button type="button" className="signal-button" onClick={() => window.location.reload()}>認証・設定を確認して再読み込み</button> : null}</div> : null}
+      {pendingRequest ? <PendingRunNotice pending={pendingRequest} busy={actionPending || !bootstrap} onRecover={() => { if (pendingRequest !== 'unavailable') void loadHistory(pendingRequest.watchId); }} /> : null}
       {bootstrap ? <div className="signal-layout">
         <aside className="signal-sidebar" aria-label="保存条件と履歴">
           <section className="signal-panel"><p className="signal-eyebrow">確認条件</p><h2>保存した確認条件</h2>
             <AnalysisModeNotice bootstrap={bootstrap} />
             <p className="signal-subtle">{bootstrap.catalog.entities.length === 1 ? '現在の登録対象は1社です。この企業の収録範囲を確認します。' : `現在の登録対象は${bootstrap.catalog.entities.length}社です。登録された企業・商品分野だけを選択できます。`}</p>
             {bootstrap.watches.length ? <label className="signal-field">確認する条件<select value={watchId} disabled={busy} onChange={(event) => changeWatch(event.target.value)}>{bootstrap.watches.map((watch) => <option key={watch.id} value={watch.id}>{watch.name}</option>)}</select></label> : <p>最初の確認条件を保存してください。</p>}
-            {selectedWatch ? <><WatchSummary watch={selectedWatch} bootstrap={bootstrap} />{supportsPairs(bootstrap.schemaVersion) ? <ComparisonPairSelector pairs={comparisonPairs} state={pairState} selectedId={selectedPairId} busy={actionPending} onSelect={setSelectedPairId} onReload={() => void loadComparisonPairs(selectedWatch, bootstrap.schemaVersion)} /> : null}<button className="signal-button signal-primary" type="button" disabled={actionPending || !selectionReady || run?.status === 'running'} onClick={() => void startRun('check')}>{busy ? '確認しています…' : '更新を確認'}</button><p className="signal-subtle">{supportsPairs(bootstrap.schemaVersion) ? '同じ条件・同じデータ・同じ比較組の確認済み結果がある場合は、保存結果を表示します。比較組の選択や変更だけではAIを実行しません。' : '同じ条件・同じデータの確認済み結果がある場合は、保存結果を表示します。'}</p></> : null}
+            {selectedWatch ? <><WatchSummary watch={selectedWatch} bootstrap={bootstrap} />{supportsPairs(bootstrap.schemaVersion) ? <ComparisonPairSelector pairs={comparisonPairs} state={pairState} selectedId={selectedPairId} busy={actionPending} onSelect={setSelectedPairId} onReload={() => void loadComparisonPairs(selectedWatch, bootstrap.schemaVersion)} /> : null}<button className="signal-button signal-primary" type="button" disabled={creationPending || !selectionReady || run?.status === 'running'} onClick={() => void startRun('check')}>{busy ? '確認しています…' : '更新を確認'}</button><p className="signal-subtle">{supportsPairs(bootstrap.schemaVersion) ? '同じ条件・同じデータ・同じ比較組の確認済み結果がある場合は、保存結果を表示します。比較組の選択や変更だけではAIを実行しません。' : '同じ条件・同じデータの確認済み結果がある場合は、保存結果を表示します。'}</p></> : null}
             {selectedWatch ? <button className="signal-text-button" type="button" disabled={actionPending} onClick={() => void refreshDatasets()}>同じ企業・商品条件で収録データを選び直す</button> : null}
-            <button className="signal-text-button" type="button" disabled={busy} aria-expanded={showCreate} onClick={() => setShowCreate(!showCreate)}>{showCreate ? '条件の作成を閉じる' : '＋ 確認条件を保存'}</button>
-            {showCreate || !bootstrap.watches.length ? <WatchForm key={`${selectedWatch?.id ?? 'new'}-${createRevision}`} bootstrap={bootstrap} seed={selectedWatch} busy={actionPending} onSave={saveWatch} /> : null}
+            <button className="signal-text-button" type="button" disabled={creationPending} aria-expanded={showCreate} onClick={() => setShowCreate(!showCreate)}>{showCreate ? '条件の作成を閉じる' : '＋ 確認条件を保存'}</button>
+            {showCreate || !bootstrap.watches.length ? <WatchForm key={`${selectedWatch?.id ?? 'new'}-${createRevision}`} bootstrap={bootstrap} seed={selectedWatch} busy={creationPending} onSave={saveWatch} /> : null}
           </section>
           <section className="signal-panel"><h2>保存履歴</h2><button className="signal-text-button" type="button" disabled={busy || !watchId} onClick={() => void loadHistory(watchId, true)}>履歴を再取得</button>
             <SignalHistory runs={runs} selectedId={run?.id} state={historyState} disabled={actionPending} onSelect={(id) => void selectRun(id)} />
-            {run && run.status !== 'running' ? <details className="signal-details"><summary>新しい実行として確認し直す</summary><p className="signal-subtle">{bootstrap.analysisMode === 'facts_only' ? '過去の結果を残して、登録済み書誌事項を新しい実行として再比較します。記事取得・AI呼出は行いません。' : bootstrap.analysisMode === 'standard' ? '過去の結果を残して、登録資料による分析を新しく実行します。AI・公式確認を含む場合があります。' : '過去の結果を残して、新しい確認処理を実行します。この接続先の分析モードは未記録です。'}</p><button className="signal-button" type="button" disabled={actionPending || !selectionReady} onClick={() => void startRun('reanalyze')}>別の実行として再確認</button></details> : null}
+            {run && run.status !== 'running' ? <details className="signal-details"><summary>新しい実行として確認し直す</summary><p className="signal-subtle">{bootstrap.analysisMode === 'facts_only' ? '過去の結果を残して、登録済み書誌事項を新しい実行として再比較します。記事取得・AI呼出は行いません。' : bootstrap.analysisMode === 'standard' ? '過去の結果を残して、登録資料による分析を新しく実行します。AI・公式確認を含む場合があります。' : '過去の結果を残して、新しい確認処理を実行します。この接続先の分析モードは未記録です。'}</p><button className="signal-button" type="button" disabled={creationPending || !selectionReady} onClick={() => void startRun('reanalyze')}>別の実行として再確認</button></details> : null}
           </section>
         </aside>
         <div className="signal-content">{run ? <SignalResult key={run.id} run={run} /> : <section className="signal-panel signal-welcome"><span aria-hidden="true" className="signal-welcome-symbol">↗</span><h2>気になる変化を、根拠とともに。</h2><p>保存条件を選び「更新を確認」を押してください。</p><ol><li>意匠データの差分</li><li>登録資料に画像がある場合の観察候補</li><li>参照先と未確認事項</li></ol><p className="signal-subtle">変化なし・資料不足も結果として保存されます。</p></section>}</div>
@@ -177,6 +215,10 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
       {renderAnalysis && selectedWatch ? <section className="signal-legacy"><button className="signal-text-button" type="button" disabled={busy} aria-expanded={showAnalysis} onClick={() => setShowAnalysis(!showAnalysis)}>既存の市場・企業ルール分析 {showAnalysis ? 'を閉じる' : 'を開く'}</button>{showAnalysis ? renderAnalysis(selectedWatch.afterDatasetId) : null}</section> : null}
     </main><footer className="signal-footer">参考情報です。収録範囲外や最新の法的状態は示しません。事実・AI観察候補・関連仮説を区別して確認してください。</footer>
   </div>;
+}
+
+export function PendingRunNotice({ pending, busy, onRecover }: { pending: Exclude<PendingRequestState, null>; busy: boolean; onRecover: () => void }) {
+  return <div className="signal-error" role="status"><p>{pending === 'unavailable' ? '実行要求の保留情報を確認できません。ブラウザの保存設定を管理者と確認してください。保存結果は閲覧できますが、新しい実行は開始しません。' : '前の実行要求の成否を確認するまで、新しい実行を開始しません。保存結果の閲覧や再読み込みから要求を再送することはありません。'}</p>{pending !== 'unavailable' ? <button className="signal-button" type="button" disabled={busy} onClick={onRecover}>保留した実行の状態を確認</button> : null}</div>;
 }
 
 export function AnalysisModeNotice({ bootstrap }: { bootstrap: Bootstrap }) {

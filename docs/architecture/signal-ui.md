@@ -48,7 +48,7 @@ Backend #26の公開契約 `contracts/run-v2.2.0.schema.json` と `contracts/com
 
 ## 実装した導線
 
-保存した企業・商品分類・前後の収録範囲・登録公式サイトを選び、「更新を確認」で1回の明示実行を要求する。企業はBackendが提供したIDで選択し、表示名から企業を新設しない。二重操作を防ぎ、通信結果が不確定な再試行では同じrequest IDを使う。
+保存した企業・商品分類・前後の収録範囲・登録公式サイトを選び、「更新を確認」で1回の明示実行を要求する。企業はBackendが提供したIDで選択し、表示名から企業を新設しない。二重操作を防ぐ。実行POSTの前にwatch IDとrequest IDだけをブラウザのlocalStorageへ保留情報として記録し、応答不明・不正応答・処理中では再送と新しい実行を止める。結果本文・認証情報は保存しない。再読み込み後も同じ保留情報から復帰し、「保留した実行の状態を確認」と履歴のGETで既存request mappingを読み取る。正確な要求に対応する終了済みrunを確認した場合だけ保留を解除する。mapping未登録・GET失敗・処理中は未解決のままにし、最新runの類似から成否を推定しない。保存情報を読み書きできない場合も新しい実行を止め、保存結果の閲覧を維持する。
 
 結果は意匠データの事実、画像からのAI観察候補、公式発表の事実、関連仮説、不明点を分ける。公報日・出願日・公開日・取得日と事後照合を表示する。画像は認証内media APIから取得し、拡大と根拠意匠確認だけを行う。未取得画像を生成しない。`2.0.0`以降の根拠意匠は、同じ保存runの検証済み`recordFacts`へ進み、確認のためにdatasetを再取得しない。保存されていない項目は補完しない。旧`1.0.0`だけは従来どおり保存runの前後datasetをContract Adapterで検証して読み直す。
 
@@ -61,6 +61,7 @@ Backend #26の公開契約 `contracts/run-v2.2.0.schema.json` と `contracts/com
 - `POST /api/v1/watches`: 条件名とBackend identity、dataset、source profile IDを保存
 - `POST /api/v1/watches/{id}/runs`: requestIdと`check|reanalyze`、組選択時はcomparisonPairId
 - `GET /api/v1/runs?watchId={id}`、`GET /api/v1/runs/{id}`: 保存済み結果
+- `GET /api/v1/watches/{id}/requests/{requestId}`: 成否不明の実行要求に対応する既存run。未登録は404であり、再送の許可ではない。処理開始・新規保存・過去runの変更を行わない
 - `GET /api/v1/media/{id}`: 公開DTOにはlocatorや署名URLを含めない
 - `GET /api/v1/datasets/{id}/export`: 元のContract `0.1.0`。旧`1.0.0`の根拠確認と既存ルール分析に使用
 

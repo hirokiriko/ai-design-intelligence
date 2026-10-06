@@ -81,22 +81,33 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis }: Props) {
 
   useEffect(() => {
     let active = true;
+    const current = ++revision.current;
     void api.bootstrap().then(async (loaded) => {
       const storedId = selectedRunId();
       const saved = storedId ? await api.run(storedId) : null;
       const pending = pendingRequestFromBrowser();
-      const initialWatch = (pending && pending !== 'unavailable' ? pending.watchId : null) ?? saved?.watchId ?? loaded.watches[0]?.id ?? '';
-      const history = initialWatch ? await api.runs(initialWatch) : [];
-      if (!active) return;
-      const selected = saved?.watchId === initialWatch ? saved : history[0] ?? null;
+      const initialWatch = saved?.watchId ?? (pending && pending !== 'unavailable' ? pending.watchId : null) ?? loaded.watches[0]?.id ?? '';
+      if (!active || current !== revision.current) return;
       setPendingRequest(pending);
-      setBootstrap(loaded); setWatchId(initialWatch); setRuns(history); setRun(selected); setHistoryState('ready');
+      setBootstrap(loaded); setWatchId(initialWatch); setRuns(saved ? [saved] : []); setRun(saved); setHistoryState(initialWatch ? 'loading' : 'ready');
       void loadComparisonPairs(loaded.watches.find((watch) => watch.id === initialWatch), loaded.schemaVersion);
-      saveRunLocation(selected?.id ?? null);
+      saveRunLocation(saved?.id ?? null);
       setNotice(pending ? '前の実行要求を保留しています。保存結果を閲覧し、保留した実行の状態を確認してください。新しい実行は開始しません。' : '保存された条件と履歴を読み込みました。更新を確認すると新しい確認処理を開始します。');
-    }).catch((failure: unknown) => { if (active) { setError(message(failure)); setNotice('読込に失敗しました。'); } });
+      if (!initialWatch) return;
+      try {
+        const history = await api.runs(initialWatch);
+        if (!active || current !== revision.current) return;
+        const selected = saved ?? history[0] ?? null;
+        setRuns(saved ? [saved, ...history.filter((item) => item.id !== saved.id)] : history); setRun(selected); setHistoryState('ready');
+        saveRunLocation(selected?.id ?? null);
+      } catch (failure) {
+        if (!active || current !== revision.current) return;
+        setHistoryState('error'); recoverError(failure);
+        setNotice(saved ? '保存結果は取得しましたが、履歴一覧の取得には失敗しました。「履歴を再取得」で確認してください。AIは実行していません。' : '保存履歴を取得できません。「履歴を再取得」で確認してください。AIは実行していません。');
+      }
+    }).catch((failure: unknown) => { if (active && current === revision.current) { setError(message(failure)); setNotice('読込に失敗しました。'); } });
     return () => { active = false; revision.current += 1; pairRevision.current += 1; };
-  }, [api, loadComparisonPairs]);
+  }, [api, loadComparisonPairs, recoverError]);
 
   const loadHistory = async (id: string, preserveRun = false) => {
     const current = ++revision.current;

@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { AnalysisRequest, AnalysisResult } from '../domain/types';
+import { normalizeLocalCompanyKey } from '../analysis/projectLegacyDesignRecord';
 import {
   LocalJpoJsonDataSource,
   convertLocalJpoRecord,
@@ -116,21 +117,73 @@ describe('LocalJpoJsonDataSource', () => {
     const lastYear = await source.query(baseRequest);
 
     expect(lastYear.map((record) => record.id)).toEqual(['local-001', 'local-003']);
+    expect(lastYear.every((record) => record.origin === 'legacy')).toBe(true);
+    expect(lastYear.every((record) => record.classificationMemberships.length === 1)).toBe(true);
+    expect(source.getViewRecords()).toHaveLength(source.getAllRecords().length);
 
     const companyRecords = await source.query({
       ...baseRequest,
-      scope: { mode: 'companies', companies: ['株式会社サンプル'] },
+      scope: {
+        mode: 'companies',
+        companySelectors: [
+          {
+            origin: 'legacy',
+            role: 'applicant',
+            localKey: normalizeLocalCompanyKey('株式会社サンプル'),
+            displayLabel: '株式会社サンプル',
+          },
+        ],
+      },
       productDomain: '操作画面',
     });
     expect(companyRecords.map((record) => record.id)).toEqual(['local-001']);
 
+    const partialCompanyRecords = await source.query({
+      ...baseRequest,
+      scope: {
+        mode: 'companies',
+        companySelectors: [
+          {
+            origin: 'legacy',
+            role: 'applicant',
+            localKey: normalizeLocalCompanyKey('サンプル'),
+            displayLabel: 'サンプル',
+          },
+        ],
+      },
+    });
+    expect(partialCompanyRecords.map((record) => record.id)).toEqual(['local-001', 'local-003']);
+
     const withoutUnresolved = await source.query({ ...baseRequest, includeUnresolvedApplicants: false });
     expect(withoutUnresolved.map((record) => record.id)).toEqual(['local-001']);
+
+    const industryRecords = await source.query({
+      ...baseRequest,
+      scope: { mode: 'industry', industry: '操作画面' },
+      productDomain: '操作画面',
+    });
+    expect(industryRecords.map((record) => record.id)).toEqual(['local-001']);
+
+    const sampleOriginSelector = await source.query({
+      ...baseRequest,
+      scope: {
+        mode: 'companies',
+        companySelectors: [
+          {
+            origin: 'sample',
+            role: 'applicant',
+            localKey: normalizeLocalCompanyKey('株式会社サンプル'),
+            displayLabel: '株式会社サンプル',
+          },
+        ],
+      },
+    });
+    expect(sampleOriginSelector).toEqual([]);
   });
 
   it('creates applicant and designClass rankings and unresolved counts', () => {
     const source = new LocalJpoJsonDataSource(fixture, 'fixture.json');
-    const summary = summarizeLocalJpoRecords(source.getAllRecords(), 'fixture.json');
+    const summary = summarizeLocalJpoRecords(source.getViewRecords(), 'fixture.json');
 
     expect(summary.topDesignClasses.some((item) => item.label === 'N3-10')).toBe(true);
     expect(summary.topParties.some((item) => item.label === '株式会社空間サンプル')).toBe(true);
@@ -141,7 +194,7 @@ describe('LocalJpoJsonDataSource', () => {
 
   it('recognizes monthly preview filenames and sourceUpdateDate range separately from gazetteDate', () => {
     const source = new LocalJpoJsonDataSource(fixture, 'monthly-preview-fixture-202606.json');
-    const summary = summarizeLocalJpoRecords(source.getAllRecords(), source.getFileName());
+    const summary = summarizeLocalJpoRecords(source.getViewRecords(), source.getFileName());
 
     expect(summary.dataPeriodKind).toBe('monthly_preview');
     expect(summary.dataPeriodDate).toBe('2026-06');

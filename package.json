@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check:no-real-data": "node scripts/check-no-real-data.mjs",
+    "check:client-bundle-safety": "node scripts/check-client-bundle-safety.mjs",
     "build": "node scripts/check-no-real-data.mjs --skip-dist && tsc --noEmit && vite build"
   },
   "dependencies": {

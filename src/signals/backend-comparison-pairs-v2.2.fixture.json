@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "2.2.0",
+  "comparisonPairs": [
+    {
+      "id": "FIXTURE-PAIR-A",
+      "label": "架空比較組 A",
+      "evidence": "自作の架空画像と架空意匠レコードの対応を管理者が確認。製品の旧新世代は示しません。",
+      "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+      "categoryId": "FIXTURE-CLASS-A01",
+      "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE",
+      "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER",
+      "media": [
+        {
+          "id": "FIXTURE-MEDIA-BEFORE",
+          "recordId": "kds_fixture_article_alpha",
+          "label": "架空比較形状 BEFORE",
+          "role": "comparisonA",
+          "mimeType": "image/png",
+          "width": 512,
+          "height": 512,
+          "sourceLabel": "自作の手続き的な架空図形",
+          "permission": "fixture-only: self-created procedural shapes, storage and AI test use allowed",
+          "gazetteDate": "2026-04-02",
+          "applicationDate": "2026-01-10",
+          "view": "架空正面図",
+          "comparisonStatus": "administrator_matched_fixture_not_product_generations"
+        },
+        {
+          "id": "FIXTURE-MEDIA-AFTER",
+          "recordId": "kds_fixture_article_beta",
+          "label": "架空比較形状 AFTER",
+          "role": "comparisonB",
+          "mimeType": "image/png",
+          "width": 512,
+          "height": 512,
+          "sourceLabel": "自作の手続き的な架空図形",
+          "permission": "fixture-only: self-created procedural shapes, storage and AI test use allowed",
+          "gazetteDate": "2026-08-07",
+          "applicationDate": "2026-06-01",
+          "view": "架空正面図",
+          "comparisonStatus": "administrator_matched_fixture_not_product_generations"
+        }
+      ]
+    },
+    {
+      "id": "FIXTURE-PAIR-B",
+      "label": "架空比較組 B",
+      "evidence": "自作の架空画像と架空意匠レコードの対応を管理者が確認。製品の旧新世代は示しません。",
+      "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+      "categoryId": "FIXTURE-CLASS-A01",
+      "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE",
+      "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER",
+      "media": [
+        {
+          "id": "FIXTURE-MEDIA-BEFORE-2",
+          "recordId": "kds_fixture_article_alpha",
+          "label": "架空比較形状 BEFORE",
+          "role": "comparisonA",
+          "mimeType": "image/png",
+          "width": 512,
+          "height": 512,
+          "sourceLabel": "自作の手続き的な架空図形",
+          "permission": "fixture-only: self-created procedural shapes, storage and AI test use allowed",
+          "gazetteDate": "2026-04-02",
+          "applicationDate": "2026-01-10",
+          "view": "架空正面図",
+          "comparisonStatus": "administrator_matched_fixture_not_product_generations"
+        },
+        {
+          "id": "FIXTURE-MEDIA-AFTER-2",
+          "recordId": "kds_fixture_article_beta",
+          "label": "架空比較形状 AFTER",
+          "role": "comparisonB",
+          "mimeType": "image/png",
+          "width": 512,
+          "height": 512,
+          "sourceLabel": "自作の手続き的な架空図形",
+          "permission": "fixture-only: self-created procedural shapes, storage and AI test use allowed",
+          "gazetteDate": "2026-08-07",
+          "applicationDate": "2026-06-01",
+          "view": "架空正面図",
+          "comparisonStatus": "administrator_matched_fixture_not_product_generations"
+        }
+      ]
+    }
+  ]
+}

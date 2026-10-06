@@ -7,19 +7,19 @@ export const DESIGN_KIND_LABELS: Record<DesignKind, string> = {
 };
 
 export const PERIOD_LABELS: Record<Period, string> = {
-  last_1y: '最新意匠動向（直近1年）',
-  last_2y: '過去2年（トレンド分析）',
+  last_1y: '現状把握：直近1年',
+  last_2y: '傾向把握：直近2年',
 };
 
 export const PURPOSE_LABELS: Record<AnalysisPurpose, string> = {
-  market_trend: '市場・商品トレンド分析',
-  company_trend: '企業動向分析',
-  competitor_design: '競合意匠動向',
-  dx_dev: 'DX商品開発動向分析',
-  design_change: 'デザイン変化分析',
-  ui_design: '画像意匠（UI）分析',
+  market_trend: '市場動向',
+  company_trend: '企業動向',
+  competitor_design: '商品化領域',
+  dx_dev: 'デジタル商品開発動向',
+  design_change: 'デザイン変化',
+  ui_design: '画像意匠動向',
   portfolio: '意匠ポートフォリオ分析',
-  filing_strategy: '出願戦略検討',
+  filing_strategy: '出願・知財戦略の検討材料',
 };
 
 export const DEPARTMENT_LABELS: Record<Department, string> = {
@@ -34,6 +34,17 @@ export const DEPARTMENT_LABELS: Record<Department, string> = {
 export const ALL_DESIGN_KINDS = Object.keys(DESIGN_KIND_LABELS) as DesignKind[];
 export const ALL_PURPOSES = Object.keys(PURPOSE_LABELS) as AnalysisPurpose[];
 export const ALL_DEPARTMENTS = Object.keys(DEPARTMENT_LABELS) as Department[];
+
+export const PRIMARY_PURPOSES: AnalysisPurpose[] = [
+  'market_trend',
+  'competitor_design',
+  'company_trend',
+  'design_change',
+  'ui_design',
+  'filing_strategy',
+];
+
+export const PRODUCT_DOMAIN_PRESETS = ['家電', '映像機器', 'IoT', '医療機器', '住宅設備', 'モビリティ'] as const;
 
 export const STATUS_BADGES = [
   'デモ用サンプルデータ',

@@ -19,10 +19,10 @@ interface Scenario {
   exchanges: Exchange[];
   savedRun: unknown;
 }
-// 非課金の私的replayだけに使用する。任意pathや外部URLは受け付けない。
+// 保存された架空API交換を使うreplay。任意pathや外部URLは受け付けない。
 const exchangeFile = process.env.KDS_FIXTURE_EXCHANGES_FILE ?? 'backend-exchanges-fictional.json';
 if (!['backend-exchanges-fictional.json', 'backend-public-exchanges-fictional.json'].includes(exchangeFile)) throw new Error('FIXTURE-UNKNOWN-EXCHANGES-FILE');
-const scenario = JSON.parse(readFileSync(new URL(`../../../flow/${exchangeFile}`, import.meta.url), 'utf8')) as Scenario;
+const scenario = JSON.parse(readFileSync(new URL(`./${exchangeFile.replace('.json', '.fixture.json')}`, import.meta.url), 'utf8')) as Scenario;
 
 // Workspaceのeffectと操作handlerを通す。子カードは実React SSRで検証する。
 // これはブラウザ描画・画像取得・PostgreSQL永続保存の証明ではない。

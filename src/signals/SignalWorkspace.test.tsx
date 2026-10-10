@@ -4,13 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fictionalComparisonPair } from './fixtures-v22';
 import { fictionalBootstrapV2, fictionalRunV2 } from './fixtures';
 import { readPendingRunRequest, SignalApiError, type SignalApi } from './api';
-import { decodeRun, type Run } from './contract';
+import { ContractError, decodeRun, type Run } from './contract';
 import questionFixture from './backend-run-v2.5.fixture.json';
 import { analysisQuestion } from './analysis-question';
 import { comparisonStatusLabel } from './labels';
 import { ComparisonPairSelector, PendingRunNotice, SignalWorkspace } from './SignalWorkspace';
 import { SignalQuestionPicker, type SignalQuestion } from './SignalPurposeJourney';
-import { SignalHistory } from './SignalHistory';
+import { SignalHistory, type HistoryState } from './SignalHistory';
+import type { PublicRunReview } from './run-review';
 
 // 初期effectと更新handlerを実行する。子カードの表示は既存SSRを使う。
 const workspaceHooks = vi.hoisted(() => ({
@@ -77,9 +78,9 @@ function pairPicker(node: ReactNode): ReactElement<{ onSelect: (id: string) => v
   return undefined;
 }
 
-function historyPicker(node: ReactNode): ReactElement<{ onSelect: (id: string) => void }> | undefined {
+function historyPicker(node: ReactNode): ReactElement<{ onSelect: (id: string) => void; state: HistoryState }> | undefined {
   for (const child of Children.toArray(node)) {
-    if (!isValidElement<{ children?: ReactNode; onSelect: (id: string) => void }>(child)) continue;
+    if (!isValidElement<{ children?: ReactNode; onSelect: (id: string) => void; state: HistoryState }>(child)) continue;
     if (child.type === SignalHistory) return child;
     const found = historyPicker(child.props.children);
     if (found) return found;
@@ -198,6 +199,153 @@ describe('saved URL initialization', () => {
       saveWatch: vi.fn(), start: vi.fn(), requestRun: vi.fn(),
     };
   }
+
+  function flushReview(api: SignalApi, developmentMode = false) {
+    workspaceTree(api, developmentMode);
+    // 更新された選択結果のeffectだけを実行する。bootstrapの再実行はしない。
+    workspaceHooks.effects[workspaceHooks.effects.length - 1]();
+  }
+  function savedReview(saved: Run): PublicRunReview {
+    return { runId: saved.id, schemaVersion: saved.schemaVersion, promptVersion: saved.versions.prompt, modelId: saved.versions.model,
+      reviewReference: 'FIXTURE-workspace-review', reviewedAt: null, failedChecks: ['V2', 'V4'], ownerAcceptance: 'NOT_PERFORMED' };
+  }
+  function apiFor(saved: Run, history: Run[] = [saved]): SignalApi {
+    location.href = `https://signals.example.test/?run=${saved.id}`;
+    return { ...savedApi(), run: vi.fn().mockImplementation(async (id: string) => history.find((item) => item.id === id) ?? saved), runs: vi.fn().mockResolvedValue(history) };
+  }
+  async function waitForHistory(api: SignalApi, count = 1) {
+    await vi.waitFor(() => {
+      expect(api.runs).toHaveBeenCalledTimes(count);
+      expect(historyPicker(workspaceTree(api))?.props.state).toBe('ready');
+      expect(buttonNamed(workspaceTree(api), '履歴を再取得')?.props.disabled).toBe(false);
+    });
+  }
+
+  it.each([
+    new SignalApiError('404', 'FIXTURE-old-backend'), new SignalApiError('401', 'FIXTURE-unreadable-review'),
+    new SignalApiError('503', 'FIXTURE-unavailable-review'), new SignalApiError('connection', 'FIXTURE-connection'), new ContractError(),
+  ])('keeps the saved result and history after an independent review read failure %#', async (failure) => {
+    const saved = { ...structuredClone(fictionalRunV2), id: 'kds_fixture_review_failure' };
+    const original = JSON.stringify(saved);
+    const api = { ...apiFor(saved), review: vi.fn().mockRejectedValue(failure) };
+    startWorkspace(api); await waitForHistory(api);
+    flushReview(api);
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('品質レビュー：確認できません'));
+    const html = renderToStaticMarkup(workspaceTree(api));
+    expect(html).toContain('保存された確認結果'); expect(html).toContain('実行時の問い：未記録'); expect(html).toContain('aria-current="true"');
+    expect(html).not.toContain('品質未達'); expect(new URL(location.href).searchParams.get('run')).toBe(saved.id);
+    flushReview(api); expect(api.review).toHaveBeenCalledOnce(); expect(api.bootstrap).toHaveBeenCalledOnce();
+    expect(api.start).not.toHaveBeenCalled(); expect(api.saveWatch).not.toHaveBeenCalled(); expect(JSON.stringify(saved)).toBe(original);
+  });
+
+  it('settles the previous history row without applying its late review to the newly selected result', async () => {
+    const first = { ...structuredClone(fictionalRunV2), id: 'kds_fixture_review_first' };
+    const second = { ...structuredClone(first), id: 'kds_fixture_review_second' };
+    let finish!: (review: PublicRunReview) => void;
+    const api = { ...apiFor(first, [first, second]), review: vi.fn().mockImplementation((saved: Run) => saved.id === first.id
+      ? new Promise<PublicRunReview>((resolve) => { finish = resolve; }) : Promise.resolve(null)) };
+    startWorkspace(api); await waitForHistory(api); flushReview(api);
+    await vi.waitFor(() => expect(api.review).toHaveBeenCalledOnce());
+    historyPicker(workspaceTree(api))!.props.onSelect(first.id);
+    await vi.waitFor(() => { expect(api.run).toHaveBeenCalledTimes(2); expect(buttonNamed(workspaceTree(api), '履歴を再取得')?.props.disabled).toBe(false); }); flushReview(api);
+    expect(api.review).toHaveBeenCalledOnce();
+    historyPicker(workspaceTree(api))!.props.onSelect(second.id);
+    await vi.waitFor(() => expect(new URL(location.href).searchParams.get('run')).toBe(second.id)); flushReview(api);
+    await vi.waitFor(() => expect(api.review).toHaveBeenCalledTimes(2));
+    finish(savedReview(first));
+    await vi.waitFor(() => { const html = renderToStaticMarkup(workspaceTree(api)); expect(html).toContain('品質未達：V2 FAIL / V4 FAIL'); expect(html).not.toContain('品質レビュー：確認中'); });
+    const html = renderToStaticMarkup(workspaceTree(api));
+    const result = html.slice(html.indexOf('id="signal-result"'));
+    expect(result).toContain('品質レビュー：未記録'); expect(result).not.toContain('V2 FAIL'); expect(result).not.toContain('本人受入：未実施');
+    expect(html).not.toContain('品質レビュー：確認中'); expect(new URL(location.href).searchParams.get('run')).toBe(second.id);
+    historyPicker(workspaceTree(api))!.props.onSelect(first.id);
+    await vi.waitFor(() => expect(new URL(location.href).searchParams.get('run')).toBe(first.id)); flushReview(api);
+    expect(api.review).toHaveBeenCalledTimes(2); expect(api.start).not.toHaveBeenCalled(); expect(api.saveWatch).not.toHaveBeenCalled();
+  });
+
+  it('preserves a running request on review failure and refreshes its review only after an explicit history read', async () => {
+    const running = { ...structuredClone(fictionalRunV2), id: 'kds_fixture_review_running', status: 'running' as const, completedAt: null, signal: null };
+    const completed = { ...structuredClone(fictionalRunV2), id: running.id };
+    values.set('kiriko-design-signals-pending-request', JSON.stringify({ watchId: running.watchId, requestId: 'kds_fixture_review_request' }));
+    const pendingBefore = new Map(values);
+    const api = { ...apiFor(running), review: vi.fn().mockRejectedValueOnce(new SignalApiError('401', 'FIXTURE-review')).mockResolvedValueOnce(savedReview(completed)) };
+    startWorkspace(api); await waitForHistory(api); flushReview(api);
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('品質レビュー：確認できません'));
+    expect(renderToStaticMarkup(workspaceTree(api))).toContain('バックエンドで確認中'); expect(values).toEqual(pendingBefore);
+    flushReview(api); expect(api.review).toHaveBeenCalledOnce();
+    vi.mocked(api.runs).mockResolvedValue([completed]); vi.mocked(api.requestRun).mockResolvedValue(completed);
+    buttonNamed(workspaceTree(api), '履歴を再取得')!.props.onClick();
+    await waitForHistory(api, 2); flushReview(api);
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('品質未達：V2 FAIL / V4 FAIL'));
+    expect(api.review).toHaveBeenCalledTimes(2); expect(api.start).not.toHaveBeenCalled(); expect(api.saveWatch).not.toHaveBeenCalled();
+    expect(new URL(location.href).searchParams.get('run')).toBe(running.id); expect(values).toEqual(pendingBefore);
+  });
+
+  it('retries a settled unavailable review on explicit history refresh but deduplicates ordinary viewing', async () => {
+    const saved = { ...structuredClone(fictionalRunV2), id: 'kds_fixture_review_refresh' };
+    const api = { ...apiFor(saved), review: vi.fn().mockRejectedValueOnce(new SignalApiError('connection', 'FIXTURE-review')).mockResolvedValueOnce(savedReview(saved)) };
+    startWorkspace(api); await waitForHistory(api); flushReview(api);
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('品質レビュー：確認できません'));
+    flushReview(api); expect(api.review).toHaveBeenCalledOnce();
+    buttonNamed(workspaceTree(api), '履歴を再取得')!.props.onClick(); await waitForHistory(api, 2); flushReview(api);
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('本人受入：未実施'));
+    expect(api.review).toHaveBeenCalledTimes(2); expect(api.start).not.toHaveBeenCalled(); expect(api.requestRun).not.toHaveBeenCalled();
+  });
+
+  it('does not overwrite a completed review with a late response from the running snapshot', async () => {
+    const running = { ...structuredClone(fictionalRunV2), id: 'kds_fixture_review_status', status: 'running' as const, completedAt: null, signal: null };
+    const completed = { ...structuredClone(fictionalRunV2), id: running.id };
+    let finish!: (review: null) => void;
+    const api = { ...apiFor(running), review: vi.fn().mockReturnValueOnce(new Promise<null>((resolve) => { finish = resolve; })).mockResolvedValueOnce(savedReview(completed)) };
+    startWorkspace(api); await waitForHistory(api); flushReview(api);
+    await vi.waitFor(() => expect(api.review).toHaveBeenCalledOnce());
+    vi.mocked(api.runs).mockResolvedValue([completed]);
+    buttonNamed(workspaceTree(api), '履歴を再取得')!.props.onClick(); await waitForHistory(api, 2); flushReview(api);
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('品質未達：V2 FAIL / V4 FAIL'));
+    finish(null); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    expect(renderToStaticMarkup(workspaceTree(api))).toContain('品質未達：V2 FAIL / V4 FAIL');
+    expect(api.review).toHaveBeenCalledTimes(2); expect(api.start).not.toHaveBeenCalled();
+  });
+
+  it.each(['history-first', 'review-first'] as const)('does not duplicate the completed review while pending recovery waits for the history list (%s)', async (order) => {
+    const running = { ...structuredClone(fictionalRunV2), id: 'kds_fixture_review_recovery', status: 'running' as const, completedAt: null, signal: null };
+    const completed = { ...structuredClone(fictionalRunV2), id: running.id };
+    values.set('kiriko-design-signals-pending-request', JSON.stringify({ watchId: running.watchId, requestId: 'kds_fixture_review_recovery_request' }));
+    let finishHistory!: (runs: Run[]) => void;
+    let finishReview!: (review: PublicRunReview) => void;
+    const api = { ...apiFor(running), review: vi.fn().mockRejectedValueOnce(new SignalApiError('connection', 'FIXTURE-review'))
+      .mockReturnValueOnce(new Promise<PublicRunReview>((resolve) => { finishReview = resolve; })) };
+    startWorkspace(api); await waitForHistory(api); flushReview(api);
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('品質レビュー：確認できません'));
+    vi.mocked(api.requestRun).mockResolvedValue(completed);
+    vi.mocked(api.runs).mockReturnValueOnce(new Promise<Run[]>((resolve) => { finishHistory = resolve; }));
+    buttonNamed(workspaceTree(api), '履歴を再取得')!.props.onClick();
+    await vi.waitFor(() => { expect(api.requestRun).toHaveBeenCalledOnce(); expect(api.runs).toHaveBeenCalledTimes(2); });
+    expect(historyPicker(workspaceTree(api))?.props.state).toBe('loading'); flushReview(api);
+    await vi.waitFor(() => expect(api.review).toHaveBeenCalledTimes(2));
+    if (order === 'review-first') {
+      finishReview(savedReview(completed));
+      await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('品質未達：V2 FAIL / V4 FAIL'));
+    }
+    finishHistory([completed]); await waitForHistory(api, 2); flushReview(api);
+    expect(api.review).toHaveBeenCalledTimes(2);
+    if (order === 'history-first') finishReview(savedReview(completed));
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('品質未達：V2 FAIL / V4 FAIL'));
+    expect(api.review).toHaveBeenCalledTimes(2); expect(api.start).not.toHaveBeenCalled(); expect(api.saveWatch).not.toHaveBeenCalled();
+  });
+
+  it('keeps review and execution purpose bound to the saved run when the next viewing question changes', async () => {
+    const base = questionApi(); const saved = decodeRun(structuredClone(questionFixture)); const original = JSON.stringify(saved);
+    const api = { ...base, review: vi.fn().mockResolvedValue(savedReview(saved)) };
+    startWorkspace(api); await waitForHistory(api); flushReview(api);
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('品質未達：V2 FAIL / V4 FAIL'));
+    questionPicker(workspaceTree(api))!.props.onSelect('next'); flushReview(api);
+    expect(api.review).toHaveBeenCalledOnce(); expect(api.start).not.toHaveBeenCalled();
+    const html = renderToStaticMarkup(workspaceTree(api));
+    if (saved.schemaVersion !== '2.5.0') throw new Error('Missing saved question');
+    expect(html).toContain(`実行時の問い：${saved.input.analysisQuestion.text}`);
+    expect(html).not.toContain('実行時の問い：次に何を確認すればよい？'); expect(JSON.stringify(saved)).toBe(original);
+  });
 
   it('sends the selected immutable purpose only on explicit start and shows the same saved answer and history', async () => {
     const api = questionApi();

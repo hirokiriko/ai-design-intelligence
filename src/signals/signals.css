@@ -65,6 +65,7 @@
 .signal-history button:not(:disabled):hover { background: #f3f8fc; }
 .signal-history button[aria-current] { background: var(--signal-soft-blue); border-left-color: #196776; }
 .signal-history span { font-size: 12px; color: var(--signal-muted); }
+.signal-history .signal-history-review { display: grid; gap: 3px; }
 .signal-history .signal-history-current { color: #175d8a; font-weight: 700; }
 .signal-result-title { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
 .signal-result-title h2 { font-size: 23px; }

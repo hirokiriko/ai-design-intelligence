@@ -7,6 +7,7 @@ import { analysisQuestion } from './analysis-question';
 import { readPendingRunRequest, signalApi, SignalApiError } from './api';
 import { decodeRun, type Run, type RunV25, type WatchInput } from './contract';
 import { evidenceId } from './labels';
+import { decodeRunReview, type RunReviewState } from './run-review';
 import { SignalHistory } from './SignalHistory';
 import { SignalQuestionPicker, SignalSavedQuestion } from './SignalPurposeJourney';
 import { SignalResult } from './SignalResult';
@@ -23,6 +24,7 @@ interface Scenario {
     analysisQuestionId: 'support'; analysisQuestionVersion: '1.0.0';
   };
   exchanges: Exchange[]; savedRun: unknown; savedHash: string; oldRun: unknown;
+  savedReview: unknown; oldReview: unknown;
   counters: {
     beginRunCalls: number; finishRunCalls: number; generationPosts: number; modelCalls: number;
     parsedOfficialPages: number; externalRequests: number; realAIExecutions: number;
@@ -53,10 +55,14 @@ function savedRun(): RunV25 {
 // Workspace の effect と実操作 handler を通す。子カードは実 React SSR で描画する。
 // ブラウザーの画像表示、実モデル、永続 PostgreSQL の検証とは区別する。
 const hooks = vi.hoisted(() => ({
-  active: false, stateIndex: 0, refIndex: 0,
+  active: false, mounted: false, flushing: false, stateIndex: 0, refIndex: 0, callbackIndex: 0, effectIndex: 0,
   states: [] as unknown[], refs: [] as { current: unknown }[],
-  effects: [] as (() => void | (() => void))[],
+  callbacks: [] as { callback: (...args: unknown[]) => unknown; dependencies: readonly unknown[] }[],
+  effects: [] as { effect: () => void | (() => void); dependencies?: readonly unknown[]; pending: boolean; cleanup?: () => void }[],
 }));
+function sameDependencies(left: readonly unknown[] | undefined, right: readonly unknown[] | undefined) {
+  return left !== undefined && right !== undefined && left.length === right.length && left.every((item, index) => Object.is(item, right[index]));
+}
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>();
   return {
@@ -74,10 +80,20 @@ vi.mock('react', async (importOriginal) => {
       const index = hooks.refIndex++;
       return hooks.refs[index] ??= { current: initial };
     }) as typeof actual.useRef,
-    useCallback: ((callback: (...args: unknown[]) => unknown, dependencies: readonly unknown[]) => hooks.active ? callback : actual.useCallback(callback, dependencies)) as typeof actual.useCallback,
+    useCallback: ((callback: (...args: unknown[]) => unknown, dependencies: readonly unknown[]) => {
+      if (!hooks.active) return actual.useCallback(callback, dependencies);
+      const index = hooks.callbackIndex++;
+      const previous = hooks.callbacks[index];
+      if (previous && sameDependencies(previous.dependencies, dependencies)) return previous.callback;
+      hooks.callbacks[index] = { callback, dependencies };
+      return callback;
+    }) as typeof actual.useCallback,
     useEffect: (effect: () => void | (() => void), dependencies?: readonly unknown[]) => {
       if (!hooks.active) return actual.useEffect(effect, dependencies);
-      hooks.effects.push(effect);
+      const index = hooks.effectIndex++;
+      const previous = hooks.effects[index];
+      if (previous && sameDependencies(previous.dependencies, dependencies)) return;
+      hooks.effects[index] = { effect, dependencies, pending: true, cleanup: previous?.cleanup };
     },
   };
 });
@@ -85,12 +101,29 @@ vi.mock('react', async (importOriginal) => {
 type ElementProps = {
   children?: ReactNode; disabled?: boolean; onClick?: () => void;
   onSave?: (input: WatchInput) => Promise<void>; onSelect?: (id: string) => void;
-  run?: Run; runs?: Run[]; selected?: string | null;
+  run?: Run; runs?: Run[]; selected?: string | null; reviewState?: RunReviewState;
 };
+function flushEffects() {
+  if (!hooks.mounted || hooks.flushing) return;
+  hooks.flushing = true;
+  try {
+    for (const record of hooks.effects) {
+      if (!record.pending) continue;
+      record.pending = false;
+      record.cleanup?.();
+      const cleanup = record.effect();
+      record.cleanup = typeof cleanup === 'function' ? cleanup : undefined;
+    }
+  } finally { hooks.flushing = false; }
+}
 function tree() {
-  hooks.stateIndex = 0; hooks.refIndex = 0; hooks.effects = [];
+  hooks.stateIndex = 0; hooks.refIndex = 0; hooks.callbackIndex = 0; hooks.effectIndex = 0;
   hooks.active = true;
-  try { return SignalWorkspace({ api: signalApi }); } finally { hooks.active = false; }
+  let node: ReactNode;
+  try { node = SignalWorkspace({ api: signalApi }); } finally { hooks.active = false; }
+  // 依存変更時だけ effect を実行する。useCallback も維持し、表示のたびに bootstrap を再実行しない。
+  flushEffects();
+  return node;
 }
 function findElement(node: ReactNode, matches: (element: ReactElement<ElementProps>) => boolean): ReactElement<ElementProps> | undefined {
   for (const child of Children.toArray(node)) {
@@ -104,19 +137,23 @@ function findElement(node: ReactNode, matches: (element: ReactElement<ElementPro
 function button(label: string) { return findElement(tree(), (element) => element.type === 'button' && element.props.children === label); }
 function html() { return renderToStaticMarkup(tree()); }
 function encodedText(value: string) { return renderToStaticMarkup(createElement('span', null, value)).slice(6, -7); }
-function resetHooks() { hooks.states = []; hooks.refs = []; hooks.effects = []; hooks.active = false; }
+function resetHooks() {
+  hooks.states = []; hooks.refs = []; hooks.callbacks = []; hooks.effects = [];
+  hooks.active = false; hooks.mounted = false; hooks.flushing = false;
+}
+function unmount() { hooks.effects.forEach((record) => record.cleanup?.()); resetHooks(); }
 function displayedRun() { return findElement(tree(), (element) => element.type === SignalResult)?.props.run; }
+function displayedReview() { return findElement(tree(), (element) => element.type === SignalResult)?.props.reviewState; }
 function displayedHistory() { return findElement(tree(), (element) => element.type === SignalHistory)?.props.runs; }
 
 describe('generated fictional Backend API exchange through current question and saved-result UI', () => {
-  let cleanups: (() => void)[];
   let calls: { method: string; path: string; body: unknown }[];
   let unexpectedRequests: string[];
   let storage: Map<string, string>;
   let location: { href: string };
   beforeEach(() => {
     installPendingLocks();
-    resetHooks(); cleanups = []; calls = []; unexpectedRequests = []; storage = new Map();
+    resetHooks(); calls = []; unexpectedRequests = []; storage = new Map();
     location = { href: 'https://kds-fixture.example.test/' };
     vi.stubGlobal('localStorage', {
       get length() { return storage.size; },
@@ -170,11 +207,11 @@ describe('generated fictional Backend API exchange through current question and 
       return Response.json(exchange.document, { status: exchange.status });
     }));
   });
-  afterEach(() => { cleanups.forEach((cleanup) => cleanup()); resetHooks(); vi.unstubAllGlobals(); });
+  afterEach(() => { unmount(); vi.unstubAllGlobals(); });
 
   function mount() {
+    hooks.mounted = true;
     tree();
-    cleanups = hooks.effects.map((effect) => effect()).filter((cleanup): cleanup is () => void => typeof cleanup === 'function');
   }
   function assertSavedDisplay(run: RunV25) {
     expect(displayedRun()).toEqual(run);
@@ -246,6 +283,14 @@ describe('generated fictional Backend API exchange through current question and 
     expect(scenario.counters.modelCalls).toBeGreaterThan(0); expect(scenario.counters.modelCalls).toBe(saved.usage.modelRequests);
     expect(scenario.counters.parsedOfficialPages).toBeGreaterThan(0);
     expect(scenario.counters.externalRequests).toBe(0); expect(scenario.counters.realAIExecutions).toBe(0);
+    const currentReview = scenario.exchanges.find((exchange) => exchange.method === 'GET' && exchange.path === `/api/v1/runs/${saved.id}/review`);
+    expect(currentReview?.status).toBe(200); expect(currentReview?.document).toEqual(scenario.savedReview);
+    expect(decodeRunReview(scenario.savedReview, saved)).toBeNull();
+    const old = decodeRun(scenario.oldRun);
+    const oldReview = scenario.exchanges.find((exchange) => exchange.method === 'GET' && exchange.path === `/api/v1/runs/${old.id}/review`);
+    expect(oldReview?.status).toBe(200); expect(oldReview?.document).toEqual(scenario.oldReview);
+    const review = decodeRunReview(scenario.oldReview, old);
+    expect(review?.failedChecks).toEqual(['V2', 'V4']); expect(review?.ownerAcceptance).toBe('NOT_PERFORMED');
   });
 
   it('registers materials, explicitly starts support once, then reads exact history and restores via GET only', async () => {
@@ -271,6 +316,9 @@ describe('generated fictional Backend API exchange through current question and 
     start!.props.onClick!();
     expect(button('確認しています…')?.props.disabled).toBe(true);
     await vi.waitFor(() => expect(displayedRun()?.id).toBe(saved.id));
+    await vi.waitFor(() => expect(displayedReview()).toEqual({ status: 'ready', review: null }));
+    expect(html()).toContain('品質レビュー：未記録');
+    expect(html()).not.toContain('登録された未達指摘なし');
     assertSavedDisplay(saved);
     expect(displayedHistory()).toEqual([saved]);
     expect(readPendingRunRequest()).toBeNull(); expect(storage.size).toBe(0);
@@ -287,6 +335,8 @@ describe('generated fictional Backend API exchange through current question and 
     expect(await signalApi.requestRun(saved.watchId, scenario.request.requestId)).toEqual(saved);
     expect(await signalApi.run(saved.id)).toEqual(saved);
     assertSavedDisplay(saved);
+    expect(calls.filter((call) => call.path === `/api/v1/runs/${saved.id}/review`)).toHaveLength(1);
+    expect(calls.filter((call) => call.path.startsWith('/api/v1/bootstrap'))).toHaveLength(1);
 
     const foreignReads = scenario.exchanges.filter((exchange) => exchange.method === 'GET' && exchange.status >= 400
       && (/^\/api\/v1\/runs\/[^/?]+$/.test(exchange.path) || /^\/api\/v1\/watches\/[^/?]+\/requests\/[^/?]+$/.test(exchange.path)));
@@ -304,12 +354,40 @@ describe('generated fictional Backend API exchange through current question and 
     }
     assertSavedDisplay(saved);
 
-    cleanups.forEach((cleanup) => cleanup()); resetHooks(); cleanups = [];
+    unmount();
     mount();
     await vi.waitFor(() => expect(displayedRun()?.id).toBe(saved.id));
     await vi.waitFor(() => expect(button('履歴を再取得')?.props.disabled).toBe(false));
+    await vi.waitFor(() => expect(displayedReview()).toEqual({ status: 'ready', review: null }));
     assertSavedDisplay(saved);
     expect(displayedHistory()?.find((run) => run.id === saved.id)).toEqual(saved);
+    expect(calls.filter((call) => call.path === `/api/v1/runs/${saved.id}/review`)).toHaveLength(2);
+
+    // 別 watch の旧結果は履歴選択で境界を緩めず、保存 URL の再読込として開く。
+    const old = decodeRun(scenario.oldRun);
+    const oldHash = hash(old);
+    const countersHash = hash(scenario.counters);
+    const oldReview = decodeRunReview(scenario.oldReview, old);
+    expect(old.schemaVersion).toBe('2.3.0');
+    expect(oldReview).not.toBeNull();
+    unmount();
+    location.href = `https://kds-fixture.example.test/?run=${encodeURIComponent(old.id)}`;
+    mount();
+    await vi.waitFor(() => expect(displayedRun()).toEqual(old));
+    await vi.waitFor(() => expect(displayedReview()).toEqual({ status: 'ready', review: oldReview }));
+    const oldMarkup = html();
+    expect(oldMarkup).toContain('品質未達：V2 FAIL / V4 FAIL');
+    expect(oldMarkup).toContain('本人受入：未実施');
+    expect(oldMarkup).toContain('レビュー日時：未記録');
+    expect(oldMarkup).toContain('実行時の問い：未記録');
+    expect(oldMarkup).not.toContain('id="signal-question-answer-title"');
+    expect(oldMarkup).not.toContain('本人受入：受入記録あり');
+    expect(oldMarkup).not.toContain('登録された未達指摘なし');
+    expect(hash(displayedRun())).toBe(oldHash); expect(hash(scenario.oldRun)).toBe(oldHash);
+    expect(hash(scenario.counters)).toBe(countersHash);
+    expect(new URL(location.href).searchParams.get('run')).toBe(old.id);
+    expect(calls.filter((call) => call.path === `/api/v1/runs/${old.id}/review`)).toHaveLength(1);
+    expect(calls.filter((call) => call.path.startsWith('/api/v1/bootstrap'))).toHaveLength(3);
     expect(calls.slice(viewingStart).every((call) => call.method === 'GET')).toBe(true);
     expect(calls.filter((call) => call.path.includes('/media/'))).toHaveLength(0);
     expect(runPosts()).toHaveLength(1);

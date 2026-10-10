@@ -7,10 +7,12 @@ import { SignalHistory, type HistoryState } from './SignalHistory';
 import { revealEvidenceLink, revealEvidenceTarget } from './evidence-navigation';
 import { SignalEmptyJourney, SignalPurposeIntro, SignalQuestionFocus, SignalQuestionPicker, SignalValuePreview, type SignalQuestion } from './SignalPurposeJourney';
 import { analysisQuestion, sameAnalysisQuestion } from './analysis-question';
+import { decodeRunReview, runReviewKey, type RunReviews, type RunReviewState } from './run-review';
 import './signals.css';
 
 interface Props { api?: SignalApi; renderAnalysis?: (datasetId: string) => ReactNode; developmentMode?: boolean }
 type PairState = 'loading' | 'ready' | 'error';
+interface ReviewRequest { promise: Promise<RunReviewState>; settled: boolean }
 type PendingRequestState = PendingRunRequest[] | 'unavailable';
 function pendingRequestFromBrowser(developmentMode = false): PendingRequestState {
   if (developmentMode || typeof window === 'undefined') return [];
@@ -18,6 +20,7 @@ function pendingRequestFromBrowser(developmentMode = false): PendingRequestState
 }
 const supportsPairs = (version: Bootstrap['schemaVersion'] | undefined) => comparisonPairsVersion(version) !== null;
 const selectedRunId = () => typeof window === 'undefined' ? null : new URL(window.location.href).searchParams.get('run');
+const reviewRequestKey = (run: Run) => JSON.stringify([runReviewKey(run), run.status]);
 function saveRunLocation(id: string | null): void {
   const url = new URL(window.location.href);
   if (id) url.searchParams.set('run', id); else url.searchParams.delete('run');
@@ -49,12 +52,22 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
   const [question, setQuestion] = useState<SignalQuestion | null>(null);
   const main = useRef<HTMLElement>(null);
   const resultRequested = useRef(false);
+  const [reviews, setReviews] = useState<RunReviews>({});
+  const [reviewRevision, setReviewRevision] = useState(0);
+  const reviewMounted = useRef(false);
+  const reviewRequests = useRef({ api, developmentMode, requests: new Map<string, ReviewRequest>(), latest: new Map<string, string>() });
+  const currentReviews: RunReviews = reviewRequests.current.api === api && reviewRequests.current.developmentMode === developmentMode ? reviews : {};
   const selectedWatch = bootstrap?.watches.find((item) => item.id === watchId);
   const actionPending = busy || historyState === 'loading';
   const selectedWatchPending = pendingRequest === 'unavailable' || pendingRequest.some((pending) => pending.watchId === watchId);
   const creationPending = actionPending || pendingRequest === 'unavailable';
   const questionSupported = bootstrap?.schemaVersion === '2.5.0' && bootstrap.analysisQuestionVersion === '1.0.0' && bootstrap.analysisMode !== 'facts_only';
   const selectionReady = (!questionSupported || question !== null) && (!supportsPairs(bootstrap?.schemaVersion) || (pairState === 'ready' && (comparisonPairs.length === 0 || comparisonPairs.some((pair) => pair.id === selectedPairId))));
+
+  useEffect(() => {
+    reviewMounted.current = true;
+    return () => { reviewMounted.current = false; };
+  }, []);
 
   useEffect(() => {
     if (!run || busy || !resultRequested.current) return;
@@ -133,7 +146,38 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
     return () => { active = false; revision.current += 1; pairRevision.current += 1; };
   }, [api, developmentMode, loadComparisonPairs, recoverError]);
 
+  useEffect(() => {
+    if (reviewRequests.current.api !== api || reviewRequests.current.developmentMode !== developmentMode) {
+      reviewRequests.current = { api, developmentMode, requests: new Map<string, ReviewRequest>(), latest: new Map<string, string>() };
+      setReviews({});
+    }
+    if (!run) return;
+    const context = reviewRequests.current;
+    const key = runReviewKey(run);
+    const requestKey = reviewRequestKey(run);
+    context.latest.set(key, requestKey);
+    if (!context.requests.has(requestKey)) {
+      setReviews((previous) => ({ ...previous, [key]: { status: 'loading' as const } }));
+      const readReview = api.review;
+      const request = readReview && !developmentMode
+        ? Promise.resolve().then(() => readReview(run)).then((review): RunReviewState => ({ status: 'ready', review: decodeRunReview({ schemaVersion: '1.0.0', runId: run.id, review }, run) })).catch((): RunReviewState => ({ status: 'unavailable' }))
+        : Promise.resolve<RunReviewState>({ status: 'unavailable' });
+      const entry: ReviewRequest = { promise: request, settled: false };
+      context.requests.set(requestKey, entry);
+      // 別の結果へ移動しても、その履歴行のレビューは確定できる。表示中の結果へは混ぜない。
+      void request.then((state) => {
+        entry.settled = true;
+        if (reviewMounted.current && reviewRequests.current === context && context.requests.get(requestKey) === entry && context.latest.get(key) === requestKey) {
+          setReviews((previous) => ({ ...previous, [key]: state }));
+        }
+      });
+    }
+    // レビュー取得の失敗は、保存結果・進行状態・保留要求の回復とは独立して扱う。
+  }, [api, run, developmentMode, reviewRevision]);
+
   const loadHistory = async (id: string, preserveRun = false, pendingToRecover?: PendingRunRequest) => {
+    const reviewContext = reviewRequests.current;
+    const settledReviews = new Map([...reviewContext.requests].filter(([, entry]) => entry.settled));
     setQuestion(null);
     const current = ++revision.current;
     setError(''); setHistoryState('loading'); setNotice('保存履歴を読み込んでいます。AIは実行しません。');
@@ -160,6 +204,12 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
       if (current !== revision.current) return;
       const recoveredRun = recovered;
       const selected = recoveredRun ? history.find((item) => item.id === recoveredRun.id) ?? recoveredRun : (preserveRun ? history.find((item) => item.id === run?.id) ?? history[0] ?? null : history[0] ?? null);
+      const selectedReviewKey = selected ? reviewRequestKey(selected) : null;
+      if (selectedReviewKey && reviewRequests.current === reviewContext
+        && settledReviews.has(selectedReviewKey) && reviewContext.requests.get(selectedReviewKey) === settledReviews.get(selectedReviewKey)) {
+        reviewContext.requests.delete(selectedReviewKey);
+        setReviewRevision((previous) => previous + 1);
+      }
       const pending = pendingRequestFromBrowser(developmentMode);
       setPendingRequest(pending);
       setRuns(recovered && selected ? [selected, ...history.filter((item) => item.id !== selected.id)] : history); setHistoryState('ready'); setRun(selected); saveRunLocation(selected?.id ?? null);
@@ -287,11 +337,11 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
             {showCreate || !bootstrap.watches.length ? <WatchForm key={`${selectedWatch?.id ?? 'new'}-${createRevision}`} bootstrap={bootstrap} seed={selectedWatch} busy={creationPending} onSave={saveWatch} /> : null}
           </section>
           <section className="signal-panel"><h2>保存履歴</h2><button className="signal-text-button" type="button" disabled={busy || !watchId} onClick={() => void loadHistory(watchId, true)}>履歴を再取得</button>
-            <SignalHistory runs={runs} selectedId={run?.id} state={historyState} disabled={actionPending} onSelect={(id) => void selectRun(id)} />
+            <SignalHistory runs={runs} selectedId={run?.id} state={historyState} disabled={actionPending} onSelect={(id) => void selectRun(id)} reviews={currentReviews} />
             {run && run.watchId === watchId && run.status !== 'running' ? <details className="signal-details"><summary>新しい実行として確認し直す</summary><p className="signal-subtle">{developmentMode ? '過去の比較例を残して、架空資料の模擬結果を新しくローカル保存します。実AIは実行しません。' : bootstrap.analysisMode === 'facts_only' ? '過去の結果を残して、登録済み書誌事項を新しい実行として再比較します。記事取得・AI呼出は行いません。' : bootstrap.analysisMode === 'standard' ? '過去の結果を残して、登録資料による分析を新しく実行します。AI・公式確認を含む場合があります。' : '過去の結果を残して、新しい確認処理を実行します。この接続先の分析モードは未記録です。'}</p><button className="signal-button" type="button" disabled={creationPending || selectedWatchPending || !selectionReady} onClick={() => void startRun('reanalyze')}>別の実行として再確認</button></details> : null}
           </section>
         </aside>
-        <div className="signal-content">{run ? <><SignalQuestionFocus question={questionSupported ? null : question} hasEvidence={run.signal !== null} /><SignalResult key={run.id} run={run} developmentMode={developmentMode} /></> : <SignalEmptyJourney developmentMode={developmentMode} factsOnly={bootstrap.analysisMode === 'facts_only'} questionSupported={questionSupported} />}</div>
+        <div className="signal-content">{run ? <><SignalQuestionFocus question={questionSupported ? null : question} hasEvidence={run.signal !== null} /><SignalResult key={run.id} run={run} developmentMode={developmentMode} reviewState={currentReviews[runReviewKey(run)]} /></> : <SignalEmptyJourney developmentMode={developmentMode} factsOnly={bootstrap.analysisMode === 'facts_only'} questionSupported={questionSupported} />}</div>
       </div> : null}
       {renderAnalysis && selectedWatch ? <section className="signal-legacy"><button className="signal-text-button" type="button" disabled={busy} aria-expanded={showAnalysis} onClick={() => setShowAnalysis(!showAnalysis)}>既存の市場・企業ルール分析 {showAnalysis ? 'を閉じる' : 'を開く'}</button>{showAnalysis ? renderAnalysis(selectedWatch.afterDatasetId) : null}</section> : null}
     </main><footer className="signal-footer">参考情報です。収録範囲外や最新の法的状態は示しません。事実・AI観察候補・関連仮説を区別して確認してください。</footer>

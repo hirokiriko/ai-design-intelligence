@@ -1,5 +1,6 @@
 import { ContractError, decodeBootstrap, decodeComparisonPairs, decodeRun, decodeRuns, decodeWatch, type Run, type Watch, type WatchInput } from './contract';
 import { ANALYSIS_QUESTION_VERSION, analysisQuestion, isAnalysisQuestion, sameAnalysisQuestion, type AnalysisQuestion } from './analysis-question';
+import { decodeRunReview } from './run-review';
 
 export class SignalApiError extends Error {
   constructor(public readonly code: string, message: string, public readonly preAdmissionRejected = false, public readonly requestNotSent = false, public readonly bootstrapQueryRejected = false) { super(message); }
@@ -193,6 +194,10 @@ export const signalApi = {
     if (run.id !== runId) throw new ContractError();
     return run;
   },
+  review: async (run: Run) => {
+    const subject = { id: run.id, schemaVersion: run.schemaVersion, versions: { ...run.versions } };
+    return decodeRunReview(await requestJson(`/runs/${encodeURIComponent(subject.id)}/review`), subject);
+  },
   requestRun: async (watchId: string, requestId: string) => {
     const snapshot = readPendingRunRequests().find((pending) => pending.watchId === watchId && pending.requestId === requestId);
     const run = decodeRun(await requestJson(`/watches/${encodeURIComponent(watchId)}/requests/${encodeURIComponent(requestId)}`));
@@ -221,4 +226,4 @@ export const signalApi = {
     }
   },
 };
-export type SignalApi = typeof signalApi;
+export type SignalApi = Omit<typeof signalApi, 'review'> & { review?: typeof signalApi.review };

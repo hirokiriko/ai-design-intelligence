@@ -5,6 +5,7 @@ import { fictionalRunV22 } from './fixtures-v22';
 import type { ApprovedPreview } from './approved-preview';
 import type { RunV23 } from './contract';
 import { ApprovedEvidenceContent, SignalApprovedEvidenceWorkspace } from './SignalApprovedEvidenceWorkspace';
+import { SignalHistory } from './SignalHistory';
 import { evidenceId } from './labels';
 
 const hooks = vi.hoisted(() => ({ active: false, index: 0, states: [] as unknown[], effects: [] as (() => void | (() => void))[] }));
@@ -20,6 +21,7 @@ vi.mock('react', async (original) => {
     useEffect: (effect: () => void | (() => void), dependencies?: readonly unknown[]) => {
       if (hooks.active) hooks.effects.push(effect); else actual.useEffect(effect, dependencies);
     },
+    useRef: ((initial: unknown) => hooks.active ? { current: initial } : actual.useRef(initial)) as typeof actual.useRef,
   };
 });
 
@@ -45,6 +47,10 @@ function find(node: ReactNode, predicate: (element: ReactElement<Record<string, 
   return undefined;
 }
 function content(node: ReactNode) { return find(node, (item) => item.type === ApprovedEvidenceContent)!; }
+function approvedTree(view: ReactElement<Record<string, unknown>>) {
+  hooks.active = true;
+  try { return ApprovedEvidenceContent(view.props as Parameters<typeof ApprovedEvidenceContent>[0]); } finally { hooks.active = false; }
+}
 
 describe('approved evidence and archived failed result separation', () => {
   it('shows material facts and exact quotes first, without exposing incorrect archived AI observations', () => {
@@ -104,6 +110,67 @@ describe('read-only preview reload and navigation', () => {
   });
   afterEach(() => { vi.unstubAllGlobals(); });
   const settle = async () => { await Promise.resolve(); await Promise.resolve(); };
+  it('keeps the viewing question separate through visible selection, saved history, return and URL reload', async () => {
+    const preview = fixture();
+    preview.run.signal!.visualObservations[0].observation = 'kds_fixture_ARCHIVED_RESULT';
+    const saved = JSON.stringify(preview);
+    const versions = structuredClone(preview.run.versions);
+    const load = vi.fn(async () => preview);
+    tree(load); hooks.effects[0](); await settle();
+    let view = content(tree(load));
+    expect(view.props.replay).toBe(false); expect(view.props.question).toBeNull();
+
+    const main = approvedTree(view);
+    const question = find(main, (item) => item.type === 'button' && item.props.className === 'signal-question-option'
+      && !!find(item.props.children as ReactNode, (child) => child.type === 'strong' && child.props.children === '公式引用が支えるのは？'))!;
+    const target = { tagName: 'SECTION', parentElement: null as unknown, hasAttribute: () => true, focus: vi.fn(), scrollIntoView: vi.fn() };
+    const root = { contains: (value: unknown) => value === target, ownerDocument: { getElementById: vi.fn((id: string) => id === 'signal-approved-sources' ? target : null) } };
+    target.parentElement = root;
+    (question.props.onClick as (event: unknown) => void)({ currentTarget: { closest: () => root } });
+    view = content(tree(load));
+    expect(view.props.question).toBe('support'); expect(view.props.replay).toBe(false);
+    expect(root.ownerDocument.getElementById).toHaveBeenCalledWith('signal-approved-sources');
+    expect(target.focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(target.scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'auto' });
+
+    const openHistory = () => {
+      const history = find(approvedTree(content(tree(load))), (item) => item.type === SignalHistory)!;
+      expect(history.props.runs).toEqual([preview.run]);
+      const historyButton = find(SignalHistory(history.props as Parameters<typeof SignalHistory>[0]), (item) => item.type === 'button')!;
+      (historyButton.props.onClick as () => void)();
+    };
+    const assertArchived = (archived: ReactElement<Record<string, unknown>>) => {
+      expect(archived.props.replay).toBe(true);
+      const html = renderToStaticMarkup(createElement(ApprovedEvidenceContent, archived.props as Parameters<typeof ApprovedEvidenceContent>[0]));
+      expect(html).toContain('実行時の問い：未記録'); expect(html).toContain('V2 FAIL / V4 FAIL');
+      expect(html).toContain('kds_fixture_ARCHIVED_RESULT'); expect(html).toContain(versions.prompt); expect(html).toContain(versions.model);
+      expect(html).not.toContain('公式引用が支えるのは？');
+      expect(preview.run.input).not.toHaveProperty('analysisQuestion');
+      expect(preview.run.versions).toEqual(versions);
+      for (const source of preview.run.signal!.sources) {
+        expect(source.publishedAt).toBeNull(); expect(source.updatedAt).toBeNull(); expect(source.releaseAt).toBeNull();
+      }
+      expect(JSON.stringify(preview)).toBe(saved);
+    };
+    openHistory(); view = content(tree(load)); assertArchived(view);
+    expect(view.props.question).toBe('support'); expect(window.location.search).toContain(`run=${preview.run.id}`);
+    const close = find(approvedTree(view), (item) => item.type === 'button' && item.props.children === '保存例を閉じて資料から確認した事実へ戻る')!;
+    (close.props.onClick as () => void)();
+    view = content(tree(load));
+    expect(view.props.replay).toBe(false); expect(view.props.question).toBe('support');
+    expect(window.location.search).not.toContain('run='); expect(load).toHaveBeenCalledTimes(1);
+
+    openHistory();
+    const refresh = find(tree(load), (item) => item.type === 'button' && item.props.children === '保存資料を読み直す')!;
+    (refresh.props.onClick as () => void)();
+    const loading = tree(load);
+    expect(content(loading)).toBeUndefined(); expect(renderToStaticMarkup(loading)).toContain('保存資料を読んでいます');
+    expect(hooks.states[2]).toBeNull(); expect(hooks.states[3]).toBe(false);
+    hooks.effects[0](); await settle();
+    view = content(tree(load)); assertArchived(view);
+    expect(view.props.question).toBeNull(); expect(window.location.search).toContain(`run=${preview.run.id}`);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
   it('restores only the selected saved example from the URL and returns without another load', async () => {
     const preview = fixture(); window.location.search += `&run=${preview.run.id}`;
     const load = vi.fn(async () => preview);

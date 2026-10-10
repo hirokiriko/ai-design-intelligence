@@ -13,6 +13,7 @@ import './signals.css';
 interface Props { api?: SignalApi; renderAnalysis?: (datasetId: string) => ReactNode; developmentMode?: boolean }
 type PairState = 'loading' | 'ready' | 'error';
 interface ReviewRequest { promise: Promise<RunReviewState>; settled: boolean }
+interface ReviewDisplay { api: SignalApi; developmentMode: boolean; reviews: RunReviews }
 type PendingRequestState = PendingRunRequest[] | 'unavailable';
 function pendingRequestFromBrowser(developmentMode = false): PendingRequestState {
   if (developmentMode || typeof window === 'undefined') return [];
@@ -28,6 +29,10 @@ function saveRunLocation(id: string | null): void {
 }
 function message(error: unknown): string {
   return error instanceof SignalApiError || error instanceof ContractError ? error.message : '確認処理を利用できません。保存履歴を再取得してください。';
+}
+function withReview(previous: ReviewDisplay, api: SignalApi, developmentMode: boolean, key: string, state: RunReviewState): ReviewDisplay {
+  const reviews = previous.api === api && previous.developmentMode === developmentMode ? previous.reviews : {};
+  return { api, developmentMode, reviews: { ...reviews, [key]: state } };
 }
 
 export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMode = false }: Props) {
@@ -52,11 +57,11 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
   const [question, setQuestion] = useState<SignalQuestion | null>(null);
   const main = useRef<HTMLElement>(null);
   const resultRequested = useRef(false);
-  const [reviews, setReviews] = useState<RunReviews>({});
+  const [reviewDisplay, setReviewDisplay] = useState<ReviewDisplay>(() => ({ api, developmentMode, reviews: {} }));
   const [reviewRevision, setReviewRevision] = useState(0);
   const reviewMounted = useRef(false);
   const reviewRequests = useRef({ api, developmentMode, requests: new Map<string, ReviewRequest>(), latest: new Map<string, string>() });
-  const currentReviews: RunReviews = reviewRequests.current.api === api && reviewRequests.current.developmentMode === developmentMode ? reviews : {};
+  const currentReviews: RunReviews = reviewDisplay.api === api && reviewDisplay.developmentMode === developmentMode ? reviewDisplay.reviews : {};
   const selectedWatch = bootstrap?.watches.find((item) => item.id === watchId);
   const actionPending = busy || historyState === 'loading';
   const selectedWatchPending = pendingRequest === 'unavailable' || pendingRequest.some((pending) => pending.watchId === watchId);
@@ -149,7 +154,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
   useEffect(() => {
     if (reviewRequests.current.api !== api || reviewRequests.current.developmentMode !== developmentMode) {
       reviewRequests.current = { api, developmentMode, requests: new Map<string, ReviewRequest>(), latest: new Map<string, string>() };
-      setReviews({});
+      setReviewDisplay({ api, developmentMode, reviews: {} });
     }
     if (!run) return;
     const context = reviewRequests.current;
@@ -157,7 +162,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
     const requestKey = reviewRequestKey(run);
     context.latest.set(key, requestKey);
     if (!context.requests.has(requestKey)) {
-      setReviews((previous) => ({ ...previous, [key]: { status: 'loading' as const } }));
+      setReviewDisplay((previous) => withReview(previous, api, developmentMode, key, { status: 'loading' }));
       const readReview = api.review;
       const request = readReview && !developmentMode
         ? Promise.resolve().then(() => readReview(run)).then((review): RunReviewState => ({ status: 'ready', review: decodeRunReview({ schemaVersion: '1.0.0', runId: run.id, review }, run) })).catch((): RunReviewState => ({ status: 'unavailable' }))
@@ -168,7 +173,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
       void request.then((state) => {
         entry.settled = true;
         if (reviewMounted.current && reviewRequests.current === context && context.requests.get(requestKey) === entry && context.latest.get(key) === requestKey) {
-          setReviews((previous) => ({ ...previous, [key]: state }));
+          setReviewDisplay((previous) => withReview(previous, api, developmentMode, key, state));
         }
       });
     }

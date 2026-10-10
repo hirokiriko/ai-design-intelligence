@@ -302,7 +302,7 @@ describe('saved URL initialization', () => {
     vi.mocked(api.runs).mockResolvedValue([completed]);
     buttonNamed(workspaceTree(api), '履歴を再取得')!.props.onClick(); await waitForHistory(api, 2); flushReview(api);
     await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('品質未達：V2 FAIL / V4 FAIL'));
-    finish(null); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    finish(null); await new Promise<void>((resolve) => setTimeout(resolve, 0));
     expect(renderToStaticMarkup(workspaceTree(api))).toContain('品質未達：V2 FAIL / V4 FAIL');
     expect(api.review).toHaveBeenCalledTimes(2); expect(api.start).not.toHaveBeenCalled();
   });
@@ -345,6 +345,25 @@ describe('saved URL initialization', () => {
     if (saved.schemaVersion !== '2.5.0') throw new Error('Missing saved question');
     expect(html).toContain(`実行時の問い：${saved.input.analysisQuestion.text}`);
     expect(html).not.toContain('実行時の問い：次に何を確認すればよい？'); expect(JSON.stringify(saved)).toBe(original);
+  });
+
+  it('uses the current API context for display and ignores an older context response', async () => {
+    const saved = { ...structuredClone(fictionalRunV2), id: 'kds_fixture_review_context' };
+    let finish!: (review: PublicRunReview) => void;
+    const first = { ...apiFor(saved), review: vi.fn().mockReturnValue(new Promise<PublicRunReview>((resolve) => { finish = resolve; })) };
+    startWorkspace(first); await waitForHistory(first); flushReview(first);
+    await vi.waitFor(() => expect(first.review).toHaveBeenCalledOnce());
+    expect(renderToStaticMarkup(workspaceTree(first))).toContain('品質レビュー：確認中');
+    const second = { ...apiFor(saved), review: vi.fn().mockResolvedValue(null) };
+    expect(renderToStaticMarkup(workspaceTree(second))).toContain('品質レビュー：未確認');
+    expect(renderToStaticMarkup(workspaceTree(second))).not.toContain('品質レビュー：確認中');
+    flushReview(second);
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(second))).toContain('品質レビュー：未記録'));
+    finish(savedReview(saved)); await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    const html = renderToStaticMarkup(workspaceTree(second));
+    expect(html).toContain('品質レビュー：未記録'); expect(html).not.toContain('V2 FAIL');
+    expect(first.review).toHaveBeenCalledOnce(); expect(second.review).toHaveBeenCalledOnce();
+    expect(first.start).not.toHaveBeenCalled(); expect(second.start).not.toHaveBeenCalled();
   });
 
   it('sends the selected immutable purpose only on explicit start and shows the same saved answer and history', async () => {

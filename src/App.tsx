@@ -22,6 +22,7 @@ import { normalizeLocalCompanyKey } from './analysis/projectLegacyDesignRecord';
 import { SampleDesignDataSource } from './data/SampleDesignDataSource';
 import { readPublicAppConfig } from './config/PublicAppConfig';
 import { requestJson } from './signals/api';
+import { isSignalsApprovedPreview, isSignalsDevelopmentView } from './signals/development-entry';
 import {
   sanitizeAnalysisEvidenceIds,
   type LocalJpoDataPeriodKind,
@@ -52,6 +53,8 @@ import {
 
 const DEFAULT_PURPOSES: AnalysisPurpose[] = ['market_trend', 'competitor_design'];
 const SignalWorkspace = lazy(() => import('./signals/SignalWorkspace').then((module) => ({ default: module.SignalWorkspace })));
+const SignalDevelopmentWorkspace = import.meta.env.DEV ? lazy(() => import('./signals/SignalDevelopmentWorkspace').then((module) => ({ default: module.SignalDevelopmentWorkspace }))) : null;
+const SignalApprovedEvidenceWorkspace = import.meta.env.DEV ? lazy(() => import('./signals/SignalApprovedEvidenceWorkspace').then((module) => ({ default: module.SignalApprovedEvidenceWorkspace }))) : null;
 const ENABLE_LOCAL_ANALYSIS_PACK = import.meta.env.DEV || import.meta.env.VITE_ENABLE_LOCAL_ANALYSIS_PACK === 'true';
 
 const initialRequest: AnalysisRequest = {
@@ -109,6 +112,12 @@ type AnalysisWorkspaceProps = {
 };
 
 export default function App() {
+  if (SignalApprovedEvidenceWorkspace && typeof window !== 'undefined' && isSignalsApprovedPreview(import.meta.env.DEV, window.location.hostname, window.location.search)) {
+    return <Suspense fallback={<p role="status">保存資料を読み込んでいます。</p>}><SignalApprovedEvidenceWorkspace /></Suspense>;
+  }
+  if (SignalDevelopmentWorkspace && typeof window !== 'undefined' && isSignalsDevelopmentView(import.meta.env.DEV, window.location.hostname, window.location.search)) {
+    return <Suspense fallback={<p role="status">架空資料の開発画面を読み込んでいます。</p>}><SignalDevelopmentWorkspace /></Suspense>;
+  }
   const publicConfig = readPublicAppConfig();
 
   if (!publicConfig.ok) {

@@ -16,6 +16,7 @@ describe('saved history fetch states', () => {
     expect(renderToStaticMarkup(createElement(SignalHistory, props))).toContain('まだ保存結果はありません');
     const html = renderToStaticMarkup(createElement(SignalHistory, { ...props, state: 'error', runs: [fictionalRun], selectedId: fictionalRun.id }));
     expect(html).toContain('aria-current="true"');
+    expect(html).toContain('表示中');
     expect(html).not.toContain('まだ保存結果はありません');
   });
   it('shows the saved pair on new runs without consulting the current catalog', () => {

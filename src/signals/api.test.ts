@@ -2,10 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readPendingRunRequest, signalApi, SignalApiError } from './api';
 import { fictionalBootstrap, fictionalRun } from './fixtures';
 import { fictionalPairsResponse, fictionalRunV22 } from './fixtures-v22';
+import { installPendingLocks } from './pending-locks.test-support';
 
 beforeEach(() => {
+  installPendingLocks();
   const values = new Map<string, string>();
   vi.stubGlobal('localStorage', {
+    get length() { return values.size; },
+    key: vi.fn((index: number) => [...values.keys()][index] ?? null),
     getItem: vi.fn((key: string) => values.get(key) ?? null),
     setItem: vi.fn((key: string, value: string) => { values.set(key, value); }),
     removeItem: vi.fn((key: string) => { values.delete(key); }),
@@ -61,7 +65,7 @@ describe('signal same-origin API boundary', () => {
 });
 
 describe('uncertain run request recovery without POST resend', () => {
-  it('retains only request identifiers after a network failure and blocks every new POST after reload', async () => {
+  it('retains only request identifiers after a network failure and blocks the same watch after reload', async () => {
     const fetcher = vi.fn().mockRejectedValue(new TypeError('network disconnected'));
     vi.stubGlobal('fetch', fetcher);
     await expect(signalApi.start('watch-example', 'reanalyze', 'request-lost', 'private-csrf')).rejects.toMatchObject({ code: 'connection' });
@@ -72,7 +76,7 @@ describe('uncertain run request recovery without POST resend', () => {
     const reloaded = await import('./api');
     expect(reloaded.readPendingRunRequest()).toEqual({ watchId: 'watch-example', requestId: 'request-lost' });
     await expect(reloaded.signalApi.start('watch-example', 'reanalyze', 'request-lost', 'private-csrf')).rejects.toMatchObject({ code: 'pending' });
-    await expect(reloaded.signalApi.start('watch-other', 'check', 'request-new', 'private-csrf')).rejects.toMatchObject({ code: 'pending' });
+    await expect(reloaded.signalApi.start('watch-example', 'check', 'request-new', 'private-csrf')).rejects.toMatchObject({ code: 'pending' });
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
@@ -184,11 +188,13 @@ describe('uncertain run request recovery without POST resend', () => {
     const fetcher = vi.fn().mockImplementation(() => new Promise<Response>((resolve) => { respond = resolve; }));
     vi.stubGlobal('fetch', fetcher);
     const request = signalApi.start('watch-example', 'reanalyze', 'request-old', 'csrf');
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
     expect(readPendingRunRequest()?.requestId).toBe('request-old');
     const key = vi.mocked(localStorage.setItem).mock.calls[0][0];
     const newer = { watchId: 'watch-other', requestId: 'request-newer' };
     // 別のタブで旧要求を解決し、次の要求が保留された状態を再現する。
-    localStorage.setItem(key, JSON.stringify(newer));
+    localStorage.removeItem(key);
+    localStorage.setItem(`kiriko-design-signals-pending-request:${encodeURIComponent(newer.watchId)}:${newer.requestId}`, JSON.stringify(newer));
     respond(status === 200 ? Response.json(fictionalRun) : new Response('', { status }));
     if (status === 200) expect(await request).toEqual(fictionalRun);
     else await expect(request).rejects.toMatchObject({ code: String(status) });

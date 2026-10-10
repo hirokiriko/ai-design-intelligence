@@ -55,7 +55,7 @@ function SourceCard({ source, run, developmentMode }: { source: Signal['sources'
   </article>;
 }
 
-export function SignalResult({ run, developmentMode = false, focusOnLoad = true, reviewState }: { run: Run; developmentMode?: boolean; focusOnLoad?: boolean; reviewState?: RunReviewState }) {
+export function SignalResult({ run, developmentMode = false, focusOnLoad = true, reviewState, showReview = true }: { run: Run; developmentMode?: boolean; focusOnLoad?: boolean; reviewState?: RunReviewState; showReview?: boolean }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const result = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -85,7 +85,7 @@ export function SignalResult({ run, developmentMode = false, focusOnLoad = true,
     <p className="signal-result-return"><a href="#signal-conditions">条件に戻って別の比較資料を選ぶ</a></p><SavedTarget run={run} />
     <p className="signal-subtle">{developmentMode ? '架空の固定結果を保存した日時' : 'この結果を実行した日時'}：{run.createdAt}。{developmentMode ? '実AIは未実施です。' : '実行時点の資料と分析状態を表示しています。現在の最新情報とは限りません。'}</p>
     <SignalSavedQuestion run={run} />
-    <SignalRunReview run={run} state={reviewState} />
+    {showReview ? <SignalRunReview run={run} state={reviewState} /> : null}
     {factsOnly ? <p className="signal-mode-note"><strong>書誌情報のみの比較・画像/記事分析は未実施</strong><br />実行時に記事本文・図面を取得せず、AI・Vertexへ送信していません。</p> : signal && !incomplete ? <p className="signal-mode-note"><strong>{statusLabels[signal.status]}</strong></p> : null}
     {run.versions.model === 'fixture-controller' || run.versions.model.startsWith('fictional-') ? <p className="signal-data-banner">模擬モデル（接続・保存の検証） · 実際の画像AI・公式サイト取得の評価結果ではありません。</p> : null}
     {(run.status === 'failed' || run.status === 'partial' || run.status === 'interrupted') ? <p role="alert" className="signal-error">{runStatusLabel(run)}。変化なしという結果ではありません。{run.status === 'partial' ? '資料不足という通常の結果とは別の実行状態です。' : ''}保存履歴は再取得でき、再実行は別の操作です。</p> : null}

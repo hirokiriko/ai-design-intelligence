@@ -6,6 +6,7 @@ import type { ApprovedPreview } from './approved-preview';
 import type { RunV23 } from './contract';
 import { ApprovedEvidenceContent, SignalApprovedEvidenceWorkspace } from './SignalApprovedEvidenceWorkspace';
 import { SignalHistory } from './SignalHistory';
+import { SignalResult } from './SignalResult';
 import { evidenceId } from './labels';
 
 const hooks = vi.hoisted(() => ({ active: false, index: 0, states: [] as unknown[], effects: [] as (() => void | (() => void))[] }));
@@ -74,6 +75,11 @@ describe('approved evidence and archived failed result separation', () => {
     const saved = JSON.stringify(preview.run);
     const html = renderToStaticMarkup(createElement(ApprovedEvidenceContent, { preview, question: 'next', onQuestion: () => undefined, replay: true, onReplay: () => undefined }));
     expect(html.indexOf('V2 FAIL / V4 FAIL')).toBeLessThan(html.indexOf('kds_fixture_ARCHIVED_WRONG_OBSERVATION'));
+    expect(html).toContain('V2 FAIL / V4 FAIL · 本人受入は未実施');
+    expect(html).not.toContain('aria-label="保存結果の品質レビュー"');
+    expect(html).not.toContain('品質レビュー：未確認');
+    const normalResult = renderToStaticMarkup(createElement(SignalResult, { run: preview.run, focusOnLoad: false }));
+    expect(normalResult).toContain('aria-label="保存結果の品質レビュー"');
     expect(html).toContain('実行時の問い：未記録'); expect(html).toContain(preview.run.versions.prompt);
     expect(html).not.toContain('id="signal-approved-drawings"');
     const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);

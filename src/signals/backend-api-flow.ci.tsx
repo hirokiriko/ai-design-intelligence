@@ -324,10 +324,15 @@ describe('generated fictional Backend API exchange through current question and 
     expect(readPendingRunRequest()).toBeNull(); expect(storage.size).toBe(0);
     const runPosts = () => calls.filter((call) => call.method === 'POST' && call.path.endsWith('/runs'));
     expect(runPosts()).toHaveLength(1); expect(runPosts()[0].body).toEqual(scenario.request);
+    expect(calls.filter((call) => call.path === `/api/v1/runs/${saved.id}/review`)).toHaveLength(1);
 
     const viewingStart = calls.length;
     button('履歴を再取得')!.props.onClick!();
     await vi.waitFor(() => expect(html()).toContain('保存履歴を再取得しました。AIは実行していません。'));
+    await vi.waitFor(() => {
+      expect(displayedReview()).toEqual({ status: 'ready', review: null });
+      expect(calls.filter((call) => call.path === `/api/v1/runs/${saved.id}/review`)).toHaveLength(2);
+    });
     expect(displayedHistory()?.find((run) => run.id === saved.id)).toEqual(saved);
     const history = findElement(tree(), (element) => element.type === SignalHistory);
     expect(history).toBeDefined(); history!.props.onSelect!(saved.id);
@@ -335,7 +340,7 @@ describe('generated fictional Backend API exchange through current question and 
     expect(await signalApi.requestRun(saved.watchId, scenario.request.requestId)).toEqual(saved);
     expect(await signalApi.run(saved.id)).toEqual(saved);
     assertSavedDisplay(saved);
-    expect(calls.filter((call) => call.path === `/api/v1/runs/${saved.id}/review`)).toHaveLength(1);
+    expect(calls.filter((call) => call.path === `/api/v1/runs/${saved.id}/review`)).toHaveLength(2);
     expect(calls.filter((call) => call.path.startsWith('/api/v1/bootstrap'))).toHaveLength(1);
 
     const foreignReads = scenario.exchanges.filter((exchange) => exchange.method === 'GET' && exchange.status >= 400
@@ -361,7 +366,7 @@ describe('generated fictional Backend API exchange through current question and 
     await vi.waitFor(() => expect(displayedReview()).toEqual({ status: 'ready', review: null }));
     assertSavedDisplay(saved);
     expect(displayedHistory()?.find((run) => run.id === saved.id)).toEqual(saved);
-    expect(calls.filter((call) => call.path === `/api/v1/runs/${saved.id}/review`)).toHaveLength(2);
+    expect(calls.filter((call) => call.path === `/api/v1/runs/${saved.id}/review`)).toHaveLength(3);
 
     // 別 watch の旧結果は履歴選択で境界を緩めず、保存 URL の再読込として開く。
     const old = decodeRun(scenario.oldRun);

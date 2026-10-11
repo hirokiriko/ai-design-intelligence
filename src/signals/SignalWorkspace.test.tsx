@@ -366,6 +366,35 @@ describe('saved URL initialization', () => {
     expect(first.start).not.toHaveBeenCalled(); expect(second.start).not.toHaveBeenCalled();
   });
 
+  it('explains missing question then comparison selection without inferring server OFF or starting analysis', async () => {
+    const api = questionApi();
+    startWorkspace(api); await waitForHistory(api);
+    await vi.waitFor(() => expect(api.comparisonPairs).toHaveBeenCalledOnce());
+    const initial = renderToStaticMarkup(workspaceTree(api));
+    expect(initial).toContain('id="signal-start-unavailable"');
+    expect(initial).toContain('から問いを選んでください');
+    expect(initial).not.toContain('受付OFF');
+    expect(initial).not.toContain('新しい実行は現在停止しています');
+    expect(buttonNamed(workspaceTree(api), 'この問いで分析を開始')?.props.disabled).toBe(true);
+    questionPicker(workspaceTree(api))!.props.onSelect('support');
+    expect(renderToStaticMarkup(workspaceTree(api))).toContain('から資料を選んでください');
+    pairPicker(workspaceTree(api))!.props.onSelect(questionFixture.input.comparisonPair!.id);
+    expect(buttonNamed(workspaceTree(api), 'この問いで分析を開始')?.props.disabled).toBe(false);
+    expect(renderToStaticMarkup(workspaceTree(api))).not.toContain('id="signal-start-unavailable"');
+    expect(api.start).not.toHaveBeenCalled(); expect(api.saveWatch).not.toHaveBeenCalled();
+  });
+
+  it('points to comparison GET recovery when candidates fail, without offering an analysis retry', async () => {
+    const api = questionApi();
+    vi.mocked(api.comparisonPairs).mockRejectedValue(new SignalApiError('503', 'FIXTURE-temporary-read-failure'));
+    startWorkspace(api); await waitForHistory(api);
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('比較組の候補を確認できません'));
+    questionPicker(workspaceTree(api))!.props.onSelect('support');
+    expect(renderToStaticMarkup(workspaceTree(api))).toContain('「比較組を再取得」で候補を確認してください');
+    expect(buttonNamed(workspaceTree(api), 'この問いで分析を開始')?.props.disabled).toBe(true);
+    expect(api.start).not.toHaveBeenCalled();
+  });
+
   it('sends the selected immutable purpose only on explicit start and shows the same saved answer and history', async () => {
     const api = questionApi();
     const accepted = decodeRun(structuredClone(questionFixture)); accepted.id = 'kds_fixture_question_accepted';

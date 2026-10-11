@@ -8,6 +8,7 @@ import { revealEvidenceLink, revealEvidenceTarget } from './evidence-navigation'
 import { SignalEmptyJourney, SignalPurposeIntro, SignalQuestionFocus, SignalQuestionPicker, SignalValuePreview, type SignalQuestion } from './SignalPurposeJourney';
 import { analysisQuestion, sameAnalysisQuestion } from './analysis-question';
 import { decodeRunReview, runReviewKey, type RunReviews, type RunReviewState } from './run-review';
+import { startUnavailableReason } from './start-availability';
 import './signals.css';
 
 interface Props { api?: SignalApi; renderAnalysis?: (datasetId: string) => ReactNode; developmentMode?: boolean }
@@ -68,6 +69,13 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
   const creationPending = actionPending || pendingRequest === 'unavailable';
   const questionSupported = bootstrap?.schemaVersion === '2.5.0' && bootstrap.analysisQuestionVersion === '1.0.0' && bootstrap.analysisMode !== 'facts_only';
   const selectionReady = (!questionSupported || question !== null) && (!supportsPairs(bootstrap?.schemaVersion) || (pairState === 'ready' && (comparisonPairs.length === 0 || comparisonPairs.some((pair) => pair.id === selectedPairId))));
+
+  const unavailableReason = startUnavailableReason({
+    busy, historyLoading: historyState === 'loading', pendingUnavailable: pendingRequest === 'unavailable',
+    selectedWatchPending, selectedRunRunning: run?.watchId === watchId && run.status === 'running',
+    questionMissing: questionSupported && question === null, pairRequired: supportsPairs(bootstrap?.schemaVersion),
+    pairState, pairMissing: comparisonPairs.length > 0 && !comparisonPairs.some((pair) => pair.id === selectedPairId),
+  });
 
   useEffect(() => {
     reviewMounted.current = true;
@@ -336,7 +344,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
             <AnalysisModeNotice bootstrap={bootstrap} developmentMode={developmentMode} />
             <p className="signal-subtle">{bootstrap.catalog.entities.length === 1 ? '現在の登録対象は1社です。この企業の収録範囲を確認します。' : `現在の登録対象は${bootstrap.catalog.entities.length}社です。登録された企業・商品分野だけを選択できます。`}</p>
             {bootstrap.watches.length ? <label className="signal-field">確認する条件<select value={watchId} disabled={busy} onChange={(event) => changeWatch(event.target.value)}>{bootstrap.watches.map((watch) => <option key={watch.id} value={watch.id}>{watch.name}</option>)}</select></label> : <p>最初の確認条件を保存してください。</p>}
-            {selectedWatch ? <><WatchSummary watch={selectedWatch} bootstrap={bootstrap} />{supportsPairs(bootstrap.schemaVersion) ? <ComparisonPairSelector pairs={comparisonPairs} state={pairState} selectedId={selectedPairId} busy={actionPending} onSelect={setSelectedPairId} onReload={() => void loadComparisonPairs(selectedWatch, bootstrap.schemaVersion)} /> : null}<SignalStartGuide analysisMode={bootstrap.analysisMode} developmentMode={developmentMode} questionSupported={questionSupported} questionText={questionSupported && question ? analysisQuestion(question).text : undefined} />{questionSupported && !question ? <p className="signal-subtle">先に分析する問いを選んでください。今見ている保存結果の目的は変更しません。</p> : null}<button className="signal-button signal-primary" aria-describedby="signal-start-explanation" type="button" disabled={creationPending || selectedWatchPending || !selectionReady || (run?.watchId === watchId && run.status === 'running')} onClick={() => void startRun('check')}>{busy ? '確認しています…' : questionSupported ? 'この問いで分析を開始' : '更新を確認'}</button><p className="signal-subtle">{questionSupported ? '同じ問い・資料・版の確認済み結果がある場合は、その保存結果を表示します。問い・比較組の選択や変更だけではAIを実行しません。' : supportsPairs(bootstrap.schemaVersion) ? '同じ条件・同じデータ・同じ比較組の確認済み結果がある場合は、保存結果を表示します。比較組の選択や変更だけではAIを実行しません。' : '同じ条件・同じデータの確認済み結果がある場合は、保存結果を表示します。'}</p></> : null}
+            {selectedWatch ? <><WatchSummary watch={selectedWatch} bootstrap={bootstrap} />{supportsPairs(bootstrap.schemaVersion) ? <ComparisonPairSelector pairs={comparisonPairs} state={pairState} selectedId={selectedPairId} busy={actionPending} onSelect={setSelectedPairId} onReload={() => void loadComparisonPairs(selectedWatch, bootstrap.schemaVersion)} /> : null}<SignalStartGuide analysisMode={bootstrap.analysisMode} developmentMode={developmentMode} questionSupported={questionSupported} questionText={questionSupported && question ? analysisQuestion(question).text : undefined} />{questionSupported && !question ? <p className="signal-subtle">先に分析する問いを選んでください。今見ている保存結果の目的は変更しません。</p> : null}<button className="signal-button signal-primary" aria-describedby={unavailableReason ? "signal-start-explanation signal-start-unavailable" : "signal-start-explanation"} type="button" disabled={creationPending || selectedWatchPending || !selectionReady || (run?.watchId === watchId && run.status === 'running')} onClick={() => void startRun('check')}>{busy ? '確認しています…' : questionSupported ? 'この問いで分析を開始' : '更新を確認'}</button>{unavailableReason ? <p id="signal-start-unavailable" className="signal-subtle" role="status">{unavailableReason}</p> : null}<p className="signal-subtle">{questionSupported ? '同じ問い・資料・版の確認済み結果がある場合は、その保存結果を表示します。問い・比較組の選択や変更だけではAIを実行しません。' : supportsPairs(bootstrap.schemaVersion) ? '同じ条件・同じデータ・同じ比較組の確認済み結果がある場合は、保存結果を表示します。比較組の選択や変更だけではAIを実行しません。' : '同じ条件・同じデータの確認済み結果がある場合は、保存結果を表示します。'}</p></> : null}
             {selectedWatch ? <button className="signal-text-button" type="button" disabled={actionPending} onClick={() => void refreshDatasets()}>同じ企業・商品条件で収録データを選び直す</button> : null}
             <button className="signal-text-button" type="button" disabled={creationPending} aria-expanded={showCreate} onClick={() => setShowCreate(!showCreate)}>{showCreate ? '条件の作成を閉じる' : '＋ 確認条件を保存'}</button>
             {showCreate || !bootstrap.watches.length ? <WatchForm key={`${selectedWatch?.id ?? 'new'}-${createRevision}`} bootstrap={bootstrap} seed={selectedWatch} busy={creationPending} onSave={saveWatch} /> : null}

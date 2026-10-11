@@ -71,7 +71,8 @@ describe('saved company and evidence context', () => {
   });
   it('leads with the saved company, product, classification, change and official findings', () => {
     const html = renderToStaticMarkup(createElement(SignalResult, { run: fictionalRunV2 }));
-    for (const label of ['架空リーフ機器株式会社', '架空のリーフ操作器', '操作機器 / H1', '今回わかったこと', '公式発表の事実', '未確認事項・次に確認する資料', '処理終了は、同一製品', '比較A / Bは資料の役割', '発表日：不明', '更新日：2026-07-02', '発売日：不明', '物品名', '架空操作機器', 'AIが確認した抜粋']) expect(html).toContain(label);
+    for (const label of ['架空リーフ機器株式会社', '架空のリーフ操作器', '操作機器 / H1', '今回わかったこと', '公式発表の事実', '未確認事項・次に確認する資料', '処理終了は、同一製品', '比較A / Bは資料の役割', '発表日：不明', '更新日：2026-07-02', '発売日：不明', '物品名', '架空操作機器', '分析用に用意した抜粋']) expect(html).toContain(label);
+    expect(html).not.toContain('AIが確認した抜粋');
     expect(html.indexOf('今回わかったこと')).toBeLessThan(html.indexOf('画像からのAI観察候補'));
   });
   it.each(Object.entries(relationLabels))('distinguishes relationship %s without broad confirmation', (relation, label) => {
@@ -98,7 +99,7 @@ describe('saved company and evidence context', () => {
     source.excerpt += 'これはAI未確認の範囲です。';
     source.extractedChars = Array.from(source.excerpt).length; source.truncated = true;
     const html = renderToStaticMarkup(createElement(SignalResult, { run }));
-    expect(html).toContain('保存された抜粋の残り（AIは未確認）');
+    expect(html).toContain('保存された抜粋の残り（分析用の範囲外）');
     expect(html).toContain('全文確認ではありません'); expect(html).toContain('日付不明');
     expect(html).toContain('事後照合'); expect(html).toContain('これはAI未確認の範囲です。');
   });

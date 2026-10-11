@@ -33,7 +33,21 @@ export function SignalSelectedRecord({ signal, recordId }: { signal: SignalV2; r
   if (!fact) return null;
   const media = signal.media.filter((item) => item.recordId === fact.recordId);
   return <><h3>選択中：{fact.articleName ?? '物品名不明'} · 登録 {fact.registrationNumber ?? '不明'}</h3>
-    {media.length ? <><p>この意匠に保存された図面から、観察と公式情報の対応を確かめます。</p><div className="signal-evidence-links">{media.map((item) => <a key={item.id} href={`#${evidenceId(item.id)}`}>{item.label}を見る</a>)}</div><a className="signal-text-button" href="#signal-approved-drawings">保存された比較組で、図面の着目点を見る →</a></> : <p className="signal-subtle">この結果に図面は保存されていません。ここで確認できるのは書誌事項です。形状の確認には、この意匠の図面が必要です。</p>}
+    <div className="signal-investigation-prompt" aria-labelledby="signal-investigation-question">
+      <p className="signal-eyebrow">次に調べる問い · 閲覧の案内</p>
+      <h4 id="signal-investigation-question">{media.length ? 'この登録意匠と、公式資料の製品との対応を確認できるか？' : 'この登録意匠の形を、どの図面で確認できるか？'}</h4>
+      {media.length ? <>
+        <p><strong>いま見られる根拠：</strong>この意匠の保存図面 {media.length}点。図面があることだけでは、販売商品・型番との対応は確定できません。</p>
+        <p><strong>次に必要な資料：</strong>製品写真・仕様と、この意匠の他の方向の図。外形や部位を照合し、対応を確かめてから設計上の意味を検討します。</p>
+        <div className="signal-evidence-links">{media.map((item) => <a key={item.id} href={`#${evidenceId(item.id)}`}>{item.label}を見る</a>)}</div>
+        <a className="signal-text-button" href="#signal-approved-drawings">保存された比較組で、図面の着目点を見る →</a>
+        {signal.officialFacts.length ? <p><a className="signal-text-button" href="#signal-approved-sources">対応未確認の公式引用を確かめる →</a></p> : <p className="signal-subtle">この結果には公式引用が保存されていません。製品の公式資料も必要です。</p>}
+      </> : <>
+        <p><strong>いま見られる根拠：</strong>書誌事項です。この結果に図面は保存されていません。</p>
+        <p><strong>まず必要な資料：</strong>{fact.registrationNumber ? `登録 ${fact.registrationNumber} に対応する図面` : '選択した意匠に対応する図面'}。下の書誌事項で対象を確かめ、その図面で外形や部位を確認するのが次の一歩です。</p>
+      </>}
+      <p className="signal-subtle">保存資料から次の確認を考えるための案内です。保存されたAIの問い・回答ではありません。閲覧では新しい分析や資料取得は始まりません。</p>
+    </div>
     <details className="signal-details" data-print-evidence><summary>選択した意匠の書誌事項・採用理由</summary><RecordFact fact={fact} /></details>
   </>;
 }
@@ -51,7 +65,7 @@ export function SignalScopeEvidence({ run }: { run: RunV23 }) {
   return <section className="signal-panel signal-scope-entry" id="signal-approved-scope" tabIndex={-1} aria-labelledby="signal-approved-scope-title">
     <p className="signal-eyebrow">1 · 企業・分類の差分から、今回詳しく見る対象を選ぶ</p><h2 id="signal-approved-scope-title">保存された収録差分</h2>
     <SignalScopeSummary run={run} />
-    <p>保存された2つの収録集合を比べています。基準日は商品の発表日ではなく、図面A/Bも商品の世代順を意味しません。</p>
+    <p>保存された2つの収録集合を比べています。<strong>AI分析の前回・今回の比較ではありません。</strong>基準日は商品の発表日ではなく、図面A/Bも商品の世代順を意味しません。</p>
     <details className="signal-details" data-print-evidence><summary>集計に使った企業・分類・収録経緯を見る</summary><SavedContext run={run} /></details>
     <h3 id="signal-scope-picker-title" tabIndex={-1}>今回詳しく見る対象を選ぶ · 根拠意匠 {signal.recordFacts.length}件</h3><p className="signal-subtle">この結果に保存された資料から選びます。対象全件の一覧とは限りません。物品名は販売商品名・型番とは区別します。</p>
     <div className="signal-scope-picker" role="group" aria-labelledby="signal-scope-picker-title">{signal.recordFacts.map((fact) => {

@@ -54,6 +54,11 @@ function approvedTree(view: ReactElement<Record<string, unknown>>) {
 }
 
 describe('approved evidence and archived failed result separation', () => {
+  beforeEach(() => {
+    const record = fixture().run.signal!.media[0].recordId;
+    vi.stubGlobal('window', { location: { search: new URLSearchParams({ record }).toString() } });
+  });
+  afterEach(() => vi.unstubAllGlobals());
   it('shows material facts and exact quotes first, without exposing incorrect archived AI observations', () => {
     const preview = fixture();
     preview.run.signal!.visualObservations[0].observation = 'kds_fixture_ARCHIVED_WRONG_OBSERVATION';
@@ -105,6 +110,43 @@ describe('approved evidence and archived failed result separation', () => {
     expect(html).toContain('保存された確認内容');
     expect(html).toContain(fact.text);
     expect(JSON.stringify(preview)).toBe(saved);
+  });
+  it.each([null, 'FIXTURE-UNKNOWN', 'FIXTURE-NO-DIAGRAM'])('removes the entire fixed evidence journey for an unpaired selection: %s', (record) => {
+    const preview = fixture();
+    const sample = { ...preview.run.signal!.recordFacts[0], id: 'kds_fixture_NO_DIAGRAM_FACT', recordId: 'FIXTURE-NO-DIAGRAM', selectionReason: 'scope_sample' as const };
+    preview.run.signal!.recordFacts.push(sample);
+    vi.stubGlobal('window', { location: { search: record ? new URLSearchParams({ record }).toString() : '' } });
+    const saved = JSON.stringify(preview);
+    const html = renderToStaticMarkup(createElement(ApprovedEvidenceContent, { preview, question: 'next', onQuestion: () => undefined, replay: false, onReplay: () => undefined }));
+    for (const target of ['signal-approved-drawings', 'signal-approved-sources', 'signal-approved-next', 'signal-conditions']) {
+      expect(html).not.toContain(`id="${target}"`); expect(html).not.toContain(`href="#${target}"`);
+    }
+    expect(html).not.toContain('<img'); expect(html).not.toContain('signal-question-option');
+    expect(html).not.toContain(preview.observations[0].text);
+    for (const fact of preview.run.signal!.officialFacts) expect(html).not.toContain(fact.quote);
+    expect(html).toContain('id="signal-approved-scope"'); expect(html).toContain('id="signal-approved-history"');
+    expect(html).toContain('V2・V4はFAILのまま');
+    expect(html).toContain('選択中の意匠を単独で分析した履歴ではありません');
+    if (record === sample.recordId) expect(html).toContain('図面と画像観察は未収録です');
+    expect(JSON.stringify(preview)).toBe(saved);
+  });
+  it.each([0, 1])('labels the selected drawing and the other design before showing saved comparison %i', (index) => {
+    const preview = fixture(), media = preview.run.signal!.media;
+    vi.stubGlobal('window', { location: { search: new URLSearchParams({ record: media[index].recordId }).toString() } });
+    const html = renderToStaticMarkup(createElement(ApprovedEvidenceContent, { preview, question: null, onQuestion: () => undefined, replay: false, onReplay: () => undefined }));
+    expect(html).toContain(`選択意匠の図面：${media[index].label}`);
+    expect(html).toContain(`比較相手：${media[1 - index].label}`);
+    expect(html).toContain('比較相手は別の意匠です');
+    expect(html).toContain('選択意匠・比較相手との製品対応は未確認です');
+    expect(html).toContain('id="signal-approved-drawings"');
+    expect(html).toContain('id="signal-approved-sources"');
+  });
+  it('does not call two drawings of the same record different designs', () => {
+    const preview = fixture(), media = preview.run.signal!.media;
+    media[1].recordId = media[0].recordId;
+    const html = renderToStaticMarkup(createElement(ApprovedEvidenceContent, { preview, question: null, onQuestion: () => undefined, replay: false, onReplay: () => undefined }));
+    expect(html).toContain('A/Bは同じ意匠の保存図面です');
+    expect(html).not.toContain('比較相手は別の意匠です');
   });
 });
 

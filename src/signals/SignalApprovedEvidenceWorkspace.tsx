@@ -8,6 +8,7 @@ import { SignalResult } from './SignalResult';
 import { SignalDrawingComparison } from './SignalDrawingComparison';
 import { SignalScopeEvidence } from './SignalScopeSummary';
 import { SignalComparisonGate } from './SignalComparisonGate';
+import { SignalRecordEvidenceBoundary, SignalRecordSelection } from './SignalRecordSelection';
 import { SignalPurposeIntro, type SignalQuestion } from './SignalPurposeJourney';
 import './signals.css';
 
@@ -48,7 +49,7 @@ export function ApprovedEvidenceContent({ preview, question, onQuestion, replay,
     const returningFromReplay = previousReplay.current && !replay;
     previousReplay.current = replay;
     if (!replay && !questionTarget && !returningFromReplay) return;
-    const target = replay ? warning.current : (questionTarget ? materialHeading.current?.ownerDocument.getElementById(questionTarget) : null) ?? materialHeading.current;
+    const target = replay ? warning.current : (questionTarget ? contentRoot.current?.ownerDocument.getElementById(questionTarget) : null) ?? contentRoot.current?.querySelector<HTMLElement>('#signal-selected-record') ?? materialHeading.current;
     target?.focus({ preventScroll: true }); target?.scrollIntoView({ block: 'start', behavior: 'auto' });
   }, [replay, run.id, questionTarget]);
   useEffect(() => {
@@ -63,17 +64,19 @@ export function ApprovedEvidenceContent({ preview, question, onQuestion, replay,
     return () => { window.removeEventListener('beforeprint', preparePrint); window.removeEventListener('afterprint', restoreDetails); restoreDetails(); };
   }, [replay, run.id]);
   if (replay) return <main className="signal-approved-content" onClickCapture={revealEvidenceLink}>
-    <section className="signal-panel" id="signal-conditions" tabIndex={-1}><p className="signal-eyebrow">許可された保存例1件のみを再表示</p><h1 ref={warning} tabIndex={-1}>品質未達のp23保存例 · V2 FAIL / V4 FAIL</h1><p>{run.createdAt} · モデル {run.versions.model} · prompt {run.versions.prompt}</p><div className="signal-error" role="note"><strong>V2 FAIL / V4 FAIL · 本人受入は未実施</strong><p>以下のAI観察・仮説には線種の混同、内側の円の観察不足、根拠のない法的意味、具体的な設計検討の不足があります。保存当時の内容を変更せず表示しています。今回の成功見本ではありません。</p></div><button className="signal-button secondary" type="button" onClick={() => onReplay(false)}>保存例を閉じて資料から確認した事実へ戻る</button><p className="signal-subtle">新しいAI分析は始めません。このURLの再読込も保存例の再表示です。実行時の問いは未記録です。</p></section>
+    <section className="signal-panel" id="signal-conditions" tabIndex={-1}><p className="signal-eyebrow">元の保存比較全体のp23結果1件を再表示</p><h1 ref={warning} tabIndex={-1}>品質未達のp23保存例 · V2 FAIL / V4 FAIL</h1><p>{run.createdAt} · モデル {run.versions.model} · prompt {run.versions.prompt}</p><div className="signal-error" role="note"><strong>V2 FAIL / V4 FAIL · 本人受入は未実施</strong><p>以下のAI観察・仮説には線種の混同、内側の円の観察不足、根拠のない法的意味、具体的な設計検討の不足があります。保存当時の内容を変更せず表示しています。今回の成功見本ではありません。</p></div><button className="signal-button secondary" type="button" onClick={() => onReplay(false)}>保存例を閉じて資料から確認した事実へ戻る</button><p className="signal-subtle">新しいAI分析は始めません。このURLの再読込も保存例の再表示です。実行時の問いは未記録です。個別意匠の選択とは別に、元の保存比較全体を再表示しています。</p></section>
     <SignalResult run={run} focusOnLoad={false} showReview={false} />
   </main>;
   return <main ref={contentRoot} className="signal-approved-content signal-approved-layout" onClickCapture={revealEvidenceLink}>
     <SignalPurposeIntro />
     <SignalComparisonGate run={run}>
+    <SignalRecordSelection run={run}>
     <SignalScopeEvidence run={run} />
+    <SignalRecordEvidenceBoundary run={run}>
     <section className="signal-value-preview signal-approved-guide" id="signal-conditions" tabIndex={-1} aria-labelledby="signal-approved-title">
       <div className="signal-preview-heading"><div><p className="signal-eyebrow">この企業・分野で、何が変わったか</p><h2 ref={materialHeading} tabIndex={-1} id="signal-approved-title">{run.input.context.entity.name ?? '企業名不明'}</h2></div><span className="signal-badge">保存資料 · 読み取りのみ</span></div>
       <a className="signal-text-button" href="#signal-approved-scope">収録差分と、詳しく見る対象の選択へ戻る</a>
-      <p className="signal-subtle">選んだ対象を、図面・公式引用から確認する。</p>
+      <p className="signal-subtle">選択意匠を含む保存比較の観察と、対応未確認の公式資料を確認します。</p>
       <div className="signal-question-options">{questions.map((item) => <button key={item.id} type="button" className="signal-question-option" aria-label={item.label} aria-pressed={question === item.id} onClick={(event) => {
         onQuestion(item.id);
         const root = event.currentTarget.closest('main');
@@ -82,7 +85,7 @@ export function ApprovedEvidenceContent({ preview, question, onQuestion, replay,
       }}><strong><span className="signal-step-number" aria-hidden="true">{questions.indexOf(item) + 1}</span>{item.label}</strong><span>{item.description}</span></button>)}</div>
       {selected ? <nav className="signal-question-focus" aria-label="この画面の閲覧の問い"><p><strong>{selected.label}</strong></p><a className="signal-text-button" href={`#${selected.target}`}>この問いの資料へ</a></nav> : null}
       <details className="signal-details"><summary>閲覧操作と保存結果について</summary><p className="signal-subtle">閲覧の問いは分析入力・保存結果に入りません。この読み取り画面では新しい分析を開始しません。</p></details>
-      <a className="signal-text-button signal-saved-example-link" href="#signal-approved-history">この対象の保存履歴 1件 · V2 / V4 品質未達</a>
+      <a className="signal-text-button signal-saved-example-link" href="#signal-approved-history">この企業・分類の保存履歴 1件 · V2 / V4 品質未達</a>
     </section>
     <section className="signal-panel" id="signal-approved-drawings" tabIndex={-1} aria-labelledby="signal-approved-drawings-title"><p className="signal-eyebrow">01 · 資料から確認した事実 · 図面</p><h2 id="signal-approved-drawings-title">外周と、内側の円・下部の線を分けて見る</h2><SignalDrawingComparison media={signal.media} mediaUrl={(media) => `/__signals-local-preview/approved/media/${encodeURIComponent(media.id)}`} focusPoints={preview.observations} onContinueToSources={() => {
       const root = contentRoot.current;
@@ -93,7 +96,7 @@ export function ApprovedEvidenceContent({ preview, question, onQuestion, replay,
       <p className="signal-subtle">保存画像を照合した観察です。線種の違いから、製品の機能変更・変更理由・法的範囲を推論していません。本人による受入確認は未実施です。</p>
       <a className="signal-text-button signal-section-next" href="#signal-approved-sources">次に、公式引用が支える範囲を確かめる →</a>
     </section>
-    <section className="signal-panel" id="signal-approved-sources" tabIndex={-1} aria-labelledby="signal-approved-sources-title"><p className="signal-eyebrow">資料から確認した事実 · 公式引用</p><h2 id="signal-approved-sources-title">引用は発売の説明を支えます。図面との対応は未確定です。</h2>
+    <section className="signal-panel" id="signal-approved-sources" tabIndex={-1} aria-labelledby="signal-approved-sources-title"><p className="signal-eyebrow">この保存比較で取得した参考資料 · 公式引用</p><h2 id="signal-approved-sources-title">公式引用と選択意匠の対応は未確認です。</h2>
       {signal.officialFacts.map((fact, index) => {
         const source = signal.sources.find((item) => item.id === fact.sourceId)!;
         const firstFactForSource = signal.officialFacts.findIndex((item) => item.sourceId === fact.sourceId) === index;
@@ -103,12 +106,14 @@ export function ApprovedEvidenceContent({ preview, question, onQuestion, replay,
       <a className="signal-text-button signal-section-next" href="#signal-approved-next">次に、検討に必要な資料を確認する →</a>
     </section>
     <section className="signal-panel" id="signal-approved-next" tabIndex={-1} aria-labelledby="signal-approved-next-title"><p className="signal-eyebrow">設計の検討へ · 追加確認の案</p><h2 id="signal-approved-next-title">輪郭と内側の線を分けて、検討に必要な資料をそろえる</h2><p>図面に同心円状の線が見えることと、公式資料に製品名・発売の記載があることは確認できます。両者の対応と、円や下部の部分の機能はまだ確認できません。</p><ol><li>両登録図面の説明・他の方向の図を確認し、外周、内側の円、下部の線を部位別に記録する。</li><li>公式製品画像や仕様の資料で、図面との対応と部位の名称・機能を照合する。</li><li>対応が確認できたら、輪郭と内側の要素を別々の設計検討項目として比較する。現時点では具体的な形状・機能の変更案を確定しない。</li></ol><p className="signal-subtle">次に集める資料の案です。実AIによる設計提案、製品戦略の確定、法律判断ではありません。</p><a className="signal-text-button" href="#signal-approved-drawings">図面へ戻って確かめる</a></section>
-    <section className="signal-panel" id="signal-approved-history" tabIndex={-1} aria-labelledby="signal-approved-history-title"><h2 id="signal-approved-history-title">保存済みp23結果を再表示する</h2><p>実AIで生成し保存された過去の結果です。<strong>V2・V4はFAILのまま</strong>で、今回の成功見本として扱いません。線種の混同、内側の円の観察不足、根拠のない法的意味、具体的な設計検討の不足が残っています。</p><p className="signal-subtle">{run.createdAt} · モデル {run.versions.model} · prompt {run.versions.prompt}。新規AIは実行しません。以下は許可されたこの保存例1件のみの履歴です。</p>
+    </SignalRecordEvidenceBoundary>
+    <section className="signal-panel signal-scope-independent" id="signal-approved-history" tabIndex={-1} aria-labelledby="signal-approved-history-title"><h2 id="signal-approved-history-title">保存済みp23結果を再表示する</h2><p>元の保存比較全体の結果1件です。選択中の意匠を単独で分析した履歴ではありません。</p><p>実AIで生成し保存された過去の結果です。<strong>V2・V4はFAILのまま</strong>で、今回の成功見本として扱いません。線種の混同、内側の円の観察不足、根拠のない法的意味、具体的な設計検討の不足が残っています。</p><p className="signal-subtle">{run.createdAt} · モデル {run.versions.model} · prompt {run.versions.prompt}。新規AIは実行しません。以下は許可されたこの保存例1件のみの履歴です。</p>
       <p>別の実行結果はこの画面に保存されていないため、前回の分析との差は確認できません。上の件数は、1回の結果に含まれる2つの収録集合の比較です。</p>
       <SignalHistory runs={[run]} selectedId={replay ? run.id : undefined} state="ready" disabled={false} onSelect={() => onReplay(true)} />
       <button className="signal-button" type="button" onClick={() => onReplay(true)}>品質未達のp23保存例を見る</button>
     </section>
-    <section className="signal-panel"><h2>操作だけを試す補助例</h2><p>架空資料では、明示的な開始・模擬進行・このブラウザーへの保存・履歴の操作を試せます。実資料の読み取り画面とは別の保存領域です。</p><a className="signal-text-button" href="?signalsDemo=fictional">架空の操作例へ</a></section>
+    <section className="signal-panel signal-scope-independent"><h2>操作だけを試す補助例</h2><p>架空資料では、明示的な開始・模擬進行・このブラウザーへの保存・履歴の操作を試せます。実資料の読み取り画面とは別の保存領域です。</p><a className="signal-text-button" href="?signalsDemo=fictional">架空の操作例へ</a></section>
+    </SignalRecordSelection>
     </SignalComparisonGate>
   </main>;
 }

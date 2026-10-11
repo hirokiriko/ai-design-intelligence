@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import type { RunV23, SignalV2 } from './contract';
 import { classificationSchemeLabel, evidenceId } from './labels';
 import { RecordFact, SavedContext } from './SignalContext';
+import { RecordSelectionContext } from './record-selection';
 
 export function SignalScopeSummary({ run }: { run: RunV23 }) {
   const signal = run.signal;
@@ -38,19 +39,8 @@ export function SignalSelectedRecord({ signal, recordId }: { signal: SignalV2; r
 }
 
 export function SignalScopeEvidence({ run }: { run: RunV23 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(() => {
-    const id = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('record');
-    return run.signal?.recordFacts.some((fact) => fact.recordId === id) ? id : null;
-  });
+  const { selectedId, select } = useContext(RecordSelectionContext);
   const selection = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const restoreUrl = () => {
-      const id = new URLSearchParams(window.location.search).get('record');
-      setSelectedId(run.signal?.recordFacts.some((fact) => fact.recordId === id) ? id : null);
-    };
-    window.addEventListener('popstate', restoreUrl);
-    return () => window.removeEventListener('popstate', restoreUrl);
-  }, [run]);
   useEffect(() => {
     if (!selectedId) return;
     selection.current?.focus({ preventScroll: true });
@@ -63,13 +53,10 @@ export function SignalScopeEvidence({ run }: { run: RunV23 }) {
     <SignalScopeSummary run={run} />
     <p>保存された2つの収録集合を比べています。基準日は商品の発表日ではなく、図面A/Bも商品の世代順を意味しません。</p>
     <details className="signal-details" data-print-evidence><summary>集計に使った企業・分類・収録経緯を見る</summary><SavedContext run={run} /></details>
-    <h3 id="signal-scope-picker-title">今回詳しく見る対象を選ぶ · 根拠意匠 {signal.recordFacts.length}件</h3><p className="signal-subtle">この結果に保存された資料から選びます。対象全件の一覧とは限りません。物品名は販売商品名・型番とは区別します。</p>
+    <h3 id="signal-scope-picker-title" tabIndex={-1}>今回詳しく見る対象を選ぶ · 根拠意匠 {signal.recordFacts.length}件</h3><p className="signal-subtle">この結果に保存された資料から選びます。対象全件の一覧とは限りません。物品名は販売商品名・型番とは区別します。</p>
     <div className="signal-scope-picker" role="group" aria-labelledby="signal-scope-picker-title">{signal.recordFacts.map((fact) => {
       const media = signal.media.filter((item) => item.recordId === fact.recordId);
-      return <button className="signal-scope-candidate" type="button" key={fact.id} id={evidenceId(fact.id)} aria-pressed={selectedId === fact.recordId} aria-controls="signal-selected-record" onClick={() => {
-        setSelectedId(fact.recordId);
-        const url = new URL(window.location.href); url.searchParams.set('record', fact.recordId); window.history.replaceState(null, '', url);
-      }}><strong>{fact.articleName ?? '物品名不明'} · 登録 {fact.registrationNumber ?? '不明'}</strong>
+      return <button className="signal-scope-candidate" type="button" key={fact.id} id={evidenceId(fact.id)} aria-pressed={selectedId === fact.recordId} aria-controls="signal-selected-record" onClick={() => select(fact.recordId)}><strong>{fact.articleName ?? '物品名不明'} · 登録 {fact.registrationNumber ?? '不明'}</strong>
         <span>{{ comparison_pair: '図面の比較対象', newly_observed: 'この収録範囲で新規観測', scope_sample: '対象範囲から選ばれた参考資料' }[fact.selectionReason]}</span><span>{media.length ? `保存図面 ${media.length}点` : '書誌事項のみ · 保存図面なし'}</span>
       </button>;
     })}</div>

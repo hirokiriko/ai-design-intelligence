@@ -186,7 +186,7 @@
 .signal-approved-layout { max-width: 1320px; grid-template-columns: 280px minmax(0, 1fr); gap: 24px 28px; align-items: start; padding-top: 30px; }
 .signal-approved-layout > .signal-intro { grid-column: 1 / -1; max-width: 950px; padding-bottom: 4px; }
 .signal-approved-layout > .signal-panel { grid-column: 2; }
-.signal-approved-guide { grid-column: 1; grid-row: 4 / span 5; align-self: start; padding: 20px; margin: 0; background: #fbfdfd; box-shadow: none; }
+.signal-approved-guide { grid-column: 1; grid-row: 5 / span 3; align-self: start; padding: 20px; margin: 0; background: #fbfdfd; box-shadow: none; }
 .signal-approved-guide h2 { font-size: 18px; }
 .signal-approved-guide .signal-preview-heading { gap: 10px; margin-bottom: 14px; }
 .signal-approved-guide .signal-question-options { grid-template-columns: 1fr; gap: 8px; margin: 16px 0; }
@@ -200,6 +200,8 @@
 .signal-approved-guide .signal-question-focus { padding: 10px; font-size: 13px; }
 .signal-approved-guide .signal-saved-example-link { margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--signal-line); color: #8b503b; }
 .signal-approved-layout > .signal-scope-entry { grid-column: 1 / -1; }
+.signal-approved-layout > .signal-scope-independent { grid-column: 1 / -1; }
+.signal-selected-comparison { border-left: 4px solid var(--signal-accent); }
 .signal-approved-layout > .signal-comparison-preset, .signal-approved-layout > .signal-comparison-unavailable { grid-column: 1 / -1; }
 .signal-preset-fields { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)); gap: 20px; }
 .signal-preset-fields > div, .signal-preset-fields label { display: grid; align-content: start; gap: 6px; min-width: 0; font-size: 13px; }
@@ -208,7 +210,8 @@
 .signal-preset-actions { display: flex; align-items: center; gap: 20px; }
 .signal-preset-actions .signal-button { flex-shrink: 0; }
 .signal-empty-delta { padding: 10px 14px; background: #f1f8f6; border-left: 3px solid var(--signal-accent); }
-@media (max-width: 640px) { .signal-preset-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .signal-preset-fields > div { grid-column: 1 / -1; } .signal-preset-actions { display: block; } }
+.signal-preset-date { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .signal-preset-fields { grid-template-columns: minmax(0, 1fr); gap: 12px; } .signal-preset-fields > div { grid-column: 1; } .signal-preset-fields select { font-size: 16px; } .signal-preset-actions { display: block; } }
 .signal-scope-summary { padding-top: 4px; }
 .signal-scope-summary p { margin: 8px 0; }
 .signal-scope-summary .signal-counts { margin: 8px 0; grid-template-columns: repeat(4, minmax(0, 1fr)); }

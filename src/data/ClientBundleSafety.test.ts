@@ -26,7 +26,13 @@ describe('client bundle server-only configuration safety', () => {
     '/v1/trial/design-export',
   ])('rejects the server-only marker %s in dist', (marker) => {
     withTemporaryBundle(marker, (root) => {
-      expect(() => runSafetyCheck(root)).toThrow();
+      let failure: unknown;
+      try {
+        runSafetyCheck(root);
+      } catch (error) {
+        failure = error;
+      }
+      assertScannerRejected(failure);
     });
   });
 
@@ -61,6 +67,33 @@ describe('client bundle server-only configuration safety', () => {
   });
 });
 
+describe('subprocess rejection diagnostics', () => {
+  it('accepts a scanner rejection diagnostic', () => {
+    const error = Object.assign(new Error('FIXTURE-SCANNER-REJECTED'), {
+      stderr: 'Server-only Backend configuration was found in the client bundle:\n- dist/app.js (server-only marker)\n',
+    });
+    expect(() => assertScannerRejected(error)).not.toThrow();
+  });
+
+  it('rejects a simulated EPERM spawn failure without running a child', () => {
+    const error = Object.assign(new Error('spawnSync FIXTURE-NODE EPERM'), {
+      code: 'EPERM', stdout: '', stderr: '',
+    });
+    expect(() => assertScannerRejected(error)).toThrow();
+  });
+
+  it('rejects unrelated child-process stderr', () => {
+    const error = Object.assign(new Error('FIXTURE-CHILD-FAILED'), {
+      stderr: 'FIXTURE-UNRELATED-RUNTIME-ERROR',
+    });
+    expect(() => assertScannerRejected(error)).toThrow();
+  });
+
+  it('rejects absence of a scanner failure', () => {
+    expect(() => assertScannerRejected(undefined)).toThrow();
+  });
+});
+
 function withTemporaryBundle(content: string, assertion: (root: string) => void): void {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'client-bundle-safety-'));
   const dist = path.join(root, 'dist');
@@ -91,4 +124,8 @@ function commandOutput(error: unknown): string {
   if (!(error instanceof Error)) return '';
   const value = error as Error & { stdout?: string | Buffer; stderr?: string | Buffer };
   return `${value.stdout?.toString() ?? ''}${value.stderr?.toString() ?? ''}`;
+}
+
+function assertScannerRejected(error: unknown): void {
+  expect(commandOutput(error)).toContain('Server-only Backend configuration was found in the client bundle:');
 }

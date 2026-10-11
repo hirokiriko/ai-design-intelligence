@@ -1,0 +1,2871 @@
+{
+  "schemaVersion": "kds_fixture_cross_flow_1",
+  "fictional": true,
+  "authMode": "public",
+  "watchInput": {
+    "name": "架空段階検証 normal-redirect",
+    "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+    "categoryId": "FIXTURE-CLASS-A01",
+    "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+    "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+    "sourceProfileId": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT"
+  },
+  "request": {
+    "intent": "check",
+    "requestId": "FIXTURE-REQUEST-FLOW",
+    "comparisonPairId": "FIXTURE-PAIR-STAGE-NORMAL"
+  },
+  "exchanges": [
+    {
+      "method": "GET",
+      "path": "/api/v1/bootstrap",
+      "status": 200,
+      "document": {
+        "analysisMode": "standard",
+        "catalog": {
+          "categories": [
+            {
+              "id": "FIXTURE-CLASS-A01",
+              "label": "架空携帯機器"
+            }
+          ],
+          "datasets": [
+            {
+              "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+              "dataAsOf": "2026-09-18",
+              "dataMode": "fictional",
+              "id": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+              "recordCount": 2,
+              "sourceFamily": "FIXTURE-PROCEDURAL-SIGNALS"
+            },
+            {
+              "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+              "dataAsOf": "2026-08-09",
+              "dataMode": "fictional",
+              "id": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+              "recordCount": 1,
+              "sourceFamily": "FIXTURE-PROCEDURAL-SIGNALS"
+            }
+          ],
+          "entities": [
+            {
+              "id": "FIXTURE-ENTITY-APPLICANT-A",
+              "name": "架空意匠ラボ甲合同会社"
+            }
+          ],
+          "sourceProfiles": [
+            {
+              "dataMode": "fictional",
+              "id": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT",
+              "label": "架空企業公式資料fixture normal"
+            }
+          ]
+        },
+        "csrfToken": "497651.20de1b8a5896fa565c939c1e0a5bdafb91952c57ed63d7db4a0dc0352f3544f7",
+        "dataMode": "fictional",
+        "schemaVersion": "2.4.0",
+        "watches": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/watches",
+      "status": 200,
+      "document": {
+        "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+        "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+        "categoryId": "FIXTURE-CLASS-A01",
+        "createdAt": "2026-10-09T11:03:58.542041Z",
+        "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+        "id": "FIXTURE-WATCH-FLOW-1",
+        "name": "架空段階検証 normal-redirect",
+        "sourceProfileId": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT"
+      },
+      "requestBody": {
+        "name": "架空段階検証 normal-redirect",
+        "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+        "categoryId": "FIXTURE-CLASS-A01",
+        "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+        "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+        "sourceProfileId": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/watches/FIXTURE-WATCH-FLOW-1/comparison-pairs",
+      "status": 200,
+      "document": {
+        "comparisonPairs": [
+          {
+            "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+            "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+            "categoryId": "FIXTURE-CLASS-A01",
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "evidence": "自作の架空図形に対応付けた検証用組です。実在機種の旧新世代を示しません。",
+            "id": "FIXTURE-PAIR-STAGE-NORMAL",
+            "label": "自作架空携帯操作端末の正面比較",
+            "media": [
+              {
+                "applicationDate": "2026-01-10",
+                "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                "gazetteDate": "2026-04-02",
+                "height": 512,
+                "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+                "label": "自作架空比較形状 BEFORE",
+                "mimeType": "image/png",
+                "permission": "fixture-only: self-authored storage/display/model test allowed",
+                "recordId": "kds_fixture_article_alpha",
+                "role": "comparisonA",
+                "sourceLabel": "自作の手続き的な架空図形",
+                "view": "架空正面図",
+                "width": 512
+              },
+              {
+                "applicationDate": "2026-06-01",
+                "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                "gazetteDate": "2026-08-07",
+                "height": 512,
+                "id": "FIXTURE-MEDIA-AFTER-CASE01",
+                "label": "自作架空比較形状 AFTER",
+                "mimeType": "image/png",
+                "permission": "fixture-only: self-authored storage/display/model test allowed",
+                "recordId": "kds_fixture_article_beta",
+                "role": "comparisonB",
+                "sourceLabel": "自作の手続き的な架空図形",
+                "view": "架空正面図",
+                "width": 512
+              }
+            ]
+          }
+        ],
+        "schemaVersion": "2.3.0"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/runs?watchId=FIXTURE-WATCH-FLOW-1",
+      "status": 200,
+      "document": {
+        "runs": [],
+        "schemaVersion": "2.3.0"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/watches/FIXTURE-WATCH-FLOW-1/runs",
+      "status": 200,
+      "document": {
+        "completedAt": "2026-10-09T11:03:58.995135Z",
+        "createdAt": "2026-10-09T11:03:58.544040Z",
+        "errorCode": null,
+        "id": "kds_fixture_flow_run_1",
+        "input": {
+          "comparisonPair": {
+            "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+            "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+            "categoryId": "FIXTURE-CLASS-A01",
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "evidence": "自作の架空図形に対応付けた検証用組です。実在機種の旧新世代を示しません。",
+            "id": "FIXTURE-PAIR-STAGE-NORMAL",
+            "label": "自作架空携帯操作端末の正面比較",
+            "media": [
+              {
+                "applicationDate": "2026-01-10",
+                "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                "gazetteDate": "2026-04-02",
+                "height": 512,
+                "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+                "label": "自作架空比較形状 BEFORE",
+                "mimeType": "image/png",
+                "permission": "fixture-only: self-authored storage/display/model test allowed",
+                "recordId": "kds_fixture_article_alpha",
+                "role": "comparisonA",
+                "sourceLabel": "自作の手続き的な架空図形",
+                "view": "架空正面図",
+                "width": 512
+              },
+              {
+                "applicationDate": "2026-06-01",
+                "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                "gazetteDate": "2026-08-07",
+                "height": 512,
+                "id": "FIXTURE-MEDIA-AFTER-CASE01",
+                "label": "自作架空比較形状 AFTER",
+                "mimeType": "image/png",
+                "permission": "fixture-only: self-authored storage/display/model test allowed",
+                "recordId": "kds_fixture_article_beta",
+                "role": "comparisonB",
+                "sourceLabel": "自作の手続き的な架空図形",
+                "view": "架空正面図",
+                "width": 512
+              }
+            ]
+          },
+          "context": {
+            "afterDataset": {
+              "collection": null,
+              "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+              "dataAsOf": "2026-09-18",
+              "id": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01"
+            },
+            "beforeDataset": {
+              "collection": null,
+              "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+              "dataAsOf": "2026-08-09",
+              "id": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01"
+            },
+            "category": {
+              "id": "FIXTURE-CLASS-A01",
+              "label": "架空携帯機器",
+              "scheme": "FIXTURE-DESIGN-CLASS"
+            },
+            "dataMode": "fictional",
+            "entity": {
+              "id": "FIXTURE-ENTITY-APPLICANT-A",
+              "name": "架空意匠ラボ甲合同会社"
+            },
+            "knownProducts": []
+          },
+          "watch": {
+            "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+            "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+            "categoryId": "FIXTURE-CLASS-A01",
+            "createdAt": "2026-10-09T11:03:58.542041Z",
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "id": "FIXTURE-WATCH-FLOW-1",
+            "name": "架空段階検証 normal-redirect",
+            "sourceProfileId": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT"
+          }
+        },
+        "schemaVersion": "2.3.0",
+        "signal": {
+          "counts": {
+            "after": 2,
+            "before": 1,
+            "comparable": true,
+            "excludedAfter": 0,
+            "excludedBefore": 0,
+            "newlyObserved": 1
+          },
+          "coverage": {
+            "after": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+            "before": "自作の架空snapshot。実在データ・全国網羅ではありません。"
+          },
+          "designFacts": [
+            {
+              "field": "record",
+              "id": "kds_fixture_design_fact_1",
+              "recordIds": [
+                "kds_fixture_article_alpha"
+              ],
+              "text": "架空携帯操作端末。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-04-02。出願日: 2026-01-10。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 持ち運び用の架空操作端末を表す契約検証データ。"
+            },
+            {
+              "field": "record",
+              "id": "kds_fixture_design_fact_2",
+              "recordIds": [
+                "kds_fixture_article_beta"
+              ],
+              "text": "架空携帯操作端末B。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-08-07。出願日: 2026-06-01。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 自作の架空形状の技術検証用record。実在製品ではない。"
+            }
+          ],
+          "discovery": {
+            "candidates": [
+              {
+                "dateStatus": "unknown",
+                "id": "kds_fixture_candidate_flow",
+                "publishedAt": null,
+                "selectionReason": "対象語一致: 架空携帯操作端末。発表日不明",
+                "title": "架空携帯操作端末分野の方針資料",
+                "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+              }
+            ],
+            "eligibleCandidates": 1,
+            "limitations": [
+              "登録入口の有限な掲載範囲のみを確認。候補なしは企業の未発表を意味しません。"
+            ],
+            "omittedCandidates": 0,
+            "scannedLinks": 1,
+            "state": "completed"
+          },
+          "hypotheses": [
+            {
+              "evidenceIds": [
+                "kds_fixture_design_fact_2",
+                "FIXTURE-VISUAL-STAGE",
+                "FIXTURE-FACT-CATEGORY"
+              ],
+              "id": "FIXTURE-MATERIAL-CATEGORY",
+              "limitations": [
+                "架空資料による技術検証です。性能や個別機種の開発意図を立証していません。"
+              ],
+              "text": "架空携帯操作端末の画面下操作部について、設計担当者が押し分けと視認性の評価条件を検討できます。"
+            }
+          ],
+          "limitations": [
+            "件数は承認済み収録範囲の観測数であり、市場全体の新規出願数ではありません。"
+          ],
+          "media": [
+            {
+              "applicationDate": "2026-01-10",
+              "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+              "gazetteDate": "2026-04-02",
+              "height": 512,
+              "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+              "label": "自作架空比較形状 BEFORE",
+              "mimeType": "image/png",
+              "permission": "fixture-only: self-authored storage/display/model test allowed",
+              "recordId": "kds_fixture_article_alpha",
+              "role": "comparisonA",
+              "sourceLabel": "自作の手続き的な架空図形",
+              "view": "架空正面図",
+              "width": 512
+            },
+            {
+              "applicationDate": "2026-06-01",
+              "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+              "gazetteDate": "2026-08-07",
+              "height": 512,
+              "id": "FIXTURE-MEDIA-AFTER-CASE01",
+              "label": "自作架空比較形状 AFTER",
+              "mimeType": "image/png",
+              "permission": "fixture-only: self-authored storage/display/model test allowed",
+              "recordId": "kds_fixture_article_beta",
+              "role": "comparisonB",
+              "sourceLabel": "自作の手続き的な架空図形",
+              "view": "架空正面図",
+              "width": 512
+            }
+          ],
+          "officialFacts": [
+            {
+              "end": 69,
+              "id": "FIXTURE-FACT-CATEGORY",
+              "quote": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。",
+              "sourceId": "kds_fixture_candidate_flow",
+              "start": 16,
+              "text": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。"
+            }
+          ],
+          "questionsForHuman": [
+            "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+            "資料「架空携帯操作端末分野の方針資料」の発表日を明記した公式資料が必要です。更新日・発売日と区別し、観測期間との対応を判断します。"
+          ],
+          "recordFacts": [
+            {
+              "applicant": {
+                "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                "name": "架空意匠ラボ甲合同会社"
+              },
+              "applicationDate": "2026-01-10",
+              "applicationNumber": "FIXTURE-APP-A001",
+              "articleDescription": "通常の物品意匠を表現する。",
+              "articleName": "架空携帯操作端末",
+              "classifications": [
+                {
+                  "code": "FIXTURE-CLASS-A01",
+                  "label": "架空携帯機器",
+                  "scheme": "FIXTURE-DESIGN-CLASS"
+                }
+              ],
+              "description": "持ち運び用の架空操作端末を表す契約検証データ。",
+              "gazetteDate": "2026-04-02",
+              "id": "kds_fixture_design_fact_1",
+              "quality": "pass",
+              "recordId": "kds_fixture_article_alpha",
+              "registrationNumber": "FIXTURE-REG-A001",
+              "selectionReason": "comparison_pair",
+              "sourceFields": [
+                "/after/document/records/0/articleName",
+                "/after/document/records/0/applicants",
+                "/after/document/records/0/classifications",
+                "/after/document/records/0/applicationNumber",
+                "/after/document/records/0/registrationNumber",
+                "/after/document/records/0/applicationDate",
+                "/after/document/records/0/gazetteDate",
+                "/after/document/records/0/description",
+                "/after/document/records/0/articleDescription",
+                "/after/document/records/0/quality"
+              ]
+            },
+            {
+              "applicant": {
+                "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                "name": "架空意匠ラボ甲合同会社"
+              },
+              "applicationDate": "2026-06-01",
+              "applicationNumber": "FIXTURE-APP-A008",
+              "articleDescription": "通常の物品意匠を表現する。",
+              "articleName": "架空携帯操作端末B",
+              "classifications": [
+                {
+                  "code": "FIXTURE-CLASS-A01",
+                  "label": "架空携帯機器",
+                  "scheme": "FIXTURE-DESIGN-CLASS"
+                }
+              ],
+              "description": "自作の架空形状の技術検証用record。実在製品ではない。",
+              "gazetteDate": "2026-08-07",
+              "id": "kds_fixture_design_fact_2",
+              "quality": "pass",
+              "recordId": "kds_fixture_article_beta",
+              "registrationNumber": "FIXTURE-REG-A008",
+              "selectionReason": "comparison_pair",
+              "sourceFields": [
+                "/after/document/records/1/articleName",
+                "/after/document/records/1/applicants",
+                "/after/document/records/1/classifications",
+                "/after/document/records/1/applicationNumber",
+                "/after/document/records/1/registrationNumber",
+                "/after/document/records/1/applicationDate",
+                "/after/document/records/1/gazetteDate",
+                "/after/document/records/1/description",
+                "/after/document/records/1/articleDescription",
+                "/after/document/records/1/quality"
+              ]
+            }
+          ],
+          "relationships": [
+            {
+              "id": "FIXTURE-MATERIAL-CATEGORY",
+              "missingEvidence": [
+                "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。"
+              ],
+              "opposingEvidenceIds": [],
+              "relation": "category",
+              "summary": "携帯操作端末分野の事業方針として対応します。個別機種の意図は未確認です。",
+              "supportingEvidenceIds": [
+                "kds_fixture_design_fact_2",
+                "FIXTURE-VISUAL-STAGE",
+                "FIXTURE-FACT-CATEGORY"
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "bodyHash": "3f639e71ffc20c972092f31c1486c309719b92940c332e365e25a39ee25c4bbb",
+              "contentHash": "0422eb6186bebb7e411e2d508ac93cc0fbaaacde00340264dd0d03d49682d0e1",
+              "excerpt": "架空携帯操作端末分野の方針資料\n架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。\nPublished 2026\nFIXTURE-RELATED\n/09/03\nUpdated 2026-09-04\nRelease date 2026-09-05\n架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料",
+              "excerptStart": 0,
+              "extractedChars": 4151,
+              "extractionVersion": "article-html-2.2.0",
+              "id": "kds_fixture_candidate_flow",
+              "modelVisibleChars": 255,
+              "publishedAt": null,
+              "releaseAt": "2026-09-05",
+              "retrievedAt": "2026-10-09T11:03:58.970129Z",
+              "retrospective": false,
+              "title": "架空携帯操作端末分野の方針資料",
+              "truncated": true,
+              "updatedAt": "2026-09-04",
+              "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+            }
+          ],
+          "status": "insufficient",
+          "stopReason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+          "toolEvents": [
+            {
+              "candidateId": null,
+              "finishedAt": "2026-10-09T11:03:58.947133Z",
+              "outcome": "ok",
+              "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+              "startedAt": "2026-10-09T11:03:58.943128Z",
+              "tool": "list_candidates"
+            },
+            {
+              "candidateId": "kds_fixture_candidate_flow",
+              "finishedAt": "2026-10-09T11:03:58.970129Z",
+              "outcome": "ok",
+              "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+              "startedAt": "2026-10-09T11:03:58.968131Z",
+              "tool": "fetch_candidate"
+            },
+            {
+              "candidateId": null,
+              "finishedAt": "2026-10-09T11:03:58.993139Z",
+              "outcome": "ok",
+              "reason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+              "startedAt": "2026-10-09T11:03:58.993139Z",
+              "tool": "finish"
+            }
+          ],
+          "visualObservations": [
+            {
+              "id": "FIXTURE-VISUAL-STAGE",
+              "mediaIds": [
+                "FIXTURE-MEDIA-BEFORE-CASE01",
+                "FIXTURE-MEDIA-AFTER-CASE01"
+              ],
+              "observation": "A：画面下の円形操作部（実線）。B：画面下の角の丸い横長操作部（実線）。描画上の比較：差異あり。可視形状の差異候補あり。描画の線種から物理的変更・法的範囲・製品世代を確定しません。",
+              "part": "正面画面下の操作部",
+              "status": "change_candidate"
+            }
+          ]
+        },
+        "status": "complete",
+        "usage": {
+          "inputTokens": 93,
+          "modelRequests": 3,
+          "outputTokens": 57,
+          "toolCalls": 3
+        },
+        "versions": {
+          "model": "fixture-controller",
+          "prompt": "bounded-signal-2.5.24",
+          "schema": "2.3.0"
+        },
+        "watchId": "FIXTURE-WATCH-FLOW-1"
+      },
+      "requestBody": {
+        "intent": "check",
+        "requestId": "FIXTURE-REQUEST-FLOW",
+        "comparisonPairId": "FIXTURE-PAIR-STAGE-NORMAL"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/runs?watchId=FIXTURE-WATCH-FLOW-1",
+      "status": 200,
+      "document": {
+        "runs": [
+          {
+            "completedAt": "2026-10-09T11:03:58.995135Z",
+            "createdAt": "2026-10-09T11:03:58.544040Z",
+            "errorCode": null,
+            "id": "kds_fixture_flow_run_1",
+            "input": {
+              "comparisonPair": {
+                "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+                "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+                "categoryId": "FIXTURE-CLASS-A01",
+                "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                "evidence": "自作の架空図形に対応付けた検証用組です。実在機種の旧新世代を示しません。",
+                "id": "FIXTURE-PAIR-STAGE-NORMAL",
+                "label": "自作架空携帯操作端末の正面比較",
+                "media": [
+                  {
+                    "applicationDate": "2026-01-10",
+                    "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                    "gazetteDate": "2026-04-02",
+                    "height": 512,
+                    "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+                    "label": "自作架空比較形状 BEFORE",
+                    "mimeType": "image/png",
+                    "permission": "fixture-only: self-authored storage/display/model test allowed",
+                    "recordId": "kds_fixture_article_alpha",
+                    "role": "comparisonA",
+                    "sourceLabel": "自作の手続き的な架空図形",
+                    "view": "架空正面図",
+                    "width": 512
+                  },
+                  {
+                    "applicationDate": "2026-06-01",
+                    "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                    "gazetteDate": "2026-08-07",
+                    "height": 512,
+                    "id": "FIXTURE-MEDIA-AFTER-CASE01",
+                    "label": "自作架空比較形状 AFTER",
+                    "mimeType": "image/png",
+                    "permission": "fixture-only: self-authored storage/display/model test allowed",
+                    "recordId": "kds_fixture_article_beta",
+                    "role": "comparisonB",
+                    "sourceLabel": "自作の手続き的な架空図形",
+                    "view": "架空正面図",
+                    "width": 512
+                  }
+                ]
+              },
+              "context": {
+                "afterDataset": {
+                  "collection": null,
+                  "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+                  "dataAsOf": "2026-09-18",
+                  "id": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01"
+                },
+                "beforeDataset": {
+                  "collection": null,
+                  "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+                  "dataAsOf": "2026-08-09",
+                  "id": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01"
+                },
+                "category": {
+                  "id": "FIXTURE-CLASS-A01",
+                  "label": "架空携帯機器",
+                  "scheme": "FIXTURE-DESIGN-CLASS"
+                },
+                "dataMode": "fictional",
+                "entity": {
+                  "id": "FIXTURE-ENTITY-APPLICANT-A",
+                  "name": "架空意匠ラボ甲合同会社"
+                },
+                "knownProducts": []
+              },
+              "watch": {
+                "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+                "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+                "categoryId": "FIXTURE-CLASS-A01",
+                "createdAt": "2026-10-09T11:03:58.542041Z",
+                "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                "id": "FIXTURE-WATCH-FLOW-1",
+                "name": "架空段階検証 normal-redirect",
+                "sourceProfileId": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT"
+              }
+            },
+            "schemaVersion": "2.3.0",
+            "signal": {
+              "counts": {
+                "after": 2,
+                "before": 1,
+                "comparable": true,
+                "excludedAfter": 0,
+                "excludedBefore": 0,
+                "newlyObserved": 1
+              },
+              "coverage": {
+                "after": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+                "before": "自作の架空snapshot。実在データ・全国網羅ではありません。"
+              },
+              "designFacts": [
+                {
+                  "field": "record",
+                  "id": "kds_fixture_design_fact_1",
+                  "recordIds": [
+                    "kds_fixture_article_alpha"
+                  ],
+                  "text": "架空携帯操作端末。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-04-02。出願日: 2026-01-10。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 持ち運び用の架空操作端末を表す契約検証データ。"
+                },
+                {
+                  "field": "record",
+                  "id": "kds_fixture_design_fact_2",
+                  "recordIds": [
+                    "kds_fixture_article_beta"
+                  ],
+                  "text": "架空携帯操作端末B。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-08-07。出願日: 2026-06-01。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 自作の架空形状の技術検証用record。実在製品ではない。"
+                }
+              ],
+              "discovery": {
+                "candidates": [
+                  {
+                    "dateStatus": "unknown",
+                    "id": "kds_fixture_candidate_flow",
+                    "publishedAt": null,
+                    "selectionReason": "対象語一致: 架空携帯操作端末。発表日不明",
+                    "title": "架空携帯操作端末分野の方針資料",
+                    "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+                  }
+                ],
+                "eligibleCandidates": 1,
+                "limitations": [
+                  "登録入口の有限な掲載範囲のみを確認。候補なしは企業の未発表を意味しません。"
+                ],
+                "omittedCandidates": 0,
+                "scannedLinks": 1,
+                "state": "completed"
+              },
+              "hypotheses": [
+                {
+                  "evidenceIds": [
+                    "kds_fixture_design_fact_2",
+                    "FIXTURE-VISUAL-STAGE",
+                    "FIXTURE-FACT-CATEGORY"
+                  ],
+                  "id": "FIXTURE-MATERIAL-CATEGORY",
+                  "limitations": [
+                    "架空資料による技術検証です。性能や個別機種の開発意図を立証していません。"
+                  ],
+                  "text": "架空携帯操作端末の画面下操作部について、設計担当者が押し分けと視認性の評価条件を検討できます。"
+                }
+              ],
+              "limitations": [
+                "件数は承認済み収録範囲の観測数であり、市場全体の新規出願数ではありません。"
+              ],
+              "media": [
+                {
+                  "applicationDate": "2026-01-10",
+                  "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                  "gazetteDate": "2026-04-02",
+                  "height": 512,
+                  "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+                  "label": "自作架空比較形状 BEFORE",
+                  "mimeType": "image/png",
+                  "permission": "fixture-only: self-authored storage/display/model test allowed",
+                  "recordId": "kds_fixture_article_alpha",
+                  "role": "comparisonA",
+                  "sourceLabel": "自作の手続き的な架空図形",
+                  "view": "架空正面図",
+                  "width": 512
+                },
+                {
+                  "applicationDate": "2026-06-01",
+                  "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                  "gazetteDate": "2026-08-07",
+                  "height": 512,
+                  "id": "FIXTURE-MEDIA-AFTER-CASE01",
+                  "label": "自作架空比較形状 AFTER",
+                  "mimeType": "image/png",
+                  "permission": "fixture-only: self-authored storage/display/model test allowed",
+                  "recordId": "kds_fixture_article_beta",
+                  "role": "comparisonB",
+                  "sourceLabel": "自作の手続き的な架空図形",
+                  "view": "架空正面図",
+                  "width": 512
+                }
+              ],
+              "officialFacts": [
+                {
+                  "end": 69,
+                  "id": "FIXTURE-FACT-CATEGORY",
+                  "quote": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。",
+                  "sourceId": "kds_fixture_candidate_flow",
+                  "start": 16,
+                  "text": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。"
+                }
+              ],
+              "questionsForHuman": [
+                "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+                "資料「架空携帯操作端末分野の方針資料」の発表日を明記した公式資料が必要です。更新日・発売日と区別し、観測期間との対応を判断します。"
+              ],
+              "recordFacts": [
+                {
+                  "applicant": {
+                    "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                    "name": "架空意匠ラボ甲合同会社"
+                  },
+                  "applicationDate": "2026-01-10",
+                  "applicationNumber": "FIXTURE-APP-A001",
+                  "articleDescription": "通常の物品意匠を表現する。",
+                  "articleName": "架空携帯操作端末",
+                  "classifications": [
+                    {
+                      "code": "FIXTURE-CLASS-A01",
+                      "label": "架空携帯機器",
+                      "scheme": "FIXTURE-DESIGN-CLASS"
+                    }
+                  ],
+                  "description": "持ち運び用の架空操作端末を表す契約検証データ。",
+                  "gazetteDate": "2026-04-02",
+                  "id": "kds_fixture_design_fact_1",
+                  "quality": "pass",
+                  "recordId": "kds_fixture_article_alpha",
+                  "registrationNumber": "FIXTURE-REG-A001",
+                  "selectionReason": "comparison_pair",
+                  "sourceFields": [
+                    "/after/document/records/0/articleName",
+                    "/after/document/records/0/applicants",
+                    "/after/document/records/0/classifications",
+                    "/after/document/records/0/applicationNumber",
+                    "/after/document/records/0/registrationNumber",
+                    "/after/document/records/0/applicationDate",
+                    "/after/document/records/0/gazetteDate",
+                    "/after/document/records/0/description",
+                    "/after/document/records/0/articleDescription",
+                    "/after/document/records/0/quality"
+                  ]
+                },
+                {
+                  "applicant": {
+                    "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                    "name": "架空意匠ラボ甲合同会社"
+                  },
+                  "applicationDate": "2026-06-01",
+                  "applicationNumber": "FIXTURE-APP-A008",
+                  "articleDescription": "通常の物品意匠を表現する。",
+                  "articleName": "架空携帯操作端末B",
+                  "classifications": [
+                    {
+                      "code": "FIXTURE-CLASS-A01",
+                      "label": "架空携帯機器",
+                      "scheme": "FIXTURE-DESIGN-CLASS"
+                    }
+                  ],
+                  "description": "自作の架空形状の技術検証用record。実在製品ではない。",
+                  "gazetteDate": "2026-08-07",
+                  "id": "kds_fixture_design_fact_2",
+                  "quality": "pass",
+                  "recordId": "kds_fixture_article_beta",
+                  "registrationNumber": "FIXTURE-REG-A008",
+                  "selectionReason": "comparison_pair",
+                  "sourceFields": [
+                    "/after/document/records/1/articleName",
+                    "/after/document/records/1/applicants",
+                    "/after/document/records/1/classifications",
+                    "/after/document/records/1/applicationNumber",
+                    "/after/document/records/1/registrationNumber",
+                    "/after/document/records/1/applicationDate",
+                    "/after/document/records/1/gazetteDate",
+                    "/after/document/records/1/description",
+                    "/after/document/records/1/articleDescription",
+                    "/after/document/records/1/quality"
+                  ]
+                }
+              ],
+              "relationships": [
+                {
+                  "id": "FIXTURE-MATERIAL-CATEGORY",
+                  "missingEvidence": [
+                    "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。"
+                  ],
+                  "opposingEvidenceIds": [],
+                  "relation": "category",
+                  "summary": "携帯操作端末分野の事業方針として対応します。個別機種の意図は未確認です。",
+                  "supportingEvidenceIds": [
+                    "kds_fixture_design_fact_2",
+                    "FIXTURE-VISUAL-STAGE",
+                    "FIXTURE-FACT-CATEGORY"
+                  ]
+                }
+              ],
+              "sources": [
+                {
+                  "bodyHash": "3f639e71ffc20c972092f31c1486c309719b92940c332e365e25a39ee25c4bbb",
+                  "contentHash": "0422eb6186bebb7e411e2d508ac93cc0fbaaacde00340264dd0d03d49682d0e1",
+                  "excerpt": "架空携帯操作端末分野の方針資料\n架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。\nPublished 2026\nFIXTURE-RELATED\n/09/03\nUpdated 2026-09-04\nRelease date 2026-09-05\n架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料",
+                  "excerptStart": 0,
+                  "extractedChars": 4151,
+                  "extractionVersion": "article-html-2.2.0",
+                  "id": "kds_fixture_candidate_flow",
+                  "modelVisibleChars": 255,
+                  "publishedAt": null,
+                  "releaseAt": "2026-09-05",
+                  "retrievedAt": "2026-10-09T11:03:58.970129Z",
+                  "retrospective": false,
+                  "title": "架空携帯操作端末分野の方針資料",
+                  "truncated": true,
+                  "updatedAt": "2026-09-04",
+                  "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+                }
+              ],
+              "status": "insufficient",
+              "stopReason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+              "toolEvents": [
+                {
+                  "candidateId": null,
+                  "finishedAt": "2026-10-09T11:03:58.947133Z",
+                  "outcome": "ok",
+                  "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+                  "startedAt": "2026-10-09T11:03:58.943128Z",
+                  "tool": "list_candidates"
+                },
+                {
+                  "candidateId": "kds_fixture_candidate_flow",
+                  "finishedAt": "2026-10-09T11:03:58.970129Z",
+                  "outcome": "ok",
+                  "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+                  "startedAt": "2026-10-09T11:03:58.968131Z",
+                  "tool": "fetch_candidate"
+                },
+                {
+                  "candidateId": null,
+                  "finishedAt": "2026-10-09T11:03:58.993139Z",
+                  "outcome": "ok",
+                  "reason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+                  "startedAt": "2026-10-09T11:03:58.993139Z",
+                  "tool": "finish"
+                }
+              ],
+              "visualObservations": [
+                {
+                  "id": "FIXTURE-VISUAL-STAGE",
+                  "mediaIds": [
+                    "FIXTURE-MEDIA-BEFORE-CASE01",
+                    "FIXTURE-MEDIA-AFTER-CASE01"
+                  ],
+                  "observation": "A：画面下の円形操作部（実線）。B：画面下の角の丸い横長操作部（実線）。描画上の比較：差異あり。可視形状の差異候補あり。描画の線種から物理的変更・法的範囲・製品世代を確定しません。",
+                  "part": "正面画面下の操作部",
+                  "status": "change_candidate"
+                }
+              ]
+            },
+            "status": "complete",
+            "usage": {
+              "inputTokens": 93,
+              "modelRequests": 3,
+              "outputTokens": 57,
+              "toolCalls": 3
+            },
+            "versions": {
+              "model": "fixture-controller",
+              "prompt": "bounded-signal-2.5.24",
+              "schema": "2.3.0"
+            },
+            "watchId": "FIXTURE-WATCH-FLOW-1"
+          }
+        ],
+        "schemaVersion": "2.3.0"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/runs/kds_fixture_flow_run_1",
+      "status": 200,
+      "document": {
+        "completedAt": "2026-10-09T11:03:58.995135Z",
+        "createdAt": "2026-10-09T11:03:58.544040Z",
+        "errorCode": null,
+        "id": "kds_fixture_flow_run_1",
+        "input": {
+          "comparisonPair": {
+            "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+            "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+            "categoryId": "FIXTURE-CLASS-A01",
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "evidence": "自作の架空図形に対応付けた検証用組です。実在機種の旧新世代を示しません。",
+            "id": "FIXTURE-PAIR-STAGE-NORMAL",
+            "label": "自作架空携帯操作端末の正面比較",
+            "media": [
+              {
+                "applicationDate": "2026-01-10",
+                "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                "gazetteDate": "2026-04-02",
+                "height": 512,
+                "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+                "label": "自作架空比較形状 BEFORE",
+                "mimeType": "image/png",
+                "permission": "fixture-only: self-authored storage/display/model test allowed",
+                "recordId": "kds_fixture_article_alpha",
+                "role": "comparisonA",
+                "sourceLabel": "自作の手続き的な架空図形",
+                "view": "架空正面図",
+                "width": 512
+              },
+              {
+                "applicationDate": "2026-06-01",
+                "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                "gazetteDate": "2026-08-07",
+                "height": 512,
+                "id": "FIXTURE-MEDIA-AFTER-CASE01",
+                "label": "自作架空比較形状 AFTER",
+                "mimeType": "image/png",
+                "permission": "fixture-only: self-authored storage/display/model test allowed",
+                "recordId": "kds_fixture_article_beta",
+                "role": "comparisonB",
+                "sourceLabel": "自作の手続き的な架空図形",
+                "view": "架空正面図",
+                "width": 512
+              }
+            ]
+          },
+          "context": {
+            "afterDataset": {
+              "collection": null,
+              "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+              "dataAsOf": "2026-09-18",
+              "id": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01"
+            },
+            "beforeDataset": {
+              "collection": null,
+              "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+              "dataAsOf": "2026-08-09",
+              "id": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01"
+            },
+            "category": {
+              "id": "FIXTURE-CLASS-A01",
+              "label": "架空携帯機器",
+              "scheme": "FIXTURE-DESIGN-CLASS"
+            },
+            "dataMode": "fictional",
+            "entity": {
+              "id": "FIXTURE-ENTITY-APPLICANT-A",
+              "name": "架空意匠ラボ甲合同会社"
+            },
+            "knownProducts": []
+          },
+          "watch": {
+            "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+            "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+            "categoryId": "FIXTURE-CLASS-A01",
+            "createdAt": "2026-10-09T11:03:58.542041Z",
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "id": "FIXTURE-WATCH-FLOW-1",
+            "name": "架空段階検証 normal-redirect",
+            "sourceProfileId": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT"
+          }
+        },
+        "schemaVersion": "2.3.0",
+        "signal": {
+          "counts": {
+            "after": 2,
+            "before": 1,
+            "comparable": true,
+            "excludedAfter": 0,
+            "excludedBefore": 0,
+            "newlyObserved": 1
+          },
+          "coverage": {
+            "after": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+            "before": "自作の架空snapshot。実在データ・全国網羅ではありません。"
+          },
+          "designFacts": [
+            {
+              "field": "record",
+              "id": "kds_fixture_design_fact_1",
+              "recordIds": [
+                "kds_fixture_article_alpha"
+              ],
+              "text": "架空携帯操作端末。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-04-02。出願日: 2026-01-10。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 持ち運び用の架空操作端末を表す契約検証データ。"
+            },
+            {
+              "field": "record",
+              "id": "kds_fixture_design_fact_2",
+              "recordIds": [
+                "kds_fixture_article_beta"
+              ],
+              "text": "架空携帯操作端末B。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-08-07。出願日: 2026-06-01。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 自作の架空形状の技術検証用record。実在製品ではない。"
+            }
+          ],
+          "discovery": {
+            "candidates": [
+              {
+                "dateStatus": "unknown",
+                "id": "kds_fixture_candidate_flow",
+                "publishedAt": null,
+                "selectionReason": "対象語一致: 架空携帯操作端末。発表日不明",
+                "title": "架空携帯操作端末分野の方針資料",
+                "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+              }
+            ],
+            "eligibleCandidates": 1,
+            "limitations": [
+              "登録入口の有限な掲載範囲のみを確認。候補なしは企業の未発表を意味しません。"
+            ],
+            "omittedCandidates": 0,
+            "scannedLinks": 1,
+            "state": "completed"
+          },
+          "hypotheses": [
+            {
+              "evidenceIds": [
+                "kds_fixture_design_fact_2",
+                "FIXTURE-VISUAL-STAGE",
+                "FIXTURE-FACT-CATEGORY"
+              ],
+              "id": "FIXTURE-MATERIAL-CATEGORY",
+              "limitations": [
+                "架空資料による技術検証です。性能や個別機種の開発意図を立証していません。"
+              ],
+              "text": "架空携帯操作端末の画面下操作部について、設計担当者が押し分けと視認性の評価条件を検討できます。"
+            }
+          ],
+          "limitations": [
+            "件数は承認済み収録範囲の観測数であり、市場全体の新規出願数ではありません。"
+          ],
+          "media": [
+            {
+              "applicationDate": "2026-01-10",
+              "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+              "gazetteDate": "2026-04-02",
+              "height": 512,
+              "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+              "label": "自作架空比較形状 BEFORE",
+              "mimeType": "image/png",
+              "permission": "fixture-only: self-authored storage/display/model test allowed",
+              "recordId": "kds_fixture_article_alpha",
+              "role": "comparisonA",
+              "sourceLabel": "自作の手続き的な架空図形",
+              "view": "架空正面図",
+              "width": 512
+            },
+            {
+              "applicationDate": "2026-06-01",
+              "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+              "gazetteDate": "2026-08-07",
+              "height": 512,
+              "id": "FIXTURE-MEDIA-AFTER-CASE01",
+              "label": "自作架空比較形状 AFTER",
+              "mimeType": "image/png",
+              "permission": "fixture-only: self-authored storage/display/model test allowed",
+              "recordId": "kds_fixture_article_beta",
+              "role": "comparisonB",
+              "sourceLabel": "自作の手続き的な架空図形",
+              "view": "架空正面図",
+              "width": 512
+            }
+          ],
+          "officialFacts": [
+            {
+              "end": 69,
+              "id": "FIXTURE-FACT-CATEGORY",
+              "quote": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。",
+              "sourceId": "kds_fixture_candidate_flow",
+              "start": 16,
+              "text": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。"
+            }
+          ],
+          "questionsForHuman": [
+            "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+            "資料「架空携帯操作端末分野の方針資料」の発表日を明記した公式資料が必要です。更新日・発売日と区別し、観測期間との対応を判断します。"
+          ],
+          "recordFacts": [
+            {
+              "applicant": {
+                "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                "name": "架空意匠ラボ甲合同会社"
+              },
+              "applicationDate": "2026-01-10",
+              "applicationNumber": "FIXTURE-APP-A001",
+              "articleDescription": "通常の物品意匠を表現する。",
+              "articleName": "架空携帯操作端末",
+              "classifications": [
+                {
+                  "code": "FIXTURE-CLASS-A01",
+                  "label": "架空携帯機器",
+                  "scheme": "FIXTURE-DESIGN-CLASS"
+                }
+              ],
+              "description": "持ち運び用の架空操作端末を表す契約検証データ。",
+              "gazetteDate": "2026-04-02",
+              "id": "kds_fixture_design_fact_1",
+              "quality": "pass",
+              "recordId": "kds_fixture_article_alpha",
+              "registrationNumber": "FIXTURE-REG-A001",
+              "selectionReason": "comparison_pair",
+              "sourceFields": [
+                "/after/document/records/0/articleName",
+                "/after/document/records/0/applicants",
+                "/after/document/records/0/classifications",
+                "/after/document/records/0/applicationNumber",
+                "/after/document/records/0/registrationNumber",
+                "/after/document/records/0/applicationDate",
+                "/after/document/records/0/gazetteDate",
+                "/after/document/records/0/description",
+                "/after/document/records/0/articleDescription",
+                "/after/document/records/0/quality"
+              ]
+            },
+            {
+              "applicant": {
+                "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                "name": "架空意匠ラボ甲合同会社"
+              },
+              "applicationDate": "2026-06-01",
+              "applicationNumber": "FIXTURE-APP-A008",
+              "articleDescription": "通常の物品意匠を表現する。",
+              "articleName": "架空携帯操作端末B",
+              "classifications": [
+                {
+                  "code": "FIXTURE-CLASS-A01",
+                  "label": "架空携帯機器",
+                  "scheme": "FIXTURE-DESIGN-CLASS"
+                }
+              ],
+              "description": "自作の架空形状の技術検証用record。実在製品ではない。",
+              "gazetteDate": "2026-08-07",
+              "id": "kds_fixture_design_fact_2",
+              "quality": "pass",
+              "recordId": "kds_fixture_article_beta",
+              "registrationNumber": "FIXTURE-REG-A008",
+              "selectionReason": "comparison_pair",
+              "sourceFields": [
+                "/after/document/records/1/articleName",
+                "/after/document/records/1/applicants",
+                "/after/document/records/1/classifications",
+                "/after/document/records/1/applicationNumber",
+                "/after/document/records/1/registrationNumber",
+                "/after/document/records/1/applicationDate",
+                "/after/document/records/1/gazetteDate",
+                "/after/document/records/1/description",
+                "/after/document/records/1/articleDescription",
+                "/after/document/records/1/quality"
+              ]
+            }
+          ],
+          "relationships": [
+            {
+              "id": "FIXTURE-MATERIAL-CATEGORY",
+              "missingEvidence": [
+                "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。"
+              ],
+              "opposingEvidenceIds": [],
+              "relation": "category",
+              "summary": "携帯操作端末分野の事業方針として対応します。個別機種の意図は未確認です。",
+              "supportingEvidenceIds": [
+                "kds_fixture_design_fact_2",
+                "FIXTURE-VISUAL-STAGE",
+                "FIXTURE-FACT-CATEGORY"
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "bodyHash": "3f639e71ffc20c972092f31c1486c309719b92940c332e365e25a39ee25c4bbb",
+              "contentHash": "0422eb6186bebb7e411e2d508ac93cc0fbaaacde00340264dd0d03d49682d0e1",
+              "excerpt": "架空携帯操作端末分野の方針資料\n架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。\nPublished 2026\nFIXTURE-RELATED\n/09/03\nUpdated 2026-09-04\nRelease date 2026-09-05\n架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料",
+              "excerptStart": 0,
+              "extractedChars": 4151,
+              "extractionVersion": "article-html-2.2.0",
+              "id": "kds_fixture_candidate_flow",
+              "modelVisibleChars": 255,
+              "publishedAt": null,
+              "releaseAt": "2026-09-05",
+              "retrievedAt": "2026-10-09T11:03:58.970129Z",
+              "retrospective": false,
+              "title": "架空携帯操作端末分野の方針資料",
+              "truncated": true,
+              "updatedAt": "2026-09-04",
+              "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+            }
+          ],
+          "status": "insufficient",
+          "stopReason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+          "toolEvents": [
+            {
+              "candidateId": null,
+              "finishedAt": "2026-10-09T11:03:58.947133Z",
+              "outcome": "ok",
+              "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+              "startedAt": "2026-10-09T11:03:58.943128Z",
+              "tool": "list_candidates"
+            },
+            {
+              "candidateId": "kds_fixture_candidate_flow",
+              "finishedAt": "2026-10-09T11:03:58.970129Z",
+              "outcome": "ok",
+              "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+              "startedAt": "2026-10-09T11:03:58.968131Z",
+              "tool": "fetch_candidate"
+            },
+            {
+              "candidateId": null,
+              "finishedAt": "2026-10-09T11:03:58.993139Z",
+              "outcome": "ok",
+              "reason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+              "startedAt": "2026-10-09T11:03:58.993139Z",
+              "tool": "finish"
+            }
+          ],
+          "visualObservations": [
+            {
+              "id": "FIXTURE-VISUAL-STAGE",
+              "mediaIds": [
+                "FIXTURE-MEDIA-BEFORE-CASE01",
+                "FIXTURE-MEDIA-AFTER-CASE01"
+              ],
+              "observation": "A：画面下の円形操作部（実線）。B：画面下の角の丸い横長操作部（実線）。描画上の比較：差異あり。可視形状の差異候補あり。描画の線種から物理的変更・法的範囲・製品世代を確定しません。",
+              "part": "正面画面下の操作部",
+              "status": "change_candidate"
+            }
+          ]
+        },
+        "status": "complete",
+        "usage": {
+          "inputTokens": 93,
+          "modelRequests": 3,
+          "outputTokens": 57,
+          "toolCalls": 3
+        },
+        "versions": {
+          "model": "fixture-controller",
+          "prompt": "bounded-signal-2.5.24",
+          "schema": "2.3.0"
+        },
+        "watchId": "FIXTURE-WATCH-FLOW-1"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/watches/FIXTURE-WATCH-FLOW-1/requests/FIXTURE-REQUEST-FLOW",
+      "status": 200,
+      "document": {
+        "completedAt": "2026-10-09T11:03:58.995135Z",
+        "createdAt": "2026-10-09T11:03:58.544040Z",
+        "errorCode": null,
+        "id": "kds_fixture_flow_run_1",
+        "input": {
+          "comparisonPair": {
+            "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+            "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+            "categoryId": "FIXTURE-CLASS-A01",
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "evidence": "自作の架空図形に対応付けた検証用組です。実在機種の旧新世代を示しません。",
+            "id": "FIXTURE-PAIR-STAGE-NORMAL",
+            "label": "自作架空携帯操作端末の正面比較",
+            "media": [
+              {
+                "applicationDate": "2026-01-10",
+                "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                "gazetteDate": "2026-04-02",
+                "height": 512,
+                "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+                "label": "自作架空比較形状 BEFORE",
+                "mimeType": "image/png",
+                "permission": "fixture-only: self-authored storage/display/model test allowed",
+                "recordId": "kds_fixture_article_alpha",
+                "role": "comparisonA",
+                "sourceLabel": "自作の手続き的な架空図形",
+                "view": "架空正面図",
+                "width": 512
+              },
+              {
+                "applicationDate": "2026-06-01",
+                "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                "gazetteDate": "2026-08-07",
+                "height": 512,
+                "id": "FIXTURE-MEDIA-AFTER-CASE01",
+                "label": "自作架空比較形状 AFTER",
+                "mimeType": "image/png",
+                "permission": "fixture-only: self-authored storage/display/model test allowed",
+                "recordId": "kds_fixture_article_beta",
+                "role": "comparisonB",
+                "sourceLabel": "自作の手続き的な架空図形",
+                "view": "架空正面図",
+                "width": 512
+              }
+            ]
+          },
+          "context": {
+            "afterDataset": {
+              "collection": null,
+              "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+              "dataAsOf": "2026-09-18",
+              "id": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01"
+            },
+            "beforeDataset": {
+              "collection": null,
+              "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+              "dataAsOf": "2026-08-09",
+              "id": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01"
+            },
+            "category": {
+              "id": "FIXTURE-CLASS-A01",
+              "label": "架空携帯機器",
+              "scheme": "FIXTURE-DESIGN-CLASS"
+            },
+            "dataMode": "fictional",
+            "entity": {
+              "id": "FIXTURE-ENTITY-APPLICANT-A",
+              "name": "架空意匠ラボ甲合同会社"
+            },
+            "knownProducts": []
+          },
+          "watch": {
+            "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+            "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+            "categoryId": "FIXTURE-CLASS-A01",
+            "createdAt": "2026-10-09T11:03:58.542041Z",
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "id": "FIXTURE-WATCH-FLOW-1",
+            "name": "架空段階検証 normal-redirect",
+            "sourceProfileId": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT"
+          }
+        },
+        "schemaVersion": "2.3.0",
+        "signal": {
+          "counts": {
+            "after": 2,
+            "before": 1,
+            "comparable": true,
+            "excludedAfter": 0,
+            "excludedBefore": 0,
+            "newlyObserved": 1
+          },
+          "coverage": {
+            "after": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+            "before": "自作の架空snapshot。実在データ・全国網羅ではありません。"
+          },
+          "designFacts": [
+            {
+              "field": "record",
+              "id": "kds_fixture_design_fact_1",
+              "recordIds": [
+                "kds_fixture_article_alpha"
+              ],
+              "text": "架空携帯操作端末。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-04-02。出願日: 2026-01-10。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 持ち運び用の架空操作端末を表す契約検証データ。"
+            },
+            {
+              "field": "record",
+              "id": "kds_fixture_design_fact_2",
+              "recordIds": [
+                "kds_fixture_article_beta"
+              ],
+              "text": "架空携帯操作端末B。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-08-07。出願日: 2026-06-01。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 自作の架空形状の技術検証用record。実在製品ではない。"
+            }
+          ],
+          "discovery": {
+            "candidates": [
+              {
+                "dateStatus": "unknown",
+                "id": "kds_fixture_candidate_flow",
+                "publishedAt": null,
+                "selectionReason": "対象語一致: 架空携帯操作端末。発表日不明",
+                "title": "架空携帯操作端末分野の方針資料",
+                "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+              }
+            ],
+            "eligibleCandidates": 1,
+            "limitations": [
+              "登録入口の有限な掲載範囲のみを確認。候補なしは企業の未発表を意味しません。"
+            ],
+            "omittedCandidates": 0,
+            "scannedLinks": 1,
+            "state": "completed"
+          },
+          "hypotheses": [
+            {
+              "evidenceIds": [
+                "kds_fixture_design_fact_2",
+                "FIXTURE-VISUAL-STAGE",
+                "FIXTURE-FACT-CATEGORY"
+              ],
+              "id": "FIXTURE-MATERIAL-CATEGORY",
+              "limitations": [
+                "架空資料による技術検証です。性能や個別機種の開発意図を立証していません。"
+              ],
+              "text": "架空携帯操作端末の画面下操作部について、設計担当者が押し分けと視認性の評価条件を検討できます。"
+            }
+          ],
+          "limitations": [
+            "件数は承認済み収録範囲の観測数であり、市場全体の新規出願数ではありません。"
+          ],
+          "media": [
+            {
+              "applicationDate": "2026-01-10",
+              "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+              "gazetteDate": "2026-04-02",
+              "height": 512,
+              "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+              "label": "自作架空比較形状 BEFORE",
+              "mimeType": "image/png",
+              "permission": "fixture-only: self-authored storage/display/model test allowed",
+              "recordId": "kds_fixture_article_alpha",
+              "role": "comparisonA",
+              "sourceLabel": "自作の手続き的な架空図形",
+              "view": "架空正面図",
+              "width": 512
+            },
+            {
+              "applicationDate": "2026-06-01",
+              "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+              "gazetteDate": "2026-08-07",
+              "height": 512,
+              "id": "FIXTURE-MEDIA-AFTER-CASE01",
+              "label": "自作架空比較形状 AFTER",
+              "mimeType": "image/png",
+              "permission": "fixture-only: self-authored storage/display/model test allowed",
+              "recordId": "kds_fixture_article_beta",
+              "role": "comparisonB",
+              "sourceLabel": "自作の手続き的な架空図形",
+              "view": "架空正面図",
+              "width": 512
+            }
+          ],
+          "officialFacts": [
+            {
+              "end": 69,
+              "id": "FIXTURE-FACT-CATEGORY",
+              "quote": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。",
+              "sourceId": "kds_fixture_candidate_flow",
+              "start": 16,
+              "text": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。"
+            }
+          ],
+          "questionsForHuman": [
+            "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+            "資料「架空携帯操作端末分野の方針資料」の発表日を明記した公式資料が必要です。更新日・発売日と区別し、観測期間との対応を判断します。"
+          ],
+          "recordFacts": [
+            {
+              "applicant": {
+                "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                "name": "架空意匠ラボ甲合同会社"
+              },
+              "applicationDate": "2026-01-10",
+              "applicationNumber": "FIXTURE-APP-A001",
+              "articleDescription": "通常の物品意匠を表現する。",
+              "articleName": "架空携帯操作端末",
+              "classifications": [
+                {
+                  "code": "FIXTURE-CLASS-A01",
+                  "label": "架空携帯機器",
+                  "scheme": "FIXTURE-DESIGN-CLASS"
+                }
+              ],
+              "description": "持ち運び用の架空操作端末を表す契約検証データ。",
+              "gazetteDate": "2026-04-02",
+              "id": "kds_fixture_design_fact_1",
+              "quality": "pass",
+              "recordId": "kds_fixture_article_alpha",
+              "registrationNumber": "FIXTURE-REG-A001",
+              "selectionReason": "comparison_pair",
+              "sourceFields": [
+                "/after/document/records/0/articleName",
+                "/after/document/records/0/applicants",
+                "/after/document/records/0/classifications",
+                "/after/document/records/0/applicationNumber",
+                "/after/document/records/0/registrationNumber",
+                "/after/document/records/0/applicationDate",
+                "/after/document/records/0/gazetteDate",
+                "/after/document/records/0/description",
+                "/after/document/records/0/articleDescription",
+                "/after/document/records/0/quality"
+              ]
+            },
+            {
+              "applicant": {
+                "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                "name": "架空意匠ラボ甲合同会社"
+              },
+              "applicationDate": "2026-06-01",
+              "applicationNumber": "FIXTURE-APP-A008",
+              "articleDescription": "通常の物品意匠を表現する。",
+              "articleName": "架空携帯操作端末B",
+              "classifications": [
+                {
+                  "code": "FIXTURE-CLASS-A01",
+                  "label": "架空携帯機器",
+                  "scheme": "FIXTURE-DESIGN-CLASS"
+                }
+              ],
+              "description": "自作の架空形状の技術検証用record。実在製品ではない。",
+              "gazetteDate": "2026-08-07",
+              "id": "kds_fixture_design_fact_2",
+              "quality": "pass",
+              "recordId": "kds_fixture_article_beta",
+              "registrationNumber": "FIXTURE-REG-A008",
+              "selectionReason": "comparison_pair",
+              "sourceFields": [
+                "/after/document/records/1/articleName",
+                "/after/document/records/1/applicants",
+                "/after/document/records/1/classifications",
+                "/after/document/records/1/applicationNumber",
+                "/after/document/records/1/registrationNumber",
+                "/after/document/records/1/applicationDate",
+                "/after/document/records/1/gazetteDate",
+                "/after/document/records/1/description",
+                "/after/document/records/1/articleDescription",
+                "/after/document/records/1/quality"
+              ]
+            }
+          ],
+          "relationships": [
+            {
+              "id": "FIXTURE-MATERIAL-CATEGORY",
+              "missingEvidence": [
+                "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。"
+              ],
+              "opposingEvidenceIds": [],
+              "relation": "category",
+              "summary": "携帯操作端末分野の事業方針として対応します。個別機種の意図は未確認です。",
+              "supportingEvidenceIds": [
+                "kds_fixture_design_fact_2",
+                "FIXTURE-VISUAL-STAGE",
+                "FIXTURE-FACT-CATEGORY"
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "bodyHash": "3f639e71ffc20c972092f31c1486c309719b92940c332e365e25a39ee25c4bbb",
+              "contentHash": "0422eb6186bebb7e411e2d508ac93cc0fbaaacde00340264dd0d03d49682d0e1",
+              "excerpt": "架空携帯操作端末分野の方針資料\n架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。\nPublished 2026\nFIXTURE-RELATED\n/09/03\nUpdated 2026-09-04\nRelease date 2026-09-05\n架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料",
+              "excerptStart": 0,
+              "extractedChars": 4151,
+              "extractionVersion": "article-html-2.2.0",
+              "id": "kds_fixture_candidate_flow",
+              "modelVisibleChars": 255,
+              "publishedAt": null,
+              "releaseAt": "2026-09-05",
+              "retrievedAt": "2026-10-09T11:03:58.970129Z",
+              "retrospective": false,
+              "title": "架空携帯操作端末分野の方針資料",
+              "truncated": true,
+              "updatedAt": "2026-09-04",
+              "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+            }
+          ],
+          "status": "insufficient",
+          "stopReason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+          "toolEvents": [
+            {
+              "candidateId": null,
+              "finishedAt": "2026-10-09T11:03:58.947133Z",
+              "outcome": "ok",
+              "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+              "startedAt": "2026-10-09T11:03:58.943128Z",
+              "tool": "list_candidates"
+            },
+            {
+              "candidateId": "kds_fixture_candidate_flow",
+              "finishedAt": "2026-10-09T11:03:58.970129Z",
+              "outcome": "ok",
+              "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+              "startedAt": "2026-10-09T11:03:58.968131Z",
+              "tool": "fetch_candidate"
+            },
+            {
+              "candidateId": null,
+              "finishedAt": "2026-10-09T11:03:58.993139Z",
+              "outcome": "ok",
+              "reason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+              "startedAt": "2026-10-09T11:03:58.993139Z",
+              "tool": "finish"
+            }
+          ],
+          "visualObservations": [
+            {
+              "id": "FIXTURE-VISUAL-STAGE",
+              "mediaIds": [
+                "FIXTURE-MEDIA-BEFORE-CASE01",
+                "FIXTURE-MEDIA-AFTER-CASE01"
+              ],
+              "observation": "A：画面下の円形操作部（実線）。B：画面下の角の丸い横長操作部（実線）。描画上の比較：差異あり。可視形状の差異候補あり。描画の線種から物理的変更・法的範囲・製品世代を確定しません。",
+              "part": "正面画面下の操作部",
+              "status": "change_candidate"
+            }
+          ]
+        },
+        "status": "complete",
+        "usage": {
+          "inputTokens": 93,
+          "modelRequests": 3,
+          "outputTokens": 57,
+          "toolCalls": 3
+        },
+        "versions": {
+          "model": "fixture-controller",
+          "prompt": "bounded-signal-2.5.24",
+          "schema": "2.3.0"
+        },
+        "watchId": "FIXTURE-WATCH-FLOW-1"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bootstrap",
+      "status": 200,
+      "document": {
+        "analysisMode": "standard",
+        "catalog": {
+          "categories": [
+            {
+              "id": "FIXTURE-CLASS-A01",
+              "label": "架空携帯機器"
+            }
+          ],
+          "datasets": [
+            {
+              "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+              "dataAsOf": "2026-09-18",
+              "dataMode": "fictional",
+              "id": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+              "recordCount": 2,
+              "sourceFamily": "FIXTURE-PROCEDURAL-SIGNALS"
+            },
+            {
+              "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+              "dataAsOf": "2026-08-09",
+              "dataMode": "fictional",
+              "id": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+              "recordCount": 1,
+              "sourceFamily": "FIXTURE-PROCEDURAL-SIGNALS"
+            }
+          ],
+          "entities": [
+            {
+              "id": "FIXTURE-ENTITY-APPLICANT-A",
+              "name": "架空意匠ラボ甲合同会社"
+            }
+          ],
+          "sourceProfiles": [
+            {
+              "dataMode": "fictional",
+              "id": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT",
+              "label": "架空企業公式資料fixture normal"
+            }
+          ]
+        },
+        "csrfToken": "497651.20de1b8a5896fa565c939c1e0a5bdafb91952c57ed63d7db4a0dc0352f3544f7",
+        "dataMode": "fictional",
+        "schemaVersion": "2.4.0",
+        "watches": [
+          {
+            "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+            "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+            "categoryId": "FIXTURE-CLASS-A01",
+            "createdAt": "2026-10-09T11:03:58.542041Z",
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "id": "FIXTURE-WATCH-FLOW-1",
+            "name": "架空段階検証 normal-redirect",
+            "sourceProfileId": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/watches/FIXTURE-WATCH-FLOW-1/comparison-pairs",
+      "status": 200,
+      "document": {
+        "comparisonPairs": [
+          {
+            "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+            "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+            "categoryId": "FIXTURE-CLASS-A01",
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "evidence": "自作の架空図形に対応付けた検証用組です。実在機種の旧新世代を示しません。",
+            "id": "FIXTURE-PAIR-STAGE-NORMAL",
+            "label": "自作架空携帯操作端末の正面比較",
+            "media": [
+              {
+                "applicationDate": "2026-01-10",
+                "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                "gazetteDate": "2026-04-02",
+                "height": 512,
+                "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+                "label": "自作架空比較形状 BEFORE",
+                "mimeType": "image/png",
+                "permission": "fixture-only: self-authored storage/display/model test allowed",
+                "recordId": "kds_fixture_article_alpha",
+                "role": "comparisonA",
+                "sourceLabel": "自作の手続き的な架空図形",
+                "view": "架空正面図",
+                "width": 512
+              },
+              {
+                "applicationDate": "2026-06-01",
+                "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                "gazetteDate": "2026-08-07",
+                "height": 512,
+                "id": "FIXTURE-MEDIA-AFTER-CASE01",
+                "label": "自作架空比較形状 AFTER",
+                "mimeType": "image/png",
+                "permission": "fixture-only: self-authored storage/display/model test allowed",
+                "recordId": "kds_fixture_article_beta",
+                "role": "comparisonB",
+                "sourceLabel": "自作の手続き的な架空図形",
+                "view": "架空正面図",
+                "width": 512
+              }
+            ]
+          }
+        ],
+        "schemaVersion": "2.3.0"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/runs/kds_fixture_flow_run_1",
+      "status": 200,
+      "document": {
+        "completedAt": "2026-10-09T11:03:58.995135Z",
+        "createdAt": "2026-10-09T11:03:58.544040Z",
+        "errorCode": null,
+        "id": "kds_fixture_flow_run_1",
+        "input": {
+          "comparisonPair": {
+            "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+            "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+            "categoryId": "FIXTURE-CLASS-A01",
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "evidence": "自作の架空図形に対応付けた検証用組です。実在機種の旧新世代を示しません。",
+            "id": "FIXTURE-PAIR-STAGE-NORMAL",
+            "label": "自作架空携帯操作端末の正面比較",
+            "media": [
+              {
+                "applicationDate": "2026-01-10",
+                "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                "gazetteDate": "2026-04-02",
+                "height": 512,
+                "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+                "label": "自作架空比較形状 BEFORE",
+                "mimeType": "image/png",
+                "permission": "fixture-only: self-authored storage/display/model test allowed",
+                "recordId": "kds_fixture_article_alpha",
+                "role": "comparisonA",
+                "sourceLabel": "自作の手続き的な架空図形",
+                "view": "架空正面図",
+                "width": 512
+              },
+              {
+                "applicationDate": "2026-06-01",
+                "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                "gazetteDate": "2026-08-07",
+                "height": 512,
+                "id": "FIXTURE-MEDIA-AFTER-CASE01",
+                "label": "自作架空比較形状 AFTER",
+                "mimeType": "image/png",
+                "permission": "fixture-only: self-authored storage/display/model test allowed",
+                "recordId": "kds_fixture_article_beta",
+                "role": "comparisonB",
+                "sourceLabel": "自作の手続き的な架空図形",
+                "view": "架空正面図",
+                "width": 512
+              }
+            ]
+          },
+          "context": {
+            "afterDataset": {
+              "collection": null,
+              "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+              "dataAsOf": "2026-09-18",
+              "id": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01"
+            },
+            "beforeDataset": {
+              "collection": null,
+              "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+              "dataAsOf": "2026-08-09",
+              "id": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01"
+            },
+            "category": {
+              "id": "FIXTURE-CLASS-A01",
+              "label": "架空携帯機器",
+              "scheme": "FIXTURE-DESIGN-CLASS"
+            },
+            "dataMode": "fictional",
+            "entity": {
+              "id": "FIXTURE-ENTITY-APPLICANT-A",
+              "name": "架空意匠ラボ甲合同会社"
+            },
+            "knownProducts": []
+          },
+          "watch": {
+            "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+            "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+            "categoryId": "FIXTURE-CLASS-A01",
+            "createdAt": "2026-10-09T11:03:58.542041Z",
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "id": "FIXTURE-WATCH-FLOW-1",
+            "name": "架空段階検証 normal-redirect",
+            "sourceProfileId": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT"
+          }
+        },
+        "schemaVersion": "2.3.0",
+        "signal": {
+          "counts": {
+            "after": 2,
+            "before": 1,
+            "comparable": true,
+            "excludedAfter": 0,
+            "excludedBefore": 0,
+            "newlyObserved": 1
+          },
+          "coverage": {
+            "after": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+            "before": "自作の架空snapshot。実在データ・全国網羅ではありません。"
+          },
+          "designFacts": [
+            {
+              "field": "record",
+              "id": "kds_fixture_design_fact_1",
+              "recordIds": [
+                "kds_fixture_article_alpha"
+              ],
+              "text": "架空携帯操作端末。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-04-02。出願日: 2026-01-10。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 持ち運び用の架空操作端末を表す契約検証データ。"
+            },
+            {
+              "field": "record",
+              "id": "kds_fixture_design_fact_2",
+              "recordIds": [
+                "kds_fixture_article_beta"
+              ],
+              "text": "架空携帯操作端末B。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-08-07。出願日: 2026-06-01。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 自作の架空形状の技術検証用record。実在製品ではない。"
+            }
+          ],
+          "discovery": {
+            "candidates": [
+              {
+                "dateStatus": "unknown",
+                "id": "kds_fixture_candidate_flow",
+                "publishedAt": null,
+                "selectionReason": "対象語一致: 架空携帯操作端末。発表日不明",
+                "title": "架空携帯操作端末分野の方針資料",
+                "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+              }
+            ],
+            "eligibleCandidates": 1,
+            "limitations": [
+              "登録入口の有限な掲載範囲のみを確認。候補なしは企業の未発表を意味しません。"
+            ],
+            "omittedCandidates": 0,
+            "scannedLinks": 1,
+            "state": "completed"
+          },
+          "hypotheses": [
+            {
+              "evidenceIds": [
+                "kds_fixture_design_fact_2",
+                "FIXTURE-VISUAL-STAGE",
+                "FIXTURE-FACT-CATEGORY"
+              ],
+              "id": "FIXTURE-MATERIAL-CATEGORY",
+              "limitations": [
+                "架空資料による技術検証です。性能や個別機種の開発意図を立証していません。"
+              ],
+              "text": "架空携帯操作端末の画面下操作部について、設計担当者が押し分けと視認性の評価条件を検討できます。"
+            }
+          ],
+          "limitations": [
+            "件数は承認済み収録範囲の観測数であり、市場全体の新規出願数ではありません。"
+          ],
+          "media": [
+            {
+              "applicationDate": "2026-01-10",
+              "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+              "gazetteDate": "2026-04-02",
+              "height": 512,
+              "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+              "label": "自作架空比較形状 BEFORE",
+              "mimeType": "image/png",
+              "permission": "fixture-only: self-authored storage/display/model test allowed",
+              "recordId": "kds_fixture_article_alpha",
+              "role": "comparisonA",
+              "sourceLabel": "自作の手続き的な架空図形",
+              "view": "架空正面図",
+              "width": 512
+            },
+            {
+              "applicationDate": "2026-06-01",
+              "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+              "gazetteDate": "2026-08-07",
+              "height": 512,
+              "id": "FIXTURE-MEDIA-AFTER-CASE01",
+              "label": "自作架空比較形状 AFTER",
+              "mimeType": "image/png",
+              "permission": "fixture-only: self-authored storage/display/model test allowed",
+              "recordId": "kds_fixture_article_beta",
+              "role": "comparisonB",
+              "sourceLabel": "自作の手続き的な架空図形",
+              "view": "架空正面図",
+              "width": 512
+            }
+          ],
+          "officialFacts": [
+            {
+              "end": 69,
+              "id": "FIXTURE-FACT-CATEGORY",
+              "quote": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。",
+              "sourceId": "kds_fixture_candidate_flow",
+              "start": 16,
+              "text": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。"
+            }
+          ],
+          "questionsForHuman": [
+            "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+            "資料「架空携帯操作端末分野の方針資料」の発表日を明記した公式資料が必要です。更新日・発売日と区別し、観測期間との対応を判断します。"
+          ],
+          "recordFacts": [
+            {
+              "applicant": {
+                "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                "name": "架空意匠ラボ甲合同会社"
+              },
+              "applicationDate": "2026-01-10",
+              "applicationNumber": "FIXTURE-APP-A001",
+              "articleDescription": "通常の物品意匠を表現する。",
+              "articleName": "架空携帯操作端末",
+              "classifications": [
+                {
+                  "code": "FIXTURE-CLASS-A01",
+                  "label": "架空携帯機器",
+                  "scheme": "FIXTURE-DESIGN-CLASS"
+                }
+              ],
+              "description": "持ち運び用の架空操作端末を表す契約検証データ。",
+              "gazetteDate": "2026-04-02",
+              "id": "kds_fixture_design_fact_1",
+              "quality": "pass",
+              "recordId": "kds_fixture_article_alpha",
+              "registrationNumber": "FIXTURE-REG-A001",
+              "selectionReason": "comparison_pair",
+              "sourceFields": [
+                "/after/document/records/0/articleName",
+                "/after/document/records/0/applicants",
+                "/after/document/records/0/classifications",
+                "/after/document/records/0/applicationNumber",
+                "/after/document/records/0/registrationNumber",
+                "/after/document/records/0/applicationDate",
+                "/after/document/records/0/gazetteDate",
+                "/after/document/records/0/description",
+                "/after/document/records/0/articleDescription",
+                "/after/document/records/0/quality"
+              ]
+            },
+            {
+              "applicant": {
+                "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                "name": "架空意匠ラボ甲合同会社"
+              },
+              "applicationDate": "2026-06-01",
+              "applicationNumber": "FIXTURE-APP-A008",
+              "articleDescription": "通常の物品意匠を表現する。",
+              "articleName": "架空携帯操作端末B",
+              "classifications": [
+                {
+                  "code": "FIXTURE-CLASS-A01",
+                  "label": "架空携帯機器",
+                  "scheme": "FIXTURE-DESIGN-CLASS"
+                }
+              ],
+              "description": "自作の架空形状の技術検証用record。実在製品ではない。",
+              "gazetteDate": "2026-08-07",
+              "id": "kds_fixture_design_fact_2",
+              "quality": "pass",
+              "recordId": "kds_fixture_article_beta",
+              "registrationNumber": "FIXTURE-REG-A008",
+              "selectionReason": "comparison_pair",
+              "sourceFields": [
+                "/after/document/records/1/articleName",
+                "/after/document/records/1/applicants",
+                "/after/document/records/1/classifications",
+                "/after/document/records/1/applicationNumber",
+                "/after/document/records/1/registrationNumber",
+                "/after/document/records/1/applicationDate",
+                "/after/document/records/1/gazetteDate",
+                "/after/document/records/1/description",
+                "/after/document/records/1/articleDescription",
+                "/after/document/records/1/quality"
+              ]
+            }
+          ],
+          "relationships": [
+            {
+              "id": "FIXTURE-MATERIAL-CATEGORY",
+              "missingEvidence": [
+                "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。"
+              ],
+              "opposingEvidenceIds": [],
+              "relation": "category",
+              "summary": "携帯操作端末分野の事業方針として対応します。個別機種の意図は未確認です。",
+              "supportingEvidenceIds": [
+                "kds_fixture_design_fact_2",
+                "FIXTURE-VISUAL-STAGE",
+                "FIXTURE-FACT-CATEGORY"
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "bodyHash": "3f639e71ffc20c972092f31c1486c309719b92940c332e365e25a39ee25c4bbb",
+              "contentHash": "0422eb6186bebb7e411e2d508ac93cc0fbaaacde00340264dd0d03d49682d0e1",
+              "excerpt": "架空携帯操作端末分野の方針資料\n架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。\nPublished 2026\nFIXTURE-RELATED\n/09/03\nUpdated 2026-09-04\nRelease date 2026-09-05\n架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料",
+              "excerptStart": 0,
+              "extractedChars": 4151,
+              "extractionVersion": "article-html-2.2.0",
+              "id": "kds_fixture_candidate_flow",
+              "modelVisibleChars": 255,
+              "publishedAt": null,
+              "releaseAt": "2026-09-05",
+              "retrievedAt": "2026-10-09T11:03:58.970129Z",
+              "retrospective": false,
+              "title": "架空携帯操作端末分野の方針資料",
+              "truncated": true,
+              "updatedAt": "2026-09-04",
+              "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+            }
+          ],
+          "status": "insufficient",
+          "stopReason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+          "toolEvents": [
+            {
+              "candidateId": null,
+              "finishedAt": "2026-10-09T11:03:58.947133Z",
+              "outcome": "ok",
+              "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+              "startedAt": "2026-10-09T11:03:58.943128Z",
+              "tool": "list_candidates"
+            },
+            {
+              "candidateId": "kds_fixture_candidate_flow",
+              "finishedAt": "2026-10-09T11:03:58.970129Z",
+              "outcome": "ok",
+              "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+              "startedAt": "2026-10-09T11:03:58.968131Z",
+              "tool": "fetch_candidate"
+            },
+            {
+              "candidateId": null,
+              "finishedAt": "2026-10-09T11:03:58.993139Z",
+              "outcome": "ok",
+              "reason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+              "startedAt": "2026-10-09T11:03:58.993139Z",
+              "tool": "finish"
+            }
+          ],
+          "visualObservations": [
+            {
+              "id": "FIXTURE-VISUAL-STAGE",
+              "mediaIds": [
+                "FIXTURE-MEDIA-BEFORE-CASE01",
+                "FIXTURE-MEDIA-AFTER-CASE01"
+              ],
+              "observation": "A：画面下の円形操作部（実線）。B：画面下の角の丸い横長操作部（実線）。描画上の比較：差異あり。可視形状の差異候補あり。描画の線種から物理的変更・法的範囲・製品世代を確定しません。",
+              "part": "正面画面下の操作部",
+              "status": "change_candidate"
+            }
+          ]
+        },
+        "status": "complete",
+        "usage": {
+          "inputTokens": 93,
+          "modelRequests": 3,
+          "outputTokens": 57,
+          "toolCalls": 3
+        },
+        "versions": {
+          "model": "fixture-controller",
+          "prompt": "bounded-signal-2.5.24",
+          "schema": "2.3.0"
+        },
+        "watchId": "FIXTURE-WATCH-FLOW-1"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/runs?watchId=FIXTURE-WATCH-FLOW-1",
+      "status": 200,
+      "document": {
+        "runs": [
+          {
+            "completedAt": "2026-10-09T11:03:58.995135Z",
+            "createdAt": "2026-10-09T11:03:58.544040Z",
+            "errorCode": null,
+            "id": "kds_fixture_flow_run_1",
+            "input": {
+              "comparisonPair": {
+                "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+                "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+                "categoryId": "FIXTURE-CLASS-A01",
+                "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                "evidence": "自作の架空図形に対応付けた検証用組です。実在機種の旧新世代を示しません。",
+                "id": "FIXTURE-PAIR-STAGE-NORMAL",
+                "label": "自作架空携帯操作端末の正面比較",
+                "media": [
+                  {
+                    "applicationDate": "2026-01-10",
+                    "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                    "gazetteDate": "2026-04-02",
+                    "height": 512,
+                    "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+                    "label": "自作架空比較形状 BEFORE",
+                    "mimeType": "image/png",
+                    "permission": "fixture-only: self-authored storage/display/model test allowed",
+                    "recordId": "kds_fixture_article_alpha",
+                    "role": "comparisonA",
+                    "sourceLabel": "自作の手続き的な架空図形",
+                    "view": "架空正面図",
+                    "width": 512
+                  },
+                  {
+                    "applicationDate": "2026-06-01",
+                    "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                    "gazetteDate": "2026-08-07",
+                    "height": 512,
+                    "id": "FIXTURE-MEDIA-AFTER-CASE01",
+                    "label": "自作架空比較形状 AFTER",
+                    "mimeType": "image/png",
+                    "permission": "fixture-only: self-authored storage/display/model test allowed",
+                    "recordId": "kds_fixture_article_beta",
+                    "role": "comparisonB",
+                    "sourceLabel": "自作の手続き的な架空図形",
+                    "view": "架空正面図",
+                    "width": 512
+                  }
+                ]
+              },
+              "context": {
+                "afterDataset": {
+                  "collection": null,
+                  "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+                  "dataAsOf": "2026-09-18",
+                  "id": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01"
+                },
+                "beforeDataset": {
+                  "collection": null,
+                  "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+                  "dataAsOf": "2026-08-09",
+                  "id": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01"
+                },
+                "category": {
+                  "id": "FIXTURE-CLASS-A01",
+                  "label": "架空携帯機器",
+                  "scheme": "FIXTURE-DESIGN-CLASS"
+                },
+                "dataMode": "fictional",
+                "entity": {
+                  "id": "FIXTURE-ENTITY-APPLICANT-A",
+                  "name": "架空意匠ラボ甲合同会社"
+                },
+                "knownProducts": []
+              },
+              "watch": {
+                "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+                "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+                "categoryId": "FIXTURE-CLASS-A01",
+                "createdAt": "2026-10-09T11:03:58.542041Z",
+                "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                "id": "FIXTURE-WATCH-FLOW-1",
+                "name": "架空段階検証 normal-redirect",
+                "sourceProfileId": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT"
+              }
+            },
+            "schemaVersion": "2.3.0",
+            "signal": {
+              "counts": {
+                "after": 2,
+                "before": 1,
+                "comparable": true,
+                "excludedAfter": 0,
+                "excludedBefore": 0,
+                "newlyObserved": 1
+              },
+              "coverage": {
+                "after": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+                "before": "自作の架空snapshot。実在データ・全国網羅ではありません。"
+              },
+              "designFacts": [
+                {
+                  "field": "record",
+                  "id": "kds_fixture_design_fact_1",
+                  "recordIds": [
+                    "kds_fixture_article_alpha"
+                  ],
+                  "text": "架空携帯操作端末。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-04-02。出願日: 2026-01-10。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 持ち運び用の架空操作端末を表す契約検証データ。"
+                },
+                {
+                  "field": "record",
+                  "id": "kds_fixture_design_fact_2",
+                  "recordIds": [
+                    "kds_fixture_article_beta"
+                  ],
+                  "text": "架空携帯操作端末B。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-08-07。出願日: 2026-06-01。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 自作の架空形状の技術検証用record。実在製品ではない。"
+                }
+              ],
+              "discovery": {
+                "candidates": [
+                  {
+                    "dateStatus": "unknown",
+                    "id": "kds_fixture_candidate_flow",
+                    "publishedAt": null,
+                    "selectionReason": "対象語一致: 架空携帯操作端末。発表日不明",
+                    "title": "架空携帯操作端末分野の方針資料",
+                    "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+                  }
+                ],
+                "eligibleCandidates": 1,
+                "limitations": [
+                  "登録入口の有限な掲載範囲のみを確認。候補なしは企業の未発表を意味しません。"
+                ],
+                "omittedCandidates": 0,
+                "scannedLinks": 1,
+                "state": "completed"
+              },
+              "hypotheses": [
+                {
+                  "evidenceIds": [
+                    "kds_fixture_design_fact_2",
+                    "FIXTURE-VISUAL-STAGE",
+                    "FIXTURE-FACT-CATEGORY"
+                  ],
+                  "id": "FIXTURE-MATERIAL-CATEGORY",
+                  "limitations": [
+                    "架空資料による技術検証です。性能や個別機種の開発意図を立証していません。"
+                  ],
+                  "text": "架空携帯操作端末の画面下操作部について、設計担当者が押し分けと視認性の評価条件を検討できます。"
+                }
+              ],
+              "limitations": [
+                "件数は承認済み収録範囲の観測数であり、市場全体の新規出願数ではありません。"
+              ],
+              "media": [
+                {
+                  "applicationDate": "2026-01-10",
+                  "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                  "gazetteDate": "2026-04-02",
+                  "height": 512,
+                  "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+                  "label": "自作架空比較形状 BEFORE",
+                  "mimeType": "image/png",
+                  "permission": "fixture-only: self-authored storage/display/model test allowed",
+                  "recordId": "kds_fixture_article_alpha",
+                  "role": "comparisonA",
+                  "sourceLabel": "自作の手続き的な架空図形",
+                  "view": "架空正面図",
+                  "width": 512
+                },
+                {
+                  "applicationDate": "2026-06-01",
+                  "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+                  "gazetteDate": "2026-08-07",
+                  "height": 512,
+                  "id": "FIXTURE-MEDIA-AFTER-CASE01",
+                  "label": "自作架空比較形状 AFTER",
+                  "mimeType": "image/png",
+                  "permission": "fixture-only: self-authored storage/display/model test allowed",
+                  "recordId": "kds_fixture_article_beta",
+                  "role": "comparisonB",
+                  "sourceLabel": "自作の手続き的な架空図形",
+                  "view": "架空正面図",
+                  "width": 512
+                }
+              ],
+              "officialFacts": [
+                {
+                  "end": 69,
+                  "id": "FIXTURE-FACT-CATEGORY",
+                  "quote": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。",
+                  "sourceId": "kds_fixture_candidate_flow",
+                  "start": 16,
+                  "text": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。"
+                }
+              ],
+              "questionsForHuman": [
+                "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+                "資料「架空携帯操作端末分野の方針資料」の発表日を明記した公式資料が必要です。更新日・発売日と区別し、観測期間との対応を判断します。"
+              ],
+              "recordFacts": [
+                {
+                  "applicant": {
+                    "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                    "name": "架空意匠ラボ甲合同会社"
+                  },
+                  "applicationDate": "2026-01-10",
+                  "applicationNumber": "FIXTURE-APP-A001",
+                  "articleDescription": "通常の物品意匠を表現する。",
+                  "articleName": "架空携帯操作端末",
+                  "classifications": [
+                    {
+                      "code": "FIXTURE-CLASS-A01",
+                      "label": "架空携帯機器",
+                      "scheme": "FIXTURE-DESIGN-CLASS"
+                    }
+                  ],
+                  "description": "持ち運び用の架空操作端末を表す契約検証データ。",
+                  "gazetteDate": "2026-04-02",
+                  "id": "kds_fixture_design_fact_1",
+                  "quality": "pass",
+                  "recordId": "kds_fixture_article_alpha",
+                  "registrationNumber": "FIXTURE-REG-A001",
+                  "selectionReason": "comparison_pair",
+                  "sourceFields": [
+                    "/after/document/records/0/articleName",
+                    "/after/document/records/0/applicants",
+                    "/after/document/records/0/classifications",
+                    "/after/document/records/0/applicationNumber",
+                    "/after/document/records/0/registrationNumber",
+                    "/after/document/records/0/applicationDate",
+                    "/after/document/records/0/gazetteDate",
+                    "/after/document/records/0/description",
+                    "/after/document/records/0/articleDescription",
+                    "/after/document/records/0/quality"
+                  ]
+                },
+                {
+                  "applicant": {
+                    "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+                    "name": "架空意匠ラボ甲合同会社"
+                  },
+                  "applicationDate": "2026-06-01",
+                  "applicationNumber": "FIXTURE-APP-A008",
+                  "articleDescription": "通常の物品意匠を表現する。",
+                  "articleName": "架空携帯操作端末B",
+                  "classifications": [
+                    {
+                      "code": "FIXTURE-CLASS-A01",
+                      "label": "架空携帯機器",
+                      "scheme": "FIXTURE-DESIGN-CLASS"
+                    }
+                  ],
+                  "description": "自作の架空形状の技術検証用record。実在製品ではない。",
+                  "gazetteDate": "2026-08-07",
+                  "id": "kds_fixture_design_fact_2",
+                  "quality": "pass",
+                  "recordId": "kds_fixture_article_beta",
+                  "registrationNumber": "FIXTURE-REG-A008",
+                  "selectionReason": "comparison_pair",
+                  "sourceFields": [
+                    "/after/document/records/1/articleName",
+                    "/after/document/records/1/applicants",
+                    "/after/document/records/1/classifications",
+                    "/after/document/records/1/applicationNumber",
+                    "/after/document/records/1/registrationNumber",
+                    "/after/document/records/1/applicationDate",
+                    "/after/document/records/1/gazetteDate",
+                    "/after/document/records/1/description",
+                    "/after/document/records/1/articleDescription",
+                    "/after/document/records/1/quality"
+                  ]
+                }
+              ],
+              "relationships": [
+                {
+                  "id": "FIXTURE-MATERIAL-CATEGORY",
+                  "missingEvidence": [
+                    "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。"
+                  ],
+                  "opposingEvidenceIds": [],
+                  "relation": "category",
+                  "summary": "携帯操作端末分野の事業方針として対応します。個別機種の意図は未確認です。",
+                  "supportingEvidenceIds": [
+                    "kds_fixture_design_fact_2",
+                    "FIXTURE-VISUAL-STAGE",
+                    "FIXTURE-FACT-CATEGORY"
+                  ]
+                }
+              ],
+              "sources": [
+                {
+                  "bodyHash": "3f639e71ffc20c972092f31c1486c309719b92940c332e365e25a39ee25c4bbb",
+                  "contentHash": "0422eb6186bebb7e411e2d508ac93cc0fbaaacde00340264dd0d03d49682d0e1",
+                  "excerpt": "架空携帯操作端末分野の方針資料\n架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。\nPublished 2026\nFIXTURE-RELATED\n/09/03\nUpdated 2026-09-04\nRelease date 2026-09-05\n架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料",
+                  "excerptStart": 0,
+                  "extractedChars": 4151,
+                  "extractionVersion": "article-html-2.2.0",
+                  "id": "kds_fixture_candidate_flow",
+                  "modelVisibleChars": 255,
+                  "publishedAt": null,
+                  "releaseAt": "2026-09-05",
+                  "retrievedAt": "2026-10-09T11:03:58.970129Z",
+                  "retrospective": false,
+                  "title": "架空携帯操作端末分野の方針資料",
+                  "truncated": true,
+                  "updatedAt": "2026-09-04",
+                  "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+                }
+              ],
+              "status": "insufficient",
+              "stopReason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+              "toolEvents": [
+                {
+                  "candidateId": null,
+                  "finishedAt": "2026-10-09T11:03:58.947133Z",
+                  "outcome": "ok",
+                  "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+                  "startedAt": "2026-10-09T11:03:58.943128Z",
+                  "tool": "list_candidates"
+                },
+                {
+                  "candidateId": "kds_fixture_candidate_flow",
+                  "finishedAt": "2026-10-09T11:03:58.970129Z",
+                  "outcome": "ok",
+                  "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+                  "startedAt": "2026-10-09T11:03:58.968131Z",
+                  "tool": "fetch_candidate"
+                },
+                {
+                  "candidateId": null,
+                  "finishedAt": "2026-10-09T11:03:58.993139Z",
+                  "outcome": "ok",
+                  "reason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+                  "startedAt": "2026-10-09T11:03:58.993139Z",
+                  "tool": "finish"
+                }
+              ],
+              "visualObservations": [
+                {
+                  "id": "FIXTURE-VISUAL-STAGE",
+                  "mediaIds": [
+                    "FIXTURE-MEDIA-BEFORE-CASE01",
+                    "FIXTURE-MEDIA-AFTER-CASE01"
+                  ],
+                  "observation": "A：画面下の円形操作部（実線）。B：画面下の角の丸い横長操作部（実線）。描画上の比較：差異あり。可視形状の差異候補あり。描画の線種から物理的変更・法的範囲・製品世代を確定しません。",
+                  "part": "正面画面下の操作部",
+                  "status": "change_candidate"
+                }
+              ]
+            },
+            "status": "complete",
+            "usage": {
+              "inputTokens": 93,
+              "modelRequests": 3,
+              "outputTokens": 57,
+              "toolCalls": 3
+            },
+            "versions": {
+              "model": "fixture-controller",
+              "prompt": "bounded-signal-2.5.24",
+              "schema": "2.3.0"
+            },
+            "watchId": "FIXTURE-WATCH-FLOW-1"
+          }
+        ],
+        "schemaVersion": "2.3.0"
+      }
+    }
+  ],
+  "savedRun": {
+    "completedAt": "2026-10-09T11:03:58.995135Z",
+    "createdAt": "2026-10-09T11:03:58.544040Z",
+    "errorCode": null,
+    "id": "kds_fixture_flow_run_1",
+    "input": {
+      "comparisonPair": {
+        "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+        "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+        "categoryId": "FIXTURE-CLASS-A01",
+        "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+        "evidence": "自作の架空図形に対応付けた検証用組です。実在機種の旧新世代を示しません。",
+        "id": "FIXTURE-PAIR-STAGE-NORMAL",
+        "label": "自作架空携帯操作端末の正面比較",
+        "media": [
+          {
+            "applicationDate": "2026-01-10",
+            "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+            "gazetteDate": "2026-04-02",
+            "height": 512,
+            "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+            "label": "自作架空比較形状 BEFORE",
+            "mimeType": "image/png",
+            "permission": "fixture-only: self-authored storage/display/model test allowed",
+            "recordId": "kds_fixture_article_alpha",
+            "role": "comparisonA",
+            "sourceLabel": "自作の手続き的な架空図形",
+            "view": "架空正面図",
+            "width": 512
+          },
+          {
+            "applicationDate": "2026-06-01",
+            "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+            "gazetteDate": "2026-08-07",
+            "height": 512,
+            "id": "FIXTURE-MEDIA-AFTER-CASE01",
+            "label": "自作架空比較形状 AFTER",
+            "mimeType": "image/png",
+            "permission": "fixture-only: self-authored storage/display/model test allowed",
+            "recordId": "kds_fixture_article_beta",
+            "role": "comparisonB",
+            "sourceLabel": "自作の手続き的な架空図形",
+            "view": "架空正面図",
+            "width": 512
+          }
+        ]
+      },
+      "context": {
+        "afterDataset": {
+          "collection": null,
+          "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+          "dataAsOf": "2026-09-18",
+          "id": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01"
+        },
+        "beforeDataset": {
+          "collection": null,
+          "coverage": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+          "dataAsOf": "2026-08-09",
+          "id": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01"
+        },
+        "category": {
+          "id": "FIXTURE-CLASS-A01",
+          "label": "架空携帯機器",
+          "scheme": "FIXTURE-DESIGN-CLASS"
+        },
+        "dataMode": "fictional",
+        "entity": {
+          "id": "FIXTURE-ENTITY-APPLICANT-A",
+          "name": "架空意匠ラボ甲合同会社"
+        },
+        "knownProducts": []
+      },
+      "watch": {
+        "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER-CASE01",
+        "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE-CASE01",
+        "categoryId": "FIXTURE-CLASS-A01",
+        "createdAt": "2026-10-09T11:03:58.542041Z",
+        "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+        "id": "FIXTURE-WATCH-FLOW-1",
+        "name": "架空段階検証 normal-redirect",
+        "sourceProfileId": "FIXTURE-SOURCE-STAGE-NORMAL-REDIRECT"
+      }
+    },
+    "schemaVersion": "2.3.0",
+    "signal": {
+      "counts": {
+        "after": 2,
+        "before": 1,
+        "comparable": true,
+        "excludedAfter": 0,
+        "excludedBefore": 0,
+        "newlyObserved": 1
+      },
+      "coverage": {
+        "after": "自作の架空snapshot。実在データ・全国網羅ではありません。",
+        "before": "自作の架空snapshot。実在データ・全国網羅ではありません。"
+      },
+      "designFacts": [
+        {
+          "field": "record",
+          "id": "kds_fixture_design_fact_1",
+          "recordIds": [
+            "kds_fixture_article_alpha"
+          ],
+          "text": "架空携帯操作端末。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-04-02。出願日: 2026-01-10。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 持ち運び用の架空操作端末を表す契約検証データ。"
+        },
+        {
+          "field": "record",
+          "id": "kds_fixture_design_fact_2",
+          "recordIds": [
+            "kds_fixture_article_beta"
+          ],
+          "text": "架空携帯操作端末B。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-08-07。出願日: 2026-06-01。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 自作の架空形状の技術検証用record。実在製品ではない。"
+        }
+      ],
+      "discovery": {
+        "candidates": [
+          {
+            "dateStatus": "unknown",
+            "id": "kds_fixture_candidate_flow",
+            "publishedAt": null,
+            "selectionReason": "対象語一致: 架空携帯操作端末。発表日不明",
+            "title": "架空携帯操作端末分野の方針資料",
+            "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+          }
+        ],
+        "eligibleCandidates": 1,
+        "limitations": [
+          "登録入口の有限な掲載範囲のみを確認。候補なしは企業の未発表を意味しません。"
+        ],
+        "omittedCandidates": 0,
+        "scannedLinks": 1,
+        "state": "completed"
+      },
+      "hypotheses": [
+        {
+          "evidenceIds": [
+            "kds_fixture_design_fact_2",
+            "FIXTURE-VISUAL-STAGE",
+            "FIXTURE-FACT-CATEGORY"
+          ],
+          "id": "FIXTURE-MATERIAL-CATEGORY",
+          "limitations": [
+            "架空資料による技術検証です。性能や個別機種の開発意図を立証していません。"
+          ],
+          "text": "架空携帯操作端末の画面下操作部について、設計担当者が押し分けと視認性の評価条件を検討できます。"
+        }
+      ],
+      "limitations": [
+        "件数は承認済み収録範囲の観測数であり、市場全体の新規出願数ではありません。"
+      ],
+      "media": [
+        {
+          "applicationDate": "2026-01-10",
+          "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+          "gazetteDate": "2026-04-02",
+          "height": 512,
+          "id": "FIXTURE-MEDIA-BEFORE-CASE01",
+          "label": "自作架空比較形状 BEFORE",
+          "mimeType": "image/png",
+          "permission": "fixture-only: self-authored storage/display/model test allowed",
+          "recordId": "kds_fixture_article_alpha",
+          "role": "comparisonA",
+          "sourceLabel": "自作の手続き的な架空図形",
+          "view": "架空正面図",
+          "width": 512
+        },
+        {
+          "applicationDate": "2026-06-01",
+          "comparisonStatus": "administrator_matched_fixture_not_product_generations",
+          "gazetteDate": "2026-08-07",
+          "height": 512,
+          "id": "FIXTURE-MEDIA-AFTER-CASE01",
+          "label": "自作架空比較形状 AFTER",
+          "mimeType": "image/png",
+          "permission": "fixture-only: self-authored storage/display/model test allowed",
+          "recordId": "kds_fixture_article_beta",
+          "role": "comparisonB",
+          "sourceLabel": "自作の手続き的な架空図形",
+          "view": "架空正面図",
+          "width": 512
+        }
+      ],
+      "officialFacts": [
+        {
+          "end": 69,
+          "id": "FIXTURE-FACT-CATEGORY",
+          "quote": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。",
+          "sourceId": "kds_fixture_candidate_flow",
+          "start": 16,
+          "text": "架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。"
+        }
+      ],
+      "questionsForHuman": [
+        "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+        "資料「架空携帯操作端末分野の方針資料」の発表日を明記した公式資料が必要です。更新日・発売日と区別し、観測期間との対応を判断します。"
+      ],
+      "recordFacts": [
+        {
+          "applicant": {
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "name": "架空意匠ラボ甲合同会社"
+          },
+          "applicationDate": "2026-01-10",
+          "applicationNumber": "FIXTURE-APP-A001",
+          "articleDescription": "通常の物品意匠を表現する。",
+          "articleName": "架空携帯操作端末",
+          "classifications": [
+            {
+              "code": "FIXTURE-CLASS-A01",
+              "label": "架空携帯機器",
+              "scheme": "FIXTURE-DESIGN-CLASS"
+            }
+          ],
+          "description": "持ち運び用の架空操作端末を表す契約検証データ。",
+          "gazetteDate": "2026-04-02",
+          "id": "kds_fixture_design_fact_1",
+          "quality": "pass",
+          "recordId": "kds_fixture_article_alpha",
+          "registrationNumber": "FIXTURE-REG-A001",
+          "selectionReason": "comparison_pair",
+          "sourceFields": [
+            "/after/document/records/0/articleName",
+            "/after/document/records/0/applicants",
+            "/after/document/records/0/classifications",
+            "/after/document/records/0/applicationNumber",
+            "/after/document/records/0/registrationNumber",
+            "/after/document/records/0/applicationDate",
+            "/after/document/records/0/gazetteDate",
+            "/after/document/records/0/description",
+            "/after/document/records/0/articleDescription",
+            "/after/document/records/0/quality"
+          ]
+        },
+        {
+          "applicant": {
+            "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+            "name": "架空意匠ラボ甲合同会社"
+          },
+          "applicationDate": "2026-06-01",
+          "applicationNumber": "FIXTURE-APP-A008",
+          "articleDescription": "通常の物品意匠を表現する。",
+          "articleName": "架空携帯操作端末B",
+          "classifications": [
+            {
+              "code": "FIXTURE-CLASS-A01",
+              "label": "架空携帯機器",
+              "scheme": "FIXTURE-DESIGN-CLASS"
+            }
+          ],
+          "description": "自作の架空形状の技術検証用record。実在製品ではない。",
+          "gazetteDate": "2026-08-07",
+          "id": "kds_fixture_design_fact_2",
+          "quality": "pass",
+          "recordId": "kds_fixture_article_beta",
+          "registrationNumber": "FIXTURE-REG-A008",
+          "selectionReason": "comparison_pair",
+          "sourceFields": [
+            "/after/document/records/1/articleName",
+            "/after/document/records/1/applicants",
+            "/after/document/records/1/classifications",
+            "/after/document/records/1/applicationNumber",
+            "/after/document/records/1/registrationNumber",
+            "/after/document/records/1/applicationDate",
+            "/after/document/records/1/gazetteDate",
+            "/after/document/records/1/description",
+            "/after/document/records/1/articleDescription",
+            "/after/document/records/1/quality"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "FIXTURE-MATERIAL-CATEGORY",
+          "missingEvidence": [
+            "比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。"
+          ],
+          "opposingEvidenceIds": [],
+          "relation": "category",
+          "summary": "携帯操作端末分野の事業方針として対応します。個別機種の意図は未確認です。",
+          "supportingEvidenceIds": [
+            "kds_fixture_design_fact_2",
+            "FIXTURE-VISUAL-STAGE",
+            "FIXTURE-FACT-CATEGORY"
+          ]
+        }
+      ],
+      "sources": [
+        {
+          "bodyHash": "3f639e71ffc20c972092f31c1486c309719b92940c332e365e25a39ee25c4bbb",
+          "contentHash": "0422eb6186bebb7e411e2d508ac93cc0fbaaacde00340264dd0d03d49682d0e1",
+          "excerpt": "架空携帯操作端末分野の方針資料\n架空意匠ラボ甲の中期事業計画は携帯操作端末分野の操作支援を掲げますが、個別機種の開発意図は示していません。\nPublished 2026\nFIXTURE-RELATED\n/09/03\nUpdated 2026-09-04\nRelease date 2026-09-05\n架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料の補足です。架空資料",
+          "excerptStart": 0,
+          "extractedChars": 4151,
+          "extractionVersion": "article-html-2.2.0",
+          "id": "kds_fixture_candidate_flow",
+          "modelVisibleChars": 255,
+          "publishedAt": null,
+          "releaseAt": "2026-09-05",
+          "retrievedAt": "2026-10-09T11:03:58.970129Z",
+          "retrospective": false,
+          "title": "架空携帯操作端末分野の方針資料",
+          "truncated": true,
+          "updatedAt": "2026-09-04",
+          "url": "https://fixture.example.test/news/stage/normal-redirect/FIXTURE-DETAIL"
+        }
+      ],
+      "status": "insufficient",
+      "stopReason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+      "toolEvents": [
+        {
+          "candidateId": null,
+          "finishedAt": "2026-10-09T11:03:58.947133Z",
+          "outcome": "ok",
+          "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+          "startedAt": "2026-10-09T11:03:58.943128Z",
+          "tool": "list_candidates"
+        },
+        {
+          "candidateId": "kds_fixture_candidate_flow",
+          "finishedAt": "2026-10-09T11:03:58.970129Z",
+          "outcome": "ok",
+          "reason": "画像の観察候補と調べる問いを保持し、対象資料を確認します。",
+          "startedAt": "2026-10-09T11:03:58.968131Z",
+          "tool": "fetch_candidate"
+        },
+        {
+          "candidateId": null,
+          "finishedAt": "2026-10-09T11:03:58.993139Z",
+          "outcome": "ok",
+          "reason": "登録資料の範囲で処理を終了。対象対応または発表時期の裏付けは未完了。比較対象の意匠と商品名・型番を結ぶ公式記載または管理された対応資料が必要です。個別商品の対応を判断します。",
+          "startedAt": "2026-10-09T11:03:58.993139Z",
+          "tool": "finish"
+        }
+      ],
+      "visualObservations": [
+        {
+          "id": "FIXTURE-VISUAL-STAGE",
+          "mediaIds": [
+            "FIXTURE-MEDIA-BEFORE-CASE01",
+            "FIXTURE-MEDIA-AFTER-CASE01"
+          ],
+          "observation": "A：画面下の円形操作部（実線）。B：画面下の角の丸い横長操作部（実線）。描画上の比較：差異あり。可視形状の差異候補あり。描画の線種から物理的変更・法的範囲・製品世代を確定しません。",
+          "part": "正面画面下の操作部",
+          "status": "change_candidate"
+        }
+      ]
+    },
+    "status": "complete",
+    "usage": {
+      "inputTokens": 93,
+      "modelRequests": 3,
+      "outputTokens": 57,
+      "toolCalls": 3
+    },
+    "versions": {
+      "model": "fixture-controller",
+      "prompt": "bounded-signal-2.5.24",
+      "schema": "2.3.0"
+    },
+    "watchId": "FIXTURE-WATCH-FLOW-1"
+  },
+  "savedHash": "f09f77b9a04905631a5ab97949d9d05de381699a865a8e8198378f4cf04456be",
+  "counters": {
+    "analysisPosts": 1,
+    "conditionPosts": 1,
+    "engineExecutions": 1,
+    "sdkFixtureResponses": 3,
+    "fixtureSourceCalls": 2,
+    "savedRuns": 1,
+    "viewModelRequests": 0,
+    "viewSourceCalls": 0,
+    "viewObjectReads": 0,
+    "realAiRequests": 0,
+    "externalSourceRequests": 0,
+    "blockedUnexpectedNetworkAttempts": 0
+  },
+  "limitations": [
+    "Repository and object persistence are in-memory test doubles; no PostgreSQL transaction, file object storage or durable restart was verified.",
+    "File registration preparation was blocked by Windows WinError5; input registration is a fixture double, not a registration preflight result.",
+    "Provider responses and DNS/socket/TLS/HTTP/IPC are offline fixture doubles; live model quality and deployed behavior remain unverified.",
+    "Repository admission, migration and rate limiting are test doubles; a second Application shares the same memory repository, not a durable database restart.",
+    "The approved_public flag is a test-only excerpt-cap injection on self-authored fictional material, not real-data or live-AI authorization.",
+    "WSGI dispatch runs in process; Frontend replay is a separate test, not an end-to-end deployed network or database proof.",
+    "Public mode has no individual authentication; default owner scope publishes all registered fixture material, and enabling runs lets any visitor submit within the configured global controls."
+  ],
+  "savedUnchangedAfterViewing": true
+}

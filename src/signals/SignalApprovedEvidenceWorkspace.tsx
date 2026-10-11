@@ -10,6 +10,7 @@ import { SignalScopeEvidence } from './SignalScopeSummary';
 import { SignalComparisonGate } from './SignalComparisonGate';
 import { SignalRecordEvidenceBoundary, SignalRecordSelection } from './SignalRecordSelection';
 import { SignalPurposeIntro, type SignalQuestion } from './SignalPurposeJourney';
+import { runReviewKey } from './run-review';
 import './signals.css';
 
 type PreviewState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; preview: ApprovedPreview };
@@ -65,7 +66,7 @@ export function ApprovedEvidenceContent({ preview, question, onQuestion, replay,
   }, [replay, run.id]);
   if (replay) return <main className="signal-approved-content" onClickCapture={revealEvidenceLink}>
     <section className="signal-panel" id="signal-conditions" tabIndex={-1}><p className="signal-eyebrow">元の保存比較全体のp23結果1件を再表示</p><h1 ref={warning} tabIndex={-1}>品質未達のp23保存例 · V2 FAIL / V4 FAIL</h1><p>{run.createdAt} · モデル {run.versions.model} · prompt {run.versions.prompt}</p><div className="signal-error" role="note"><strong>V2 FAIL / V4 FAIL · 本人受入は未実施</strong><p>以下のAI観察・仮説には線種の混同、内側の円の観察不足、根拠のない法的意味、具体的な設計検討の不足があります。保存当時の内容を変更せず表示しています。今回の成功見本ではありません。</p></div><button className="signal-button secondary" type="button" onClick={() => onReplay(false)}>保存例を閉じて資料から確認した事実へ戻る</button><p className="signal-subtle">新しいAI分析は始めません。このURLの再読込も保存例の再表示です。実行時の問いは未記録です。個別意匠の選択とは別に、元の保存比較全体を再表示しています。</p></section>
-    <SignalResult run={run} focusOnLoad={false} showReview={false} />
+    <SignalResult run={run} focusOnLoad={false} showReview={false} archivedQuality={{ subjectKey: runReviewKey(run), failedChecks: ([preview.quality.v2 === 'FAIL' ? 'V2' : null, preview.quality.v4 === 'FAIL' ? 'V4' : null] as const).filter((check) => check !== null) }} />
   </main>;
   return <main ref={contentRoot} className="signal-approved-content signal-approved-layout" onClickCapture={revealEvidenceLink}>
     <SignalPurposeIntro />

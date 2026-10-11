@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { ComparisonMedia, Signal, SignalV2 } from './contract';
 import { comparisonStatusLabel, designFactFieldLabel, designFactText, evidenceId } from './labels';
+import { ResultQualityContext } from './result-quality';
+import { SignalQualityHold } from './SignalQualityHold';
 
 type SelectedEvidence =
   | { kind: 'observation'; id: string; value: Signal['visualObservations'][number] }
@@ -67,11 +69,12 @@ function EvidenceMediaPreview({ media, signal, showImage }: { media: ComparisonM
 }
 
 function ObservationEvidence({ value, signal, showImages, factsOnly, developmentMode }: { value: Signal['visualObservations'][number]; signal: Signal; showImages: boolean; factsOnly: boolean; developmentMode: boolean }) {
+  const failedChecks = useContext(ResultQualityContext);
   return <>
     <p className="signal-evidence-kind">{developmentMode ? '架空図面の模擬観察（実AIは未実施）' : '図面からのAI観察候補'}</p>
     {factsOnly ? <p>画像・図面の分析は未実施です。この表示では画像や観察本文を読み込みません。</p> : <>
-      <p><strong>{value.part}</strong> · {observationLabels[value.status]}</p>
-      <p>{value.observation}</p>
+      <SignalQualityHold checks={failedChecks.includes('V2') ? ['V2'] : []} label="保存AI観察"><p><strong>{value.part}</strong> · {observationLabels[value.status]}</p>
+      <p>{value.observation}</p></SignalQualityHold>
       <p className="signal-subtle">比較A / Bは資料の役割です。商品の新旧世代や発売順を示しません。部位の記載を図面と照合してください。観察位置の座標は保存されていません。</p>
       <div className="signal-evidence-pair">{value.mediaIds.length ? [...new Set(value.mediaIds)].map((id) => {
         const media = signal.media.find((item) => item.id === id);

@@ -6,6 +6,7 @@ import { evidenceId } from './labels';
 import { selectSignalEvidence, SignalEvidenceDetails } from './SignalEvidenceDetails';
 import { fictionalRunV2 } from './fixtures';
 import { SignalResult } from './SignalResult';
+import { ResultQualityContext } from './result-quality';
 
 // 架空の保存結果だけで参照対応と表示を検証する。実AIの品質評価ではない。
 function fictionalSignal(): SignalV2 {
@@ -60,6 +61,7 @@ vi.mock('react', async (importOriginal) => {
     if (!hooks.active) return actual.useRef(initial);
     return hooks.refs[hooks.refIndex++] ??= { current: initial };
   }) as typeof actual.useRef,
+  useContext: ((context: Parameters<typeof actual.useContext>[0]) => hooks.active && context === ResultQualityContext ? [] : actual.useContext(context)) as typeof actual.useContext,
   useEffect: (effect: () => void | (() => void), dependencies?: readonly unknown[]) => {
     if (!hooks.active) return actual.useEffect(effect, dependencies);
     hooks.effects.push(effect);

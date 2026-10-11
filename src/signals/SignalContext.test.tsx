@@ -2,13 +2,14 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { SignalResult } from './SignalResult';
-import { SavedContext } from './SignalContext';
+import { ResultOverview, SavedContext } from './SignalContext';
 import { SignalHistory } from './SignalHistory';
 import { fictionalRun, fictionalRunV2 } from './fixtures';
 import { fictionalRunV22 } from './fixtures-v22';
-import { relationLabels } from './labels';
+import { evidenceId, relationLabels } from './labels';
 import { decodeRun } from './contract';
 import backendReconstruction from './backend-run-v2.1.fixture.json';
+import backendQuestionRun from './backend-run-v2.5.fixture.json';
 
 describe('saved company and evidence context', () => {
   it('translates saved classification schemes while retaining the classification codes', () => {
@@ -48,7 +49,8 @@ describe('saved company and evidence context', () => {
     expect(html).toContain('自作架空原本による遡及再構成の回帰fixture');
     expect(html).toContain('後日取得した資料を事後の補足として含みます。当時サービスが取得済みだったことを示しません。');
     expect(html).not.toContain('当時既知の情報ではありません');
-    expect(html.indexOf('週次原本からの遡及再構成収録集合')).toBeGreaterThan(html.indexOf('画像からのAI観察候補'));
+    // 概要にも保存された限界を出すが、詳細な収録条件は図面の後で確認できる。
+    expect(html.indexOf('aria-label="保存時の対象とデータ"')).toBeGreaterThan(html.indexOf('画像からのAI観察候補'));
     const history = renderToStaticMarkup(createElement(SignalHistory, { runs: [run], state: 'ready', disabled: false, onSelect: () => undefined }));
     expect(history).toContain('架空意匠ラボ甲合同会社');
     expect(history).not.toContain('架空データ（旧形式）');
@@ -135,5 +137,117 @@ describe('saved company and evidence context', () => {
     expect(html).toContain('登録番号 / 出願番号'); expect(html).toContain('FIXTURE-REG-EXAMPLE / 不明');
     expect(html).toContain('<dt>意匠の説明</dt><dd>説明は未収録</dd>');
     expect(html).toContain('<dt>物品の説明</dt><dd>架空の物品機能の説明</dd>');
+  });
+});
+
+describe('saved result overview', () => {
+  it('keeps later observations, official findings and selected records reachable without rewriting saved values', () => {
+    const run = structuredClone(fictionalRunV2);
+    const signal = run.signal!;
+    signal.visualObservations.push({ id: 'FIXTURE-inner-circle', part: '内側の円', status: 'unknown', observation: '架空図面の内側の円は、線の意味を確定できません。', mediaIds: [...signal.visualObservations[0].mediaIds] });
+    signal.officialFacts.push({ ...signal.officialFacts[0], id: 'FIXTURE-official-later', text: '架空公式資料の後続の記載です。対応する図面は未確認です。' });
+    signal.questionsForHuman.push('架空資料の内側の円を同じ視点で確認してください。');
+    for (let index = 2; index <= 4; index += 1) {
+      const id = `FIXTURE-record-fact-${index}`;
+      const recordId = `FIXTURE-record-${index}`;
+      signal.recordFacts.push({ ...signal.recordFacts[0], id, recordId, articleName: `架空意匠${index}` });
+      signal.designFacts.push({ id, text: `架空意匠${index}の書誌事項です。`, recordIds: [recordId], field: 'articleName' });
+    }
+    const saved = JSON.stringify(run);
+    const html = renderToStaticMarkup(createElement(ResultOverview, { run }));
+    expect(html).toContain('図面からの観察候補（2件）');
+    expect(html).toContain('画像観察2 · 内側の円</strong> · 判断不能');
+    expect(html).toContain(signal.visualObservations[1].observation);
+    expect(html).toContain(signal.officialFacts[1].text);
+    expect(html).toContain(signal.questionsForHuman[1]);
+    expect(html).toContain('選ばれた意匠（4件）を見る');
+    for (const item of [signal.visualObservations[1], signal.officialFacts[1], signal.recordFacts[3]]) {
+      expect(html).toContain(`href="#${evidenceId(item.id)}"`);
+      expect(renderToStaticMarkup(createElement(SignalResult, { run }))).toContain(`id="${evidenceId(item.id)}"`);
+    }
+    const officialDetails = html.slice(html.indexOf('この記載の引用・出典をここで確かめる'));
+    expect(officialDetails).toContain(signal.officialFacts[0].quote);
+    expect(JSON.stringify(run)).toBe(saved);
+  });
+
+  it('preserves the saved support and opposition groups and the missing evidence for each relationship', () => {
+    const run = structuredClone(fictionalRunV2);
+    const signal = run.signal!;
+    const relation = signal.relationships[0];
+    relation.relation = 'unknown';
+    relation.supportingEvidenceIds = [signal.officialFacts[0].id];
+    relation.opposingEvidenceIds = [signal.visualObservations[0].id];
+    relation.missingEvidence = ['架空の型番対応資料は未確認です。', '架空図面の線の意味を確認してください。'];
+    const html = renderToStaticMarkup(createElement(ResultOverview, { run }));
+    const support = html.match(/<dt>支持する根拠<\/dt><dd>(.*?)<\/dd>/)?.[1];
+    const opposition = html.match(/<dt>不一致・反証の根拠<\/dt><dd>(.*?)<\/dd>/)?.[1];
+    expect(support).toContain(`href="#${evidenceId(signal.officialFacts[0].id)}"`);
+    expect(support).not.toContain(`href="#${evidenceId(signal.visualObservations[0].id)}"`);
+    expect(opposition).toContain(`href="#${evidenceId(signal.visualObservations[0].id)}"`);
+    expect(opposition).not.toContain(`href="#${evidenceId(signal.officialFacts[0].id)}"`);
+    expect(html).toContain(relationLabels.unknown);
+    expect(html).toContain('保存された支持 1件 · 反証 1件 · 不足 2件');
+    for (const text of relation.missingEvidence) expect(html).toContain(text);
+    expect(html).toContain(`href="#signal-relation-${encodeURIComponent(relation.id)}"`);
+    expect(renderToStaticMarkup(createElement(SignalResult, { run }))).toContain(`id="signal-relation-${encodeURIComponent(relation.id)}"`);
+  });
+
+  it('prioritizes the saved 2.5 question and retains separate answer, document and hypothesis limits', () => {
+    const run = decodeRun(structuredClone(backendQuestionRun));
+    if (run.schemaVersion !== '2.5.0' || !run.signal) throw new Error('Fixture must have a saved 2.5 answer');
+    const answer = run.signal.questionAnswer;
+    answer.nextChecks = ['架空の問い専用の確認資料A', '架空の問い専用の確認資料B'];
+    answer.limitations = ['架空の問い専用の判断の限界'];
+    run.signal.questionsForHuman = ['架空の資料全体の確認事項'];
+    run.signal.limitations = ['架空の資料全体の限界'];
+    run.signal.hypotheses[0].limitations = [];
+    run.signal.hypotheses.push({ id: 'FIXTURE-hypothesis-later', text: '架空の後続の検討材料', evidenceIds: [run.signal.visualObservations[0].id], limitations: ['架空の後続の検討材料の限界'] });
+    const saved = JSON.stringify(run);
+    const html = renderToStaticMarkup(createElement(ResultOverview, { run }));
+    expect(html.indexOf(run.input.analysisQuestion.text)).toBeLessThan(html.indexOf('図面からの観察候補'));
+    expect(html).toContain('href="#signal-question-answer-title"');
+    expect(html).not.toContain('id="signal-question-answer-title"');
+    expect(html).toContain('この問いの判断に必要な資料は不足しています。');
+    expect(html).not.toContain(answer.text!);
+    for (const text of [...answer.nextChecks, ...answer.limitations, ...run.signal.questionsForHuman, ...run.signal.limitations, ...run.signal.hypotheses[1].limitations]) expect(html).toContain(text);
+    expect(html).toContain('資料全体の確認事項（1件）を見る');
+    expect(html).toContain('この問いへの回答の限界');
+    expect(html).toContain('資料全体の限界');
+    expect(html).toContain(`href="#${evidenceId('FIXTURE-hypothesis-later')}">検討材料2と根拠を見る`);
+    const result = renderToStaticMarkup(createElement(SignalResult, { run }));
+    expect(result.split('id="signal-question-answer-title"')).toHaveLength(2);
+    expect(result.split(answer.text!)).toHaveLength(2);
+    expect(JSON.stringify(run)).toBe(saved);
+  });
+
+  it('does not turn an unevaluated saved question or an interrupted analysis into an answer', () => {
+    const run = decodeRun(structuredClone(backendQuestionRun));
+    if (run.schemaVersion !== '2.5.0' || !run.signal) throw new Error('Fixture must have a saved 2.5 answer');
+    run.status = 'interrupted'; run.completedAt = null;
+    run.signal.questionAnswer = { ...run.signal.questionAnswer, status: 'not_evaluated', text: null, evidenceIds: [], supportingEvidenceIds: [], opposingEvidenceIds: [], nextChecks: [], limitations: [] };
+    const html = renderToStaticMarkup(createElement(ResultOverview, { run }));
+    expect(html).toContain('回答は未評価です。以下の観察や引用を回答として補っていません。');
+    expect(html).toContain('停止前に取得・検証した参考資料');
+    expect(html).toContain('分析は未完了');
+    expect(html).not.toContain('今回わかったこと');
+    expect(html).not.toContain('保存された回答と、その支持・反証を確認できます。');
+    expect(html).toContain('この問いの次の確認事項は未記録です。');
+    expect(run.signal.questionAnswer.status).toBe('not_evaluated');
+    expect(run.signal.questionAnswer.text).toBeNull();
+  });
+
+  it('keeps legacy evidence unclassified and does not expose unperformed image or article analysis in facts-only mode', () => {
+    const legacy = renderToStaticMarkup(createElement(ResultOverview, { run: fictionalRun }));
+    expect(legacy).toContain('この旧形式には、支持・反証を区別した対応評価は保存されていません。');
+    expect(legacy).not.toContain('この実行に保存された問い');
+    const run = structuredClone(fictionalRunV2);
+    run.versions.model = 'facts-only-deterministic';
+    const html = renderToStaticMarkup(createElement(ResultOverview, { run }));
+    expect(html).toContain('書誌情報のみの比較です。図面は分析していません。');
+    expect(html).toContain('記事本文は分析していません。');
+    expect(html).not.toContain(run.signal!.visualObservations[0].observation);
+    expect(html).not.toContain(run.signal!.officialFacts[0].text);
+    expect(html).not.toContain(run.signal!.officialFacts[0].quote);
+    expect(html).not.toContain('<img');
   });
 });

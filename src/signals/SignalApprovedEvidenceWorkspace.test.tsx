@@ -128,7 +128,7 @@ describe('read-only preview reload and navigation', () => {
 
     const main = approvedTree(view);
     const question = find(main, (item) => item.type === 'button' && item.props.className === 'signal-question-option'
-      && !!find(item.props.children as ReactNode, (child) => child.type === 'strong' && child.props.children === '公式引用が支えるのは？'))!;
+      && item.props['aria-label'] === '公式引用が支えるのは？')!;
     const target = { tagName: 'SECTION', parentElement: null as unknown, hasAttribute: () => true, focus: vi.fn(), scrollIntoView: vi.fn() };
     const root = { contains: (value: unknown) => value === target, ownerDocument: { getElementById: vi.fn((id: string) => id === 'signal-approved-sources' ? target : null) } };
     target.parentElement = root;

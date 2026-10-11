@@ -8,6 +8,7 @@ import { DiscoveryDetails, EvidenceLinks, RecordFact, Relationships, ResultOverv
 import { SignalSavedQuestion } from './SignalPurposeJourney';
 import { SignalQuestionAnswer } from './SignalQuestionAnswer';
 import { SignalRunReview } from './SignalRunReview';
+import { SignalDrawingComparison } from './SignalDrawingComparison';
 import type { RunReviewState } from './run-review';
 
 const statusLabels: Record<Signal['status'], string> = { change_detected: '収録範囲で変化を確認', no_change: '収録範囲で新しい変化なし', insufficient: '判断する資料が不足', comparison_unavailable: '収録条件が異なり比較できません' };
@@ -74,6 +75,8 @@ export function SignalResult({ run, developmentMode = false, focusOnLoad = true,
     return () => { window.removeEventListener('beforeprint', preparePrint); window.removeEventListener('afterprint', restoreDetails); restoreDetails(); };
   }, [run.id]);
   const signal = run.signal;
+  const comparisonPair = 'comparisonPair' in run.input ? run.input.comparisonPair : null;
+  const comparisonMedia = comparisonPair ? signal?.media.filter((media) => comparisonPair.media.some((selected) => selected.id === media.id)) ?? [] : signal?.media ?? [];
   const factsOnly = factsOnlyRun(run);
   const incomplete = run.status !== 'complete';
   const partialEvaluation = partialSourceEvaluationRun(run);
@@ -103,6 +106,7 @@ export function SignalResult({ run, developmentMode = false, focusOnLoad = true,
       })}</div>) : <p>今回の範囲では、追加の事実を確認できませんでした。</p>}</details>
       {factsOnly ? <section id="signal-images"><h3>画像と観察</h3><p><strong>未実施</strong>：この結果には公報図面・製品画像を保存・表示していません。形状の変化は評価していません。</p></section> : <section id="signal-images"><h3>{developmentMode ? '架空図面の模擬観察（実AIは未実施）' : partialEvaluation ? '途中結果の画像観察候補' : incomplete ? '停止前の画像観察候補' : '画像からのAI観察候補'}</h3><p className="signal-subtle">画像内の観察候補です。製品の仕様、販売予定、企業戦略を確定するものではありません。</p>
         <p className="signal-subtle">比較A / Bは資料の役割です。商品の旧世代 / 新世代や発売順を表しません。画像の出所と対応条件を各資料で確認してください。</p>
+        <SignalDrawingComparison media={comparisonMedia} />
         {signal.media.length ? <div className="signal-media-grid">{signal.media.map((media) => <MediaCard key={media.id} media={media} run={run} developmentMode={developmentMode} />)}</div> : <div className="signal-empty">保存結果に画像はありません。図面の情報だけから画像を補っていません。</div>}
         {signal.visualObservations.length ? signal.visualObservations.map((item) => <div className="signal-fact signal-observation" id={evidenceId(item.id)} key={item.id} tabIndex={-1}><p><strong>{item.part}</strong> · {observationLabels[item.status]}</p><p>{item.observation}</p><EvidenceLinks ids={item.mediaIds} signal={signal} /></div>) : <p>画像観察の結果は未記録です。保存情報だけでは、未実施・取得失敗・判断不能を特定できません。変化なしとは扱いません。</p>}
       </section>}

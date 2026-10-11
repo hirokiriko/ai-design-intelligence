@@ -177,3 +177,72 @@
 .signal-approved-content .signal-media-card img { max-height: 560px; object-fit: contain; }
 .signal-approved-content > .signal-panel { scroll-margin-top: 20px; }
 @media (max-width: 640px) { .signal-approved-content { padding: 16px; gap: 16px; } }
+
+/* 資料から判断へ進むための、読み取り画面と保存結果の案内。 */
+.signal-approved-mode { display: flex; justify-content: space-between; align-items: start; gap: 20px; padding-top: 10px; padding-bottom: 10px; border-bottom-width: 1px; }
+.signal-approved-mode details { max-width: 800px; }
+.signal-approved-mode summary { min-height: 30px; padding: 0; font-size: 12px; }
+.signal-approved-mode button { flex-shrink: 0; margin-top: 0; }
+.signal-approved-layout { max-width: 1320px; grid-template-columns: 280px minmax(0, 1fr); gap: 24px 28px; align-items: start; padding-top: 30px; }
+.signal-approved-layout > .signal-intro { grid-column: 1 / -1; max-width: 950px; padding-bottom: 4px; }
+.signal-approved-layout > .signal-panel { grid-column: 2; }
+.signal-approved-guide { grid-column: 1; grid-row: 2 / span 5; align-self: start; position: sticky; top: 16px; padding: 20px; margin: 0; background: #fbfdfd; box-shadow: none; }
+.signal-approved-guide h2 { font-size: 18px; }
+.signal-approved-guide .signal-preview-heading { gap: 10px; margin-bottom: 14px; }
+.signal-approved-guide .signal-question-options { grid-template-columns: 1fr; gap: 8px; margin: 16px 0; }
+.signal-approved-guide .signal-question-option { padding: 12px; min-height: 92px; border-width: 1px; gap: 6px; }
+.signal-approved-guide .signal-question-option > strong { display: flex; gap: 8px; align-items: baseline; font-size: 14px; }
+.signal-approved-guide .signal-question-option > span { font-size: 12px; }
+.signal-approved-guide .signal-question-option[aria-pressed="true"] { box-shadow: inset 3px 0 var(--signal-accent); }
+.signal-step-number { color: var(--signal-accent) !important; font-size: 12px !important; font-variant-numeric: tabular-nums; }
+.signal-approved-guide .signal-counts > div { padding: 10px 7px; }
+.signal-approved-guide .signal-counts strong { font-size: 23px; }
+.signal-approved-guide .signal-question-focus { padding: 10px; font-size: 13px; }
+.signal-approved-guide .signal-saved-example-link { margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--signal-line); color: #8b503b; }
+.signal-approved-layout .signal-panel > h2 { font-size: 21px; letter-spacing: -.02em; }
+.signal-approved-layout .signal-media-card { padding: 12px; }
+.signal-approved-layout .signal-media-card .signal-image-button { background: #f7fafb; border: 1px solid #e5edf1; }
+.signal-approved-layout .signal-media-card .signal-image-button img { height: 300px; }
+.signal-approved-layout .signal-media-card > .signal-details { margin-top: 8px; padding-top: 0; }
+.signal-approved-layout .signal-media-card > .signal-subtle { font-size: 11px; }
+.signal-approved-observations { margin: 22px 0 16px; padding: 20px; border: 1px solid #c9e3df; border-radius: 12px; background: #f1f8f6; }
+.signal-approved-observations > h3 { font-size: 14px; color: #236960; }
+.signal-approved-observations .signal-fact { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; font-size: 14px; }
+.signal-observation-number { color: #34766e; font-size: 12px; font-weight: 700; padding-top: 2px; }
+.signal-section-next { margin-top: 16px; border-top: 1px solid var(--signal-line); width: 100%; }
+.signal-overview-answer { padding: 16px; margin-bottom: 18px; border: 1px solid #badcd7; border-radius: 10px; background: #f5fbf8; }
+.signal-overview-list { padding: 0 !important; margin: 12px 0 0; list-style: none !important; display: grid; gap: 12px; }
+.signal-overview-item { padding: 14px; background: white; border: 1px solid var(--signal-line); border-radius: 9px; font-size: 14px; }
+.signal-overview-item > p, .signal-overview-item > strong { display: block; margin-bottom: 6px; }
+.signal-overview-relationships, .signal-overview-limits { font-size: 14px; }
+.signal-overview-relation { padding: 14px; background: #fffdf6; border: 1px solid #e1d9bc; border-radius: 9px; margin: 12px 0; }
+.signal-overview-followup { padding: 16px; margin-top: 18px; border-left: 3px solid var(--signal-accent); background: white; border-radius: 0 9px 9px 0; }
+@media (max-width: 960px) {
+  .signal-approved-layout { grid-template-columns: minmax(0, 1fr); }
+  .signal-approved-layout > .signal-panel, .signal-approved-layout > .signal-intro { grid-column: 1; }
+  .signal-approved-guide { grid-column: 1; grid-row: auto; position: static; }
+  .signal-approved-guide .signal-question-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .signal-approved-guide .signal-preview-heading { align-items: center; }
+}
+@media (max-width: 640px) {
+  .signal-approved-mode { display: block; }
+  .signal-approved-mode button { margin-top: 8px; min-height: 40px; padding: 6px 12px; }
+  .signal-approved-layout { padding-top: 22px; }
+  .signal-approved-guide { padding: 16px; }
+  .signal-approved-guide .signal-question-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .signal-approved-guide .signal-question-option { min-height: 92px; padding: 9px; }
+  .signal-approved-guide .signal-question-option > strong { display: block; font-size: 12px; }
+  .signal-approved-guide .signal-question-option > span { display: none; }
+  .signal-approved-guide .signal-step-number { display: block; margin-bottom: 4px; }
+  .signal-approved-layout .signal-panel > h2 { font-size: 19px; }
+  .signal-approved-layout .signal-media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .signal-approved-layout .signal-media-card { padding: 8px; }
+  .signal-approved-layout .signal-media-card .signal-image-button { padding: 4px; }
+  .signal-approved-layout .signal-media-card .signal-image-button img { height: 190px; }
+  .signal-approved-observations { padding: 14px; }
+}
+@media print {
+  .signal-approved-mode, .signal-approved-guide { display: none; }
+  .signal-approved-layout { display: block; padding: 0; }
+  .signal-approved-layout > .signal-panel { margin-top: 18px; }
+}

@@ -411,6 +411,10 @@ describe('saved URL initialization', () => {
     expect(api.start).toHaveBeenCalledTimes(1);
     expect(vi.mocked(api.start).mock.calls[0][5]).toEqual(analysisQuestion('support'));
     expect(renderToStaticMarkup(workspaceTree(api))).toContain('「公式の説明は図面を裏付ける？」');
+    expect(renderToStaticMarkup(workspaceTree(api))).toContain('確認処理中です。完了するまでお待ちください。');
+    expect(renderToStaticMarkup(workspaceTree(api))).not.toContain('先に分析する問いを選んでください');
+    expect(renderToStaticMarkup(workspaceTree(api))).not.toContain('から問いを選んでください');
+    expect(buttonNamed(workspaceTree(api), '確認しています…')?.props.disabled).toBe(true);
     finish(accepted);
     await vi.waitFor(() => expect(new URL(location.href).searchParams.get('run')).toBe(accepted.id));
     const html = renderToStaticMarkup(workspaceTree(api));

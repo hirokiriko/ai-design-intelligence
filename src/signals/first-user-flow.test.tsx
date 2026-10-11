@@ -11,9 +11,9 @@ import { evidenceId } from './labels';
 describe('first-time selection and evidence journey', () => {
   it('shows the audience, decision and a source-linked fictional example before asking for input', () => {
     const intro = renderToStaticMarkup(createElement(SignalPurposeIntro));
-    expect(intro).toContain('競合のデザイン変化を');
-    expect(intro).toContain('知財担当から企画・開発へ');
-    expect(intro).toContain('次に必要な資料');
+    expect(intro).toContain('企業・商品分野の変化を');
+    expect(intro).toContain('企画・開発で検討する材料');
+    expect(intro).toContain('図面の観察・公式情報・次に調べること');
     const example = renderToStaticMarkup(createElement(SignalValuePreview));
     expect(example).toContain('架空の操作例 · 実AI未実施');
     expect(example).toContain('href="#signal-example-evidence"');

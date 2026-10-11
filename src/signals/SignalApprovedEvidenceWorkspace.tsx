@@ -6,6 +6,8 @@ import { SignalEvidenceDetails } from './SignalEvidenceDetails';
 import { SignalHistory } from './SignalHistory';
 import { SignalResult } from './SignalResult';
 import { SignalDrawingComparison } from './SignalDrawingComparison';
+import { SignalScopeEvidence } from './SignalScopeSummary';
+import { SignalComparisonGate } from './SignalComparisonGate';
 import { SignalPurposeIntro, type SignalQuestion } from './SignalPurposeJourney';
 import './signals.css';
 
@@ -66,9 +68,12 @@ export function ApprovedEvidenceContent({ preview, question, onQuestion, replay,
   </main>;
   return <main ref={contentRoot} className="signal-approved-content signal-approved-layout" onClickCapture={revealEvidenceLink}>
     <SignalPurposeIntro />
+    <SignalComparisonGate run={run}>
+    <SignalScopeEvidence run={run} />
     <section className="signal-value-preview signal-approved-guide" id="signal-conditions" tabIndex={-1} aria-labelledby="signal-approved-title">
-      <div className="signal-preview-heading"><div><p className="signal-eyebrow">今回、確かめる資料</p><h2 ref={materialHeading} tabIndex={-1} id="signal-approved-title">{run.input.context.entity.name ?? '企業名不明'}の図面と公式資料</h2></div><span className="signal-badge">保存資料 · 読み取りのみ</span></div>
-      <p className="signal-subtle">図面から引用へ。確かめたい問いを選んで、検討に必要な根拠をたどれます。</p>
+      <div className="signal-preview-heading"><div><p className="signal-eyebrow">この企業・分野で、何が変わったか</p><h2 ref={materialHeading} tabIndex={-1} id="signal-approved-title">{run.input.context.entity.name ?? '企業名不明'}</h2></div><span className="signal-badge">保存資料 · 読み取りのみ</span></div>
+      <a className="signal-text-button" href="#signal-approved-scope">収録差分と、詳しく見る対象の選択へ戻る</a>
+      <p className="signal-subtle">選んだ対象を、図面・公式引用から確認する。</p>
       <div className="signal-question-options">{questions.map((item) => <button key={item.id} type="button" className="signal-question-option" aria-label={item.label} aria-pressed={question === item.id} onClick={(event) => {
         onQuestion(item.id);
         const root = event.currentTarget.closest('main');
@@ -76,10 +81,8 @@ export function ApprovedEvidenceContent({ preview, question, onQuestion, replay,
         if (root && target) revealEvidenceTarget(root, target);
       }}><strong><span className="signal-step-number" aria-hidden="true">{questions.indexOf(item) + 1}</span>{item.label}</strong><span>{item.description}</span></button>)}</div>
       {selected ? <nav className="signal-question-focus" aria-label="この画面の閲覧の問い"><p><strong>{selected.label}</strong></p><a className="signal-text-button" href={`#${selected.target}`}>この問いの資料へ</a></nav> : null}
-      <p className="signal-subtle">閲覧の問いは分析入力・保存結果に入りません。この読み取り画面では新しい分析を開始しません。</p>
-      <details className="signal-details"><summary>収録範囲と件数を見る</summary><div className="signal-counts"><div><span>比較Aの対象</span><strong>{signal.counts.before}<small>件</small></strong></div><div><span>比較Bの対象</span><strong>{signal.counts.after}<small>件</small></strong></div><div><span>新規観測</span><strong>{signal.counts.newlyObserved}<small>件</small></strong></div></div>
-      <p className="signal-subtle">選択した資料の分類・企業で集計した保存値です。日本の全意匠・市場・製品数の変化を表しません。資料全体の件数増を、対象製品の形状変化と読み替えません。</p></details>
-      <a className="signal-text-button signal-saved-example-link" href="#signal-approved-history">保存結果へ · V2 / V4 品質未達</a>
+      <details className="signal-details"><summary>閲覧操作と保存結果について</summary><p className="signal-subtle">閲覧の問いは分析入力・保存結果に入りません。この読み取り画面では新しい分析を開始しません。</p></details>
+      <a className="signal-text-button signal-saved-example-link" href="#signal-approved-history">この対象の保存履歴 1件 · V2 / V4 品質未達</a>
     </section>
     <section className="signal-panel" id="signal-approved-drawings" tabIndex={-1} aria-labelledby="signal-approved-drawings-title"><p className="signal-eyebrow">01 · 資料から確認した事実 · 図面</p><h2 id="signal-approved-drawings-title">外周と、内側の円・下部の線を分けて見る</h2><SignalDrawingComparison media={signal.media} mediaUrl={(media) => `/__signals-local-preview/approved/media/${encodeURIComponent(media.id)}`} focusPoints={preview.observations} onContinueToSources={() => {
       const root = contentRoot.current;
@@ -101,10 +104,12 @@ export function ApprovedEvidenceContent({ preview, question, onQuestion, replay,
     </section>
     <section className="signal-panel" id="signal-approved-next" tabIndex={-1} aria-labelledby="signal-approved-next-title"><p className="signal-eyebrow">設計の検討へ · 追加確認の案</p><h2 id="signal-approved-next-title">輪郭と内側の線を分けて、検討に必要な資料をそろえる</h2><p>図面に同心円状の線が見えることと、公式資料に製品名・発売の記載があることは確認できます。両者の対応と、円や下部の部分の機能はまだ確認できません。</p><ol><li>両登録図面の説明・他の方向の図を確認し、外周、内側の円、下部の線を部位別に記録する。</li><li>公式製品画像や仕様の資料で、図面との対応と部位の名称・機能を照合する。</li><li>対応が確認できたら、輪郭と内側の要素を別々の設計検討項目として比較する。現時点では具体的な形状・機能の変更案を確定しない。</li></ol><p className="signal-subtle">次に集める資料の案です。実AIによる設計提案、製品戦略の確定、法律判断ではありません。</p><a className="signal-text-button" href="#signal-approved-drawings">図面へ戻って確かめる</a></section>
     <section className="signal-panel" id="signal-approved-history" tabIndex={-1} aria-labelledby="signal-approved-history-title"><h2 id="signal-approved-history-title">保存済みp23結果を再表示する</h2><p>実AIで生成し保存された過去の結果です。<strong>V2・V4はFAILのまま</strong>で、今回の成功見本として扱いません。線種の混同、内側の円の観察不足、根拠のない法的意味、具体的な設計検討の不足が残っています。</p><p className="signal-subtle">{run.createdAt} · モデル {run.versions.model} · prompt {run.versions.prompt}。新規AIは実行しません。以下は許可されたこの保存例1件のみの履歴です。</p>
+      <p>別の実行結果はこの画面に保存されていないため、前回の分析との差は確認できません。上の件数は、1回の結果に含まれる2つの収録集合の比較です。</p>
       <SignalHistory runs={[run]} selectedId={replay ? run.id : undefined} state="ready" disabled={false} onSelect={() => onReplay(true)} />
       <button className="signal-button" type="button" onClick={() => onReplay(true)}>品質未達のp23保存例を見る</button>
     </section>
     <section className="signal-panel"><h2>操作だけを試す補助例</h2><p>架空資料では、明示的な開始・模擬進行・このブラウザーへの保存・履歴の操作を試せます。実資料の読み取り画面とは別の保存領域です。</p><a className="signal-text-button" href="?signalsDemo=fictional">架空の操作例へ</a></section>
+    </SignalComparisonGate>
   </main>;
 }
 
@@ -123,6 +128,12 @@ export function SignalApprovedEvidenceWorkspace({ load = loadApprovedPreview }: 
     }).catch(() => { if (active) { setQuestion(null); setReplay(false); setState({ status: 'error' }); } });
     return () => { active = false; };
   }, [attempt, load]);
+  useEffect(() => {
+    if (state.status !== 'ready') return;
+    const restoreReplay = () => setReplay(new URLSearchParams(window.location.search).get('run') === state.preview.run.id);
+    window.addEventListener('popstate', restoreReplay);
+    return () => window.removeEventListener('popstate', restoreReplay);
+  }, [state]);
   const showReplay = (value: boolean) => {
     if (state.status !== 'ready') return;
     setReplay(value);

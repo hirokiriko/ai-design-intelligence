@@ -186,11 +186,11 @@
 .signal-approved-layout { max-width: 1320px; grid-template-columns: 280px minmax(0, 1fr); gap: 24px 28px; align-items: start; padding-top: 30px; }
 .signal-approved-layout > .signal-intro { grid-column: 1 / -1; max-width: 950px; padding-bottom: 4px; }
 .signal-approved-layout > .signal-panel { grid-column: 2; }
-.signal-approved-guide { grid-column: 1; grid-row: 2 / span 5; align-self: start; position: sticky; top: 16px; padding: 20px; margin: 0; background: #fbfdfd; box-shadow: none; }
+.signal-approved-guide { grid-column: 1; grid-row: 4 / span 5; align-self: start; padding: 20px; margin: 0; background: #fbfdfd; box-shadow: none; }
 .signal-approved-guide h2 { font-size: 18px; }
 .signal-approved-guide .signal-preview-heading { gap: 10px; margin-bottom: 14px; }
 .signal-approved-guide .signal-question-options { grid-template-columns: 1fr; gap: 8px; margin: 16px 0; }
-.signal-approved-guide .signal-question-option { padding: 12px; min-height: 92px; border-width: 1px; gap: 6px; }
+.signal-approved-guide .signal-question-option { padding: 10px; min-height: 76px; border-width: 1px; gap: 4px; }
 .signal-approved-guide .signal-question-option > strong { display: flex; gap: 8px; align-items: baseline; font-size: 14px; }
 .signal-approved-guide .signal-question-option > span { font-size: 12px; }
 .signal-approved-guide .signal-question-option[aria-pressed="true"] { box-shadow: inset 3px 0 var(--signal-accent); }
@@ -199,6 +199,28 @@
 .signal-approved-guide .signal-counts strong { font-size: 23px; }
 .signal-approved-guide .signal-question-focus { padding: 10px; font-size: 13px; }
 .signal-approved-guide .signal-saved-example-link { margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--signal-line); color: #8b503b; }
+.signal-approved-layout > .signal-scope-entry { grid-column: 1 / -1; }
+.signal-approved-layout > .signal-comparison-preset, .signal-approved-layout > .signal-comparison-unavailable { grid-column: 1 / -1; }
+.signal-preset-fields { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)); gap: 20px; }
+.signal-preset-fields > div, .signal-preset-fields label { display: grid; align-content: start; gap: 6px; min-width: 0; font-size: 13px; }
+.signal-preset-fields small { color: var(--signal-muted); }
+.signal-preset-fields select { min-width: 0; width: 100%; min-height: 42px; border: 1px solid var(--signal-line); border-radius: 6px; padding: 8px; color: var(--signal-ink); background: white; font: inherit; }
+.signal-preset-actions { display: flex; align-items: center; gap: 20px; }
+.signal-preset-actions .signal-button { flex-shrink: 0; }
+.signal-empty-delta { padding: 10px 14px; background: #f1f8f6; border-left: 3px solid var(--signal-accent); }
+@media (max-width: 640px) { .signal-preset-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .signal-preset-fields > div { grid-column: 1 / -1; } .signal-preset-actions { display: block; } }
+.signal-scope-summary { padding-top: 4px; }
+.signal-scope-summary p { margin: 8px 0; }
+.signal-scope-summary .signal-counts { margin: 8px 0; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.signal-scope-dates { font-size: 14px; font-variant-numeric: tabular-nums; }
+.signal-scope-dates time { display: inline-block; }
+.signal-scope-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.signal-scope-candidate { display: grid; gap: 5px; min-width: 0; padding: 15px; border: 1px solid var(--signal-line); border-radius: 9px; background: #fff; color: var(--signal-ink); font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.signal-scope-candidate > span { font-size: 12px; color: var(--signal-muted); }
+.signal-scope-candidate[aria-pressed="true"] { border-color: var(--signal-accent); background: #eff8f6; box-shadow: inset 3px 0 var(--signal-accent); }
+.signal-scope-candidate:focus-visible, .signal-scope-selection:focus-visible { outline: 3px solid var(--signal-accent); outline-offset: 3px; }
+.signal-scope-selection { margin-top: 16px; padding: 15px; background: #f5f9f8; border-radius: 8px; }
+@media (max-width: 640px) { .signal-scope-summary .signal-counts, .signal-scope-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); } .signal-scope-candidate { padding: 10px; } .signal-scope-candidate > strong { font-size: 13px; } }
 .signal-approved-layout .signal-panel > h2 { font-size: 21px; letter-spacing: -.02em; }
 .signal-approved-layout .signal-media-card { padding: 12px; }
 .signal-approved-layout .signal-media-card .signal-image-button { background: #f7fafb; border: 1px solid #e5edf1; }

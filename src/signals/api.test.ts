@@ -58,6 +58,27 @@ describe('signal same-origin API boundary', () => {
     await expect(signalApi.bootstrap()).rejects.toBeInstanceOf(SignalApiError);
     await expect(signalApi.bootstrap()).rejects.not.toThrow('private backend details');
   });
+  it.each([429, 503])('does not infer admission or budget exhaustion from a GET %s', async (status) => {
+    const fetcher = vi.fn().mockResolvedValue(new Response('FIXTURE-private-infrastructure-error', { status }));
+    vi.stubGlobal('fetch', fetcher);
+    await expect(signalApi.runs('FIXTURE-WATCH')).rejects.toMatchObject({
+      code: String(status), preAdmissionRejected: false,
+      message: '保存状態を今は取得できません。少し待ってから保存履歴を再取得してください。分析は再送しません。',
+    });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+  it('preserves an explicit backend daily-limit response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ schemaVersion: '2.3.0', error: { code: 'DAILY_LIMIT' } }, { status: 429 })));
+    await expect(signalApi.runs('FIXTURE-WATCH')).rejects.toMatchObject({ code: '429', message: '実行回数または予算の上限に達しました。管理者に確認してください。' });
+  });
+  it.each([
+    { schemaVersion: '2.3.0', error: { code: 'DAILY_LIMIT', detail: 'FIXTURE-private' } },
+    { schemaVersion: 'FIXTURE-UNKNOWN', error: { code: 'DAILY_LIMIT' } },
+    { schemaVersion: '2.3.0', error: { code: 'FIXTURE-UNKNOWN' } },
+  ])('does not trust an unrecognized GET error envelope %# as a budget decision', async (body) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(body, { status: 429 })));
+    await expect(signalApi.runs('FIXTURE-WATCH')).rejects.toMatchObject({ message: expect.stringContaining('保存状態を今は取得できません') });
+  });
   it('rejects SPA fallback HTML and malformed data instead of sample fallback', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('<html>fallback</html>')));
     await expect(signalApi.bootstrap()).rejects.toThrow('表示を停止');

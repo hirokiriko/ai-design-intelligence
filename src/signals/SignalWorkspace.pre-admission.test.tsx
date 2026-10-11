@@ -1,7 +1,8 @@
 import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readPendingRunRequest, signalApi, type SignalApi } from './api';
-import { fictionalBootstrapV2 } from './fixtures';
+import { fictionalBootstrapV2, fictionalRunV2 } from './fixtures';
 import { SignalWorkspace } from './SignalWorkspace';
 import { installPendingLocks } from './pending-locks.test-support';
 
@@ -79,12 +80,13 @@ describe('fresh run rejection notice', () => {
   });
   afterEach(() => { cleanups.forEach((cleanup) => cleanup()); hooks.active = false; vi.unstubAllGlobals(); });
 
-  async function startWorkspace() {
+  async function startWorkspace(overrides: Partial<SignalApi> = {}) {
     const bootstrap = structuredClone(fictionalBootstrapV2);
     bootstrap.watches[0].id = watchId;
     const api: SignalApi = {
       bootstrap: vi.fn().mockResolvedValue(bootstrap), runs: vi.fn().mockResolvedValue([]),
       run: vi.fn(), comparisonPairs: vi.fn(), saveWatch: vi.fn(), start: signalApi.start, requestRun: vi.fn(),
+      ...overrides,
     };
     workspaceTree(api);
     cleanups = hooks.effects.map((effect) => effect()).filter((cleanup): cleanup is () => void => typeof cleanup === 'function');
@@ -120,6 +122,41 @@ describe('fresh run rejection notice', () => {
     expect(findElement(workspaceTree(api), (element) => element.type === 'button' && element.props.children === '更新を確認')?.props.disabled).toBe(true);
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(api.requestRun).not.toHaveBeenCalled();
+  });
+
+  it.each([429, 503])('keeps both pending requests after a GET %s, then restores the exact result without another POST', async (status) => {
+    const other = { watchId: 'FIXTURE-WATCH-OTHER', requestId: 'FIXTURE-REQUEST-OTHER' };
+    localStorage.setItem(`kiriko-design-signals-pending-request:${other.watchId}:${other.requestId}`, JSON.stringify(other));
+    const saved = structuredClone(fictionalRunV2);
+    saved.watchId = watchId; saved.input.watch.id = watchId;
+    const fetcher = vi.fn().mockRejectedValueOnce(new TypeError('FIXTURE-response-lost'))
+      .mockResolvedValueOnce(new Response('FIXTURE-private-infrastructure-error', { status }))
+      .mockResolvedValueOnce(Response.json(saved));
+    vi.stubGlobal('fetch', fetcher);
+    const history = vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([saved]);
+    const { api, start } = await startWorkspace({ requestRun: signalApi.requestRun, runs: history });
+    start.props.onClick!();
+    await vi.waitFor(() => expect(liveNotice(api)).toBe(uncertainNotice));
+    const refresh = () => findElement(workspaceTree(api), (element) => element.type === 'button' && element.props.children === '履歴を再取得')!;
+    expect(refresh().props.disabled).toBe(false);
+    refresh().props.onClick!();
+    await vi.waitFor(() => expect(history).toHaveBeenCalledTimes(2));
+    expect(renderToStaticMarkup(workspaceTree(api))).toContain('保存状態を今は取得できません');
+    expect(readPendingRunRequest(watchId)).toEqual({ watchId, requestId });
+    expect(readPendingRunRequest(other.watchId)).toEqual(other);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(findElement(workspaceTree(api), (element) => element.type === 'button' && element.props.children === '更新を確認')?.props.disabled).toBe(true);
+    expect(refresh().props.disabled).toBe(false);
+    refresh().props.onClick!();
+    await vi.waitFor(() => expect(history).toHaveBeenCalledTimes(3));
+    expect(new URL(window.location.href).searchParams.get('run')).toBe(saved.id);
+    expect(readPendingRunRequest(watchId)).toBeNull();
+    expect(readPendingRunRequest(other.watchId)).toEqual(other);
+    expect(renderToStaticMarkup(workspaceTree(api))).not.toContain('保存状態を今は取得できません');
+    expect(fetcher.mock.calls.map(([, options]) => options.method ?? 'GET')).toEqual(['POST', 'GET', 'GET']);
+    expect(fetcher.mock.calls.slice(1).map(([url]) => url)).toEqual([
+      `/api/v1/watches/${watchId}/requests/${requestId}`, `/api/v1/watches/${watchId}/requests/${requestId}`,
+    ]);
   });
 
   it('explains that an unsupported browser sent no request while keeping saved-history actions available', async () => {

@@ -147,6 +147,18 @@ async function isUnsupportedBootstrapQuery(response: Response): Promise<boolean>
       && 'code' in body.error && body.error.code === 'INVALID_REQUEST';
   } catch { return false; }
 }
+async function isDailyLimitResponse(response: Response): Promise<boolean> {
+  if (response.status !== 429 || !/^application\/json(?:;|$)/i.test(response.headers.get('Content-Type') ?? '')) return false;
+  try {
+    const text = await response.text();
+    if (text.length > 4096) return false;
+    const body: unknown = JSON.parse(text);
+    return typeof body === 'object' && body !== null && !Array.isArray(body) && Object.keys(body).length === 2
+      && 'schemaVersion' in body && body.schemaVersion === '2.3.0' && 'error' in body
+      && typeof body.error === 'object' && body.error !== null && !Array.isArray(body.error) && Object.keys(body.error).length === 1
+      && 'code' in body.error && body.error.code === 'DAILY_LIMIT';
+  } catch { return false; }
+}
 export async function requestJson(path: string, options: RequestInit = {}, selectedQuestionRequest = false): Promise<unknown> {
   let response: Response;
   try {
@@ -155,6 +167,11 @@ export async function requestJson(path: string, options: RequestInit = {}, selec
   if (!response.ok) {
     if (path === `/bootstrap?analysisQuestionVersion=${ANALYSIS_QUESTION_VERSION}` && await isUnsupportedBootstrapQuery(response.clone())) {
       throw new SignalApiError('400', 'このサーバーでは質問の対応確認を利用できません。', false, false, true);
+    }
+    // 読み取りの混雑・停止だけでは、実行受付や予算消費の成否を確定できない。
+    if ((options.method ?? 'GET').toUpperCase() === 'GET' && [429, 503].includes(response.status)
+      && !await isDailyLimitResponse(response.clone())) {
+      throw new SignalApiError(String(response.status), '保存状態を今は取得できません。少し待ってから保存履歴を再取得してください。分析は再送しません。');
     }
     const rejectionMessage = await preAdmissionRejectionMessage(response, selectedQuestionRequest);
     if (rejectionMessage) throw new SignalApiError(String(response.status), rejectionMessage, true);

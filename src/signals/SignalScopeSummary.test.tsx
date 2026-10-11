@@ -36,6 +36,19 @@ describe('saved company and category scope', () => {
     expect(renderToStaticMarkup(createElement(SignalScopeSummary, { run }))).toBe('');
     expect(renderToStaticMarkup(createElement(SignalScopeEvidence, { run }))).toBe('');
   });
+  it.each([false, true])('does not promote a saved selection reason when comparability is %s and new count is zero', (comparable) => {
+    const run = fixture();
+    run.signal!.counts = { before: 4, after: 4, newlyObserved: 0, excludedBefore: 2, excludedAfter: 5, comparable };
+    run.signal!.recordFacts[0].selectionReason = 'newly_observed';
+    const before = JSON.stringify(run);
+    const html = renderToStaticMarkup(createElement(SignalScopeEvidence, { run }));
+    expect(html).not.toContain('この収録で新しく見つかった対象');
+    expect(html).not.toContain('この収録範囲で新規観測');
+    expect(html).toContain('新規性はここでは判定しません');
+    expect(html).toContain('図面から調べる');
+    expect(html).toContain('入力収録 6 → 9件');
+    expect(JSON.stringify(run)).toBe(before);
+  });
   it('connects selected record facts only to their saved images and exposes missing media and collection provenance', () => {
     const run = fixture(); const signal = run.signal!;
     const sample = structuredClone(signal.recordFacts[0]);

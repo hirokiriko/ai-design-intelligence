@@ -19,22 +19,27 @@ export function approvedPreviewPlugin() {
           response.statusCode = 405; response.end(); return;
         }
         try {
-          const json = await readFile(new URL('preview.json', privateRoot));
-          const preview = JSON.parse(json.toString('utf8'));
           let body, type;
-          if (pathname === `${prefix}preview.json`) { body = json; type = 'application/json; charset=utf-8'; }
-          else {
-            const mediaPrefix = pathname.startsWith(prefix) ? `${prefix}media/` : replayMediaPrefix;
-            if (!pathname.startsWith(mediaPrefix)) { response.statusCode = 404; response.end(); return; }
-            const id = decodeURIComponent(pathname.slice(mediaPrefix.length));
-            const media = preview.media.find((item) => item.id === id);
-            if (!media || !['a.jpg', 'b.jpg'].includes(media.file)) {
-              if (pathname.startsWith(replayMediaPrefix)) return next();
-              response.statusCode = 404; response.end(); return;
+          if (pathname === `${prefix}official-comparison.json`) {
+            body = await readFile(new URL('official-comparison.json', privateRoot));
+            type = 'application/json; charset=utf-8';
+          } else {
+            const json = await readFile(new URL('preview.json', privateRoot));
+            const preview = JSON.parse(json.toString('utf8'));
+            if (pathname === `${prefix}preview.json`) { body = json; type = 'application/json; charset=utf-8'; }
+            else {
+              const mediaPrefix = pathname.startsWith(prefix) ? `${prefix}media/` : replayMediaPrefix;
+              if (!pathname.startsWith(mediaPrefix)) { response.statusCode = 404; response.end(); return; }
+              const id = decodeURIComponent(pathname.slice(mediaPrefix.length));
+              const media = preview.media.find((item) => item.id === id);
+              if (!media || !['a.jpg', 'b.jpg'].includes(media.file)) {
+                if (pathname.startsWith(replayMediaPrefix)) return next();
+                response.statusCode = 404; response.end(); return;
+              }
+              body = await readFile(new URL(media.file, privateRoot));
+              if (createHash('sha256').update(body).digest('hex') !== media.sha256) throw new Error('invalid_media');
+              type = 'image/jpeg';
             }
-            body = await readFile(new URL(media.file, privateRoot));
-            if (createHash('sha256').update(body).digest('hex') !== media.sha256) throw new Error('invalid_media');
-            type = 'image/jpeg';
           }
           response.statusCode = 200;
           response.setHeader('Content-Type', type);

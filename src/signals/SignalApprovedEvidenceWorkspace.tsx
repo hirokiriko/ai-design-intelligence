@@ -9,7 +9,7 @@ import { SignalDrawingComparison } from './SignalDrawingComparison';
 import { SignalScopeEvidence } from './SignalScopeSummary';
 import { SignalComparisonGate } from './SignalComparisonGate';
 import { SignalRecordEvidenceBoundary, SignalRecordSelection } from './SignalRecordSelection';
-import { SignalPurposeIntro, type SignalQuestion } from './SignalPurposeJourney';
+import type { SignalQuestion } from './SignalPurposeJourney';
 import { runReviewKey } from './run-review';
 import './signals.css';
 
@@ -69,7 +69,6 @@ export function ApprovedEvidenceContent({ preview, question, onQuestion, replay,
     <SignalResult run={run} focusOnLoad={false} showReview={false} archivedQuality={{ subjectKey: runReviewKey(run), failedChecks: ([preview.quality.v2 === 'FAIL' ? 'V2' : null, preview.quality.v4 === 'FAIL' ? 'V4' : null] as const).filter((check) => check !== null) }} />
   </main>;
   return <main ref={contentRoot} className="signal-approved-content signal-approved-layout" onClickCapture={revealEvidenceLink}>
-    <SignalPurposeIntro />
     <SignalComparisonGate run={run}>
     <SignalRecordSelection run={run}>
     <SignalScopeEvidence run={run} />

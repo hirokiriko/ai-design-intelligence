@@ -22,6 +22,21 @@ describe('saved drawing comparison', () => {
       expect(renderToStaticMarkup(createElement(SignalDrawingComparison, { media: invalid }))).toBe('');
     }
   });
+  it('only enables saved focus points whose references belong to the selected drawings', () => {
+    const focusPoints = [
+      { id: 'FIXTURE-focus-one', text: '架空図面の内側の線を確認する。機能は不明。', mediaIds: [media[0].id] },
+      { id: 'FIXTURE-focus-missing', text: '参照先が不明な架空の観察。', mediaIds: [] },
+      { id: 'FIXTURE-focus-outside', text: '選択外の架空図面への参照。', mediaIds: ['FIXTURE-not-in-selected-pair'] },
+    ];
+    const original = JSON.stringify({ media, focusPoints });
+    const html = renderToStaticMarkup(createElement(SignalDrawingComparison, { media, focusPoints }));
+    const buttons = html.match(/<button[^>]*class="signal-drawing-focus-card"[^>]*>[\s\S]*?<\/button>/g)!;
+    expect(buttons).toHaveLength(3);
+    expect(buttons[0]).not.toContain('disabled');
+    expect(buttons.slice(1).every((button) => button.includes('disabled') && button.includes('参照図面を確認できません'))).toBe(true);
+    expect(html).not.toContain('<img');
+    expect(JSON.stringify({ media, focusPoints })).toBe(original);
+  });
   it('uses the saved selected comparison when the result also contains other drawings', () => {
     const run = structuredClone(fictionalRunV22);
     run.signal!.media.push({ ...run.signal!.media[0], id: 'FIXTURE-extra-media' });

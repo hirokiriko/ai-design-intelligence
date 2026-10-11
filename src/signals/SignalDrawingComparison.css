@@ -1,9 +1,26 @@
 .signal-drawing-comparison { margin: 16px 0; }
+.signal-drawing-focus-start { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.signal-drawing-focus-card { display: grid; gap: 6px; text-align: left; padding: 12px; border: 1px solid #badcd7; border-radius: 10px; background: #f1f8f6; color: #18333f; font: inherit; cursor: pointer; }
+.signal-drawing-focus-card > span { font-size: 12px; color: #236960; }
+.signal-drawing-focus-card > strong { font-size: 14px; line-height: 1.65; }
+.signal-drawing-focus-card:hover, .signal-drawing-focus-card:focus-visible { border-color: #096c68; background: #e5f2ee; }
+.signal-drawing-focus-card:focus-visible { outline: 3px solid #096c68; outline-offset: 3px; }
+.signal-drawing-focus-card:disabled { cursor: default; opacity: .65; }
 .signal-drawing-dialog { box-sizing: border-box; width: min(1360px, calc(100vw - 32px)); max-width: none; max-height: 92vh; max-height: 92dvh; margin: auto; padding: 22px; border: 1px solid #adc7ce; border-radius: 14px; color: #18333f; background: #fff; overflow: auto; }
 .signal-drawing-dialog::backdrop { background: #102f29bb; }
 .signal-drawing-header { display: flex; position: sticky; top: 0; z-index: 1; align-items: start; justify-content: space-between; gap: 16px; padding-bottom: 8px; background: #fff; }
 .signal-drawing-header h2 { margin: 0; font-size: 22px; }
 .signal-drawing-header > button { flex-shrink: 0; }
+.signal-drawing-inspection { padding: 10px 14px; border-left: 3px solid #34766e; background: #f1f8f6; }
+.signal-drawing-inspection > p { margin: 4px 0 0; font-size: 14px; line-height: 1.7; }
+.signal-drawing-focus-switch { display: flex; flex-wrap: wrap; gap: 8px; }
+.signal-drawing-focus-switch button { padding: 6px 10px; min-height: 40px; border-radius: 6px; }
+.signal-drawing-focus-switch button[aria-pressed="true"] { background: #17645f; color: #fff; text-decoration: none; }
+.signal-drawing-guide { margin-top: 10px; font-size: 13px; }
+.signal-drawing-guide > summary { min-height: 34px; cursor: pointer; color: #236960; }
+.signal-drawing-next { display: flex; justify-content: flex-end; padding-top: 16px; }
+.signal-drawing-pane[data-focus="true"] { border-color: #34766e; }
+.signal-drawing-reference { font-weight: 600; }
 .signal-drawing-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
 .signal-drawing-toolbar output { min-width: 125px; text-align: center; font-size: 14px; font-weight: 600; }
 .signal-drawing-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
@@ -18,6 +35,10 @@
 .signal-drawing-attribution dd { margin: 3px 0 0; }
 .signal-drawing-dialog :focus-visible { outline: 3px solid #096c68; outline-offset: 3px; }
 @media (max-width: 640px) {
+  .signal-drawing-focus-start { grid-template-columns: 1fr; }
+  .signal-drawing-focus-card { gap: 3px; padding: 10px 12px; }
+  .signal-drawing-inspection { padding: 8px 10px; }
+  .signal-drawing-inspection > p { font-size: 13px; }
   .signal-drawing-dialog { width: calc(100vw - 12px); max-height: 96vh; max-height: 96dvh; padding: 12px; border-radius: 10px; }
   .signal-drawing-header { gap: 8px; }
   .signal-drawing-header h2 { font-size: 18px; }

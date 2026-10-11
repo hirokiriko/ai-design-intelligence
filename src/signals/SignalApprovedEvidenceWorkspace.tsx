@@ -81,7 +81,11 @@ export function ApprovedEvidenceContent({ preview, question, onQuestion, replay,
       <p className="signal-subtle">選択した資料の分類・企業で集計した保存値です。日本の全意匠・市場・製品数の変化を表しません。資料全体の件数増を、対象製品の形状変化と読み替えません。</p></details>
       <a className="signal-text-button signal-saved-example-link" href="#signal-approved-history">保存結果へ · V2 / V4 品質未達</a>
     </section>
-    <section className="signal-panel" id="signal-approved-drawings" tabIndex={-1} aria-labelledby="signal-approved-drawings-title"><p className="signal-eyebrow">01 · 資料から確認した事実 · 図面</p><h2 id="signal-approved-drawings-title">外周と、内側の円・下部の線を分けて見る</h2><SignalDrawingComparison media={signal.media} mediaUrl={(media) => `/__signals-local-preview/approved/media/${encodeURIComponent(media.id)}`} /><div className="signal-media-grid">{preview.media.map((item) => <PreviewImage key={item.id} preview={preview} id={item.id} />)}</div>
+    <section className="signal-panel" id="signal-approved-drawings" tabIndex={-1} aria-labelledby="signal-approved-drawings-title"><p className="signal-eyebrow">01 · 資料から確認した事実 · 図面</p><h2 id="signal-approved-drawings-title">外周と、内側の円・下部の線を分けて見る</h2><SignalDrawingComparison media={signal.media} mediaUrl={(media) => `/__signals-local-preview/approved/media/${encodeURIComponent(media.id)}`} focusPoints={preview.observations} onContinueToSources={() => {
+      const root = contentRoot.current;
+      const target = root?.querySelector<HTMLElement>('#signal-approved-sources');
+      if (root && target) revealEvidenceTarget(root, target);
+    }} /><div className="signal-media-grid">{preview.media.map((item) => <PreviewImage key={item.id} preview={preview} id={item.id} />)}</div>
       <div className="signal-approved-observations"><h3>図面で確かめるポイント</h3>{preview.observations.map((item, index) => <div className="signal-fact" key={item.id}><span className="signal-observation-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><div><p id={`signal-approved-${item.id}`}>{item.text}</p><div className="signal-evidence-links">{item.mediaIds.map((id) => <a key={id} href={`#${evidenceId(id)}`}>{signal.media.find((media) => media.id === id)!.label}へ</a>)}</div></div></div>)}</div>
       <p className="signal-subtle">保存画像を照合した観察です。線種の違いから、製品の機能変更・変更理由・法的範囲を推論していません。本人による受入確認は未実施です。</p>
       <a className="signal-text-button signal-section-next" href="#signal-approved-sources">次に、公式引用が支える範囲を確かめる →</a>

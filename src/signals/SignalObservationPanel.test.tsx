@@ -68,4 +68,31 @@ describe('saved observation navigation', () => {
     tree(); hooks.effects[0](); await vi.waitFor(() => expect(hooks.states[0]).toEqual({ status: 'error' }));
     const view = html(tree()); expect(view).toContain('比較できる取得記録を読み込めません'); expect(view).not.toContain('変化なし');
   });
+  it('labels reprocessing as a policy change and hides navigation without rewriting archived counts', () => {
+    const navigation = { ...candidate, id: 'kds_fixture_pagination', title: 'FIXTURE-PAGE-NAVIGATION', url: 'https://fixture.example/news_list/page/2/' };
+    const old = { ...bundle.comparisons[0], before: { ...before, candidates: [candidate, navigation], eligibleCount: 3 }, after: { ...after, candidates: [candidate, navigation], eligibleCount: 3 } };
+    const derived = { ...old, id: 'kds_fixture_derived', label: 'FIXTURE-新版再抽出',
+      before: { ...before, id: 'kds_fixture_derived_before', eligibleCount: 1, omittedCount: 0 }, after: { ...after, id: 'kds_fixture_derived_after', eligibleCount: 1, omittedCount: 0 },
+      reExtraction: { version: 'FIXTURE-new-policy', processedAt: '2026-01-03T10:00:00Z', sourceComparisonId: old.id, sourceBundleHash: hash,
+        before: { sourceSnapshotId: before.id, sourceHtmlHash: hash, originalSavedCount: 2, originalEligibleCount: 3, excludedNavigationCount: 1, recoveredArticleCount: 0 },
+        after: { sourceSnapshotId: after.id, sourceHtmlHash: hash, originalSavedCount: 2, originalEligibleCount: 3, excludedNavigationCount: 1, recoveredArticleCount: 0 } } };
+    const input: SavedObservationBundle = { ...bundle, version: 2, comparisons: [old, derived] };
+    const prior = structuredClone(input);
+    hooks.states[0] = { status: 'ready', bundle: input, results: [{ ...result, before: old.before, after: old.after, candidates: { ...result.candidates, unchanged: [candidate, navigation] } }, { ...result, before: derived.before, after: derived.after }] };
+    const current = html(tree());
+    expect(current).toContain('旧保存2候補 → 1記事候補は抽出仕様の変更');
+    expect(current).toContain('再抽出した1記事候補に変化なし'); expect(current).toContain('サイトの変化や新しい取得を示す件数ではありません');
+    expect(current).toContain('この入口HTML内の対象候補に保存漏れはありません');
+    expect(current).toContain('dateTime="2026-01-02T10:00:01Z"'); expect(current).toContain('dateTime="2026-01-03T10:00:00Z"');
+    expect(current).not.toContain(navigation.title); expect(current).not.toContain('取得時に記録');
+    hooks.states[2] = old.id;
+    const archived = html(tree());
+    expect(archived).toContain('確認した保存2候補に変化なし'); expect(archived).toContain('保存対象外 1 → 1件は未比較');
+    expect(archived).toContain('旧保存2候補のうち、記事候補1件を表示'); expect(archived).not.toContain(navigation.title);
+    expect(input).toEqual(prior);
+    const removedArticle = structuredClone(input);
+    for (const side of ['before', 'after'] as const) Object.assign(removedArticle.comparisons[0][side].candidates[1], { title: 'FIXTURE-REAL-ARTICLE', url: 'https://fixture.example/news/123' });
+    hooks.states[0] = { ...(hooks.states[0] as object), bundle: removedArticle };
+    expect(html(tree())).toContain('FIXTURE-REAL-ARTICLE');
+  });
 });

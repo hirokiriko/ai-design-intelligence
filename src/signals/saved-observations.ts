@@ -38,14 +38,33 @@ export interface SavedObservationSnapshot {
   articles: SavedObservationArticle[];
 }
 export interface SavedObservationScope { entityId: string; categoryId: string }
+export interface SavedObservationReExtractionSource {
+  sourceSnapshotId: string;
+  // Raw source HTML stays in the private receipt, outside this bundle.
+  sourceHtmlHash: string;
+  originalSavedCount: number;
+  originalEligibleCount: number;
+  excludedNavigationCount: number;
+  recoveredArticleCount: number;
+}
+export interface SavedObservationReExtraction {
+  version: string;
+  processedAt: string;
+  sourceComparisonId: string;
+  // Records the original bundle bytes; the decoder cannot rehash absent source bytes.
+  sourceBundleHash: string;
+  before: SavedObservationReExtractionSource;
+  after: SavedObservationReExtractionSource;
+}
 export interface SavedObservationComparison {
   id: string;
   label: string;
   before: SavedObservationSnapshot;
   after: SavedObservationSnapshot;
+  reExtraction?: SavedObservationReExtraction;
 }
 export interface SavedObservationBundle extends SavedObservationScope {
-  version: 1;
+  version: 1 | 2;
   companyName: string;
   categoryLabel: string;
   comparisons: SavedObservationComparison[];
@@ -202,19 +221,72 @@ function scope(value: SavedObservationScope): SavedObservationScope {
   return { entityId: id(data.entityId), categoryId: id(data.categoryId) };
 }
 
+function reExtraction(value: unknown): SavedObservationReExtraction {
+  const data = object(value, ['version', 'processedAt', 'sourceComparisonId', 'sourceBundleHash', 'before', 'after']);
+  const source = (value: unknown): SavedObservationReExtractionSource => {
+    const item = object(value, ['sourceSnapshotId', 'sourceHtmlHash', 'originalSavedCount', 'originalEligibleCount',
+      'excludedNavigationCount', 'recoveredArticleCount']);
+    return { sourceSnapshotId: id(item.sourceSnapshotId), sourceHtmlHash: hash(item.sourceHtmlHash),
+      originalSavedCount: count(item.originalSavedCount), originalEligibleCount: count(item.originalEligibleCount),
+      excludedNavigationCount: count(item.excludedNavigationCount), recoveredArticleCount: count(item.recoveredArticleCount) };
+  };
+  const processedAt = text(data.processedAt, 40);
+  instant(processedAt);
+  return { version: text(data.version, 100), processedAt, sourceComparisonId: id(data.sourceComparisonId),
+    sourceBundleHash: hash(data.sourceBundleHash), before: source(data.before), after: source(data.after) };
+}
+
+function validateReExtractions(comparisons: SavedObservationComparison[]): void {
+  const byId = new Map(comparisons.map((comparison) => [comparison.id, comparison]));
+  const derivedSnapshotIds = new Set(comparisons.filter((comparison) => comparison.reExtraction)
+    .flatMap((comparison) => [comparison.before.id, comparison.after.id]));
+  for (const comparison of comparisons) {
+    const metadata = comparison.reExtraction;
+    if (!metadata) {
+      // Derived snapshots cannot lose their processing provenance in another pair.
+      if (derivedSnapshotIds.has(comparison.before.id) || derivedSnapshotIds.has(comparison.after.id)) fail();
+      continue;
+    }
+    const original = byId.get(metadata.sourceComparisonId);
+    if (!original || original.id === comparison.id || original.reExtraction) return fail();
+    if (comparison.before.conditionsHash !== comparison.after.conditionsHash
+      || original.before.conditionsHash !== original.after.conditionsHash
+      || original.before.extractionVersion !== original.after.extractionVersion) return fail();
+    for (const side of ['before', 'after'] as const) {
+      const saved = original[side], derived = comparison[side], source = metadata[side];
+      if (source.sourceSnapshotId !== saved.id || derived.id === saved.id
+        || source.originalSavedCount !== saved.candidates.length || source.originalEligibleCount !== saved.eligibleCount
+        || derived.observedAt !== saved.observedAt || derived.sourceUrl !== saved.sourceUrl || derived.complete !== saved.complete
+        || derived.conditionsVerified !== 'reconstructed' || derived.conditionsHash === saved.conditionsHash
+        || derived.extractionVersion !== metadata.version || derived.extractionVersion === saved.extractionVersion
+        || instant(metadata.processedAt) < instant(saved.observedAt)
+        || JSON.stringify(derived.articles) !== JSON.stringify(saved.articles)) return fail();
+      const savedIds = new Set(saved.candidates.map((candidate) => candidate.id));
+      const derivedIds = new Set(derived.candidates.map((candidate) => candidate.id));
+      const excluded = saved.candidates.filter((candidate) => !derivedIds.has(candidate.id)).length;
+      const recovered = derived.candidates.filter((candidate) => !savedIds.has(candidate.id)).length;
+      if (source.excludedNavigationCount !== excluded || source.recoveredArticleCount !== recovered
+        || derived.candidates.length !== source.originalSavedCount - excluded + recovered) return fail();
+    }
+  }
+}
+
 export async function decodeSavedObservations(value: unknown, expected: SavedObservationScope): Promise<SavedObservationBundle> {
   const expectedScope = scope(expected);
   const data = object(value, ['version', 'entityId', 'categoryId', 'companyName', 'categoryLabel', 'comparisons']);
-  if (data.version !== 1) return fail();
+  if (data.version !== 1 && data.version !== 2) return fail();
   const entityId = id(data.entityId), categoryId = id(data.categoryId);
   if (entityId !== expectedScope.entityId || categoryId !== expectedScope.categoryId) return fail('scope_mismatch');
   const comparisonInputs = array(data.comparisons, 20);
   if (comparisonInputs.length === 0) return fail();
   const comparisons = await Promise.all(comparisonInputs.map(async (value): Promise<SavedObservationComparison> => {
-    const item = object(value, ['id', 'label', 'before', 'after']);
+    const hasReExtraction = data.version === 2 && value !== null && typeof value === 'object'
+      && Object.prototype.hasOwnProperty.call(value, 'reExtraction');
+    const item = object(value, ['id', 'label', 'before', 'after', ...(hasReExtraction ? ['reExtraction'] : [])]);
     const [before, after] = await Promise.all([snapshot(item.before), snapshot(item.after)]);
     chronological(before, after);
-    return { id: id(item.id), label: text(item.label, 1000), before, after };
+    return { id: id(item.id), label: text(item.label, 1000), before, after,
+      ...(hasReExtraction ? { reExtraction: reExtraction(item.reExtraction) } : {}) };
   }));
   unique(comparisons.map((item) => item.id));
   // Reused snapshots must not give the same stable ID contradictory contents.
@@ -224,7 +296,8 @@ export async function decodeSavedObservations(value: unknown, expected: SavedObs
     if (seen.has(item.id) && seen.get(item.id) !== payload) return fail();
     seen.set(item.id, payload);
   }
-  return { version: 1, entityId, categoryId, companyName: text(data.companyName, 300), categoryLabel: text(data.categoryLabel, 300), comparisons };
+  validateReExtractions(comparisons);
+  return { version: data.version, entityId, categoryId, companyName: text(data.companyName, 300), categoryLabel: text(data.categoryLabel, 300), comparisons };
 }
 
 // Pure comparison: validates its own inputs, performs no fetch, and never mutates them.

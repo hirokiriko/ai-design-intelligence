@@ -46,3 +46,6 @@
 .signal-discovery-other .signal-discovery-scope-picker { margin-top: 18px; }
 @media(max-width:800px) { .signal-observation-next, .signal-observation-evidence { grid-template-columns: minmax(0,1fr); } .signal-observation-toolbar { align-items: start; flex-direction: column; gap: 8px; } .signal-observation-toolbar label { width: 100%; justify-content: space-between; } }
 @media(max-width:400px) { .signal-observation-summary { padding: 18px; gap: 8px; } .signal-observation-summary h2 { font-size: 21px; } .signal-observation-mark { width: 34px; height: 34px; font-size: 20px; } .signal-observation-counts { gap: 8px 18px; } .signal-observation-next article { padding: 17px; } .signal-observation-toolbar select { max-width: 190px; } .signal-observation-next-heading span { display: none; } }
+.signal-observation-reextraction { margin: 0 0 14px; padding: 12px 16px; border-left: 3px solid #ba995a; background: #fff9eb; font-size: 13px; line-height: 1.65; }
+.signal-observation-reextraction p { margin: 3px 0 0; }
+.signal-observation-legacy { font-size: 13px; line-height: 1.65; color: #54666b; }

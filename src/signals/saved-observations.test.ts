@@ -29,6 +29,31 @@ function bundle(): SavedObservationBundle {
   return { version: 1, ...scope, companyName: 'FIXTURE 架空企業', categoryLabel: 'FIXTURE 架空分野',
     comparisons: [{ id: 'kds_fixture_comparison', label: 'FIXTURE 保存観測の比較', before: snapshot('before'), after: snapshot('after') }] };
 }
+function reExtractionBundle(): SavedObservationBundle {
+  const input = bundle(), original = input.comparisons[0];
+  for (const side of ['before', 'after'] as const) {
+    original[side].eligibleCount = 3;
+    original[side].omittedCount = 1;
+  }
+  const sourceBundleHash = digest(JSON.stringify(input));
+  const derived = structuredClone(original);
+  derived.id = 'kds_fixture_reextracted_comparison';
+  derived.label = 'FIXTURE 保存HTMLから再抽出';
+  for (const side of ['before', 'after'] as const) {
+    Object.assign(derived[side], { id: `kds_fixture_reextracted_${side}`, conditionsHash: digest('FIXTURE revised extraction conditions'),
+      conditionsVerified: 'reconstructed', extractionVersion: 'FIXTURE-extractor-2', eligibleCount: 1, omittedCount: 0,
+      candidates: [candidate('a')] });
+  }
+  derived.reExtraction = { version: 'FIXTURE-extractor-2', processedAt: '2026-01-03T00:00:00Z',
+    sourceComparisonId: original.id, sourceBundleHash,
+    before: { sourceSnapshotId: original.before.id, sourceHtmlHash: digest('FIXTURE saved before HTML'), originalSavedCount: 2,
+      originalEligibleCount: 3, excludedNavigationCount: 1, recoveredArticleCount: 0 },
+    after: { sourceSnapshotId: original.after.id, sourceHtmlHash: digest('FIXTURE saved after HTML'), originalSavedCount: 2,
+      originalEligibleCount: 3, excludedNavigationCount: 1, recoveredArticleCount: 0 } };
+  input.version = 2;
+  input.comparisons.push(derived);
+  return input;
+}
 function fullBody(item: SavedObservationArticle, content: string): void {
   Object.assign(item, { body: content, bodyHash: digest(content), bodyComplete: true, excerpt: null, excerptHash: null });
 }
@@ -219,7 +244,146 @@ describe('strict saved observation boundary', () => {
   });
 });
 
+describe('versioned re-extraction provenance', () => {
+  it('accepts version 1 unchanged and version 2 containing only original comparisons', async () => {
+    const input = bundle();
+    expect(await decodeSavedObservations(input, scope)).toEqual(input);
+    input.version = 2;
+    expect(await decodeSavedObservations(input, scope)).toEqual(input);
+  });
+
+  it('preserves originals, observation times and articles while separately dating local re-extraction', async () => {
+    const input = reExtractionBundle(), preserved = structuredClone(input);
+    const decoded = await decodeSavedObservations(input, scope);
+    expect(decoded).toEqual(input);
+    expect(input).toEqual(preserved);
+    expect(decoded.comparisons[1].reExtraction).not.toBe(input.comparisons[1].reExtraction);
+    const [original, derived] = decoded.comparisons;
+    expect(derived.before.observedAt).toBe(original.before.observedAt);
+    expect(derived.after.articles).toEqual(original.after.articles);
+    expect(derived.reExtraction?.processedAt).toBe('2026-01-03T00:00:00Z');
+    const compared = await compareSavedSnapshots(derived.before, derived.after);
+    expect(compared.candidates.added).toHaveLength(0);
+    expect(compared.candidates.removed).toHaveLength(0);
+    expect(compared.candidates.unchanged).toHaveLength(1);
+    expect(compared.articles[0].bodyChange).toBe('unknown');
+  });
+
+  it('counts an excluded saved ID separately from a recovered ID without counting either as an observation change', async () => {
+    const input = reExtractionBundle(), derived = input.comparisons[1];
+    for (const side of ['before', 'after'] as const) {
+      derived[side].candidates.push(candidate('recovered'));
+      derived[side].eligibleCount += 1;
+      derived.reExtraction![side].recoveredArticleCount = 1;
+    }
+    const decoded = await decodeSavedObservations(input, scope);
+    const compared = await compareSavedSnapshots(decoded.comparisons[1].before, decoded.comparisons[1].after);
+    expect(compared.candidates.unchanged).toHaveLength(2);
+    expect(compared.candidates.added).toHaveLength(0);
+    expect(derived.reExtraction?.before).toMatchObject({ excludedNavigationCount: 1, recoveredArticleCount: 1 });
+  });
+
+  it('accepts a processing timestamp equal to the later observation instant', async () => {
+    const input = reExtractionBundle();
+    input.comparisons[1].reExtraction!.processedAt = input.comparisons[1].after.observedAt;
+    expect(await decodeSavedObservations(input, scope)).toEqual(input);
+  });
+
+  it.each(['version-one', 'unsupported-version', 'null-metadata', 'unknown-field', 'null-side', 'bad-bundle-hash', 'bad-html-hash'] as const)('rejects the %s metadata shape', async (kind) => {
+      const input = reExtractionBundle(), derived = input.comparisons[1], metadata = derived.reExtraction!;
+      if (kind === 'version-one') input.version = 1;
+      if (kind === 'unsupported-version') Object.assign(input, { version: 3 });
+      if (kind === 'null-metadata') Object.assign(derived, { reExtraction: null });
+      if (kind === 'unknown-field') Object.assign(metadata, { acquiredAt: '2026-01-03T00:00:00Z' });
+      if (kind === 'null-side') Object.assign(metadata, { before: null });
+      if (kind === 'bad-bundle-hash') metadata.sourceBundleHash = 'FIXTURE-no-hash';
+      if (kind === 'bad-html-hash') metadata.before.sourceHtmlHash = 'a'.repeat(63);
+      await expect(decodeSavedObservations(input, scope)).rejects.toBeInstanceOf(SavedObservationsError);
+    });
+
+  it.each(['missing-source', 'self-source', 'wrong-snapshot', 'swapped-sides', 'source-conditions', 'source-version'] as const)('rejects %s provenance bindings', async (kind) => {
+      const input = reExtractionBundle(), [original, derived] = input.comparisons, metadata = derived.reExtraction!;
+      if (kind === 'missing-source') input.comparisons.shift();
+      if (kind === 'self-source') metadata.sourceComparisonId = derived.id;
+      if (kind === 'wrong-snapshot') metadata.before.sourceSnapshotId = 'kds_fixture_unrelated';
+      if (kind === 'swapped-sides') [metadata.before, metadata.after] = [metadata.after, metadata.before];
+      if (kind === 'source-conditions') original.after.conditionsHash = digest('FIXTURE unrelated acquisition conditions');
+      if (kind === 'source-version') original.after.extractionVersion = 'FIXTURE-unrelated-extractor';
+      await expect(decodeSavedObservations(input, scope)).rejects.toBeInstanceOf(SavedObservationsError);
+    });
+
+  it('rejects a re-extraction chain instead of treating processed candidates as original acquisition evidence', async () => {
+    const input = reExtractionBundle(), second = structuredClone(input.comparisons[1]);
+    second.id = 'kds_fixture_second_reextraction';
+    second.reExtraction!.sourceComparisonId = input.comparisons[1].id;
+    second.reExtraction!.version = 'FIXTURE-extractor-3';
+    for (const side of ['before', 'after'] as const) {
+      second.reExtraction![side].sourceSnapshotId = second[side].id;
+      second.reExtraction![side].originalSavedCount = 1;
+      second.reExtraction![side].originalEligibleCount = 1;
+      second.reExtraction![side].excludedNavigationCount = 0;
+      second[side].id = `kds_fixture_twice_reextracted_${side}`;
+      second[side].extractionVersion = 'FIXTURE-extractor-3';
+      second[side].conditionsHash = digest('FIXTURE third conditions');
+    }
+    input.comparisons.push(second);
+    await expect(decodeSavedObservations(input, scope)).rejects.toBeInstanceOf(SavedObservationsError);
+  });
+
+  it.each(['saved', 'eligible', 'excluded', 'recovered', 'negative', 'fractional'] as const)('rejects incorrect %s source counts, including set differences hidden by equal totals', async (kind) => {
+      const input = reExtractionBundle(), metadata = input.comparisons[1].reExtraction!.before;
+      if (kind === 'saved') metadata.originalSavedCount += 1;
+      if (kind === 'eligible') metadata.originalEligibleCount -= 1;
+      if (kind === 'excluded') { metadata.excludedNavigationCount += 1; metadata.recoveredArticleCount += 1; }
+      if (kind === 'recovered') metadata.recoveredArticleCount += 1;
+      if (kind === 'negative') metadata.excludedNavigationCount = -1;
+      if (kind === 'fractional') metadata.recoveredArticleCount = 0.5;
+      await expect(decodeSavedObservations(input, scope)).rejects.toBeInstanceOf(SavedObservationsError);
+    });
+
+  it.each(['observed-time', 'retrieved-time', 'excerpt', 'raw-hash', 'body', 'missing-article', 'source-url', 'completion', 'recorded-condition'] as const)('rejects changed %s facts in a derived snapshot', async (kind) => {
+      const input = reExtractionBundle(), derived = input.comparisons[1].after;
+      if (kind === 'observed-time') derived.observedAt = '2026-01-02T00:02:00Z';
+      if (kind === 'retrieved-time') derived.articles[0].retrievedAt = '2026-01-02T00:00:21Z';
+      if (kind === 'excerpt') { derived.articles[0].excerpt = 'FIXTURE 改変された引用'; derived.articles[0].excerptHash = digest(derived.articles[0].excerpt); }
+      if (kind === 'raw-hash') derived.articles[0].rawHash = digest('FIXTURE another acquisition');
+      if (kind === 'body') fullBody(derived.articles[0], 'FIXTURE 新しく作った本文');
+      if (kind === 'missing-article') derived.articles = [];
+      if (kind === 'source-url') derived.sourceUrl = 'https://fixture.example.test/another-list/';
+      if (kind === 'completion') derived.complete = false;
+      if (kind === 'recorded-condition') derived.conditionsVerified = 'recorded';
+      await expect(decodeSavedObservations(input, scope)).rejects.toBeInstanceOf(SavedObservationsError);
+    });
+
+  it.each(['unchanged-conditions', 'unchanged-version', 'mixed-conditions', 'wrong-version', 'mixed-old-new', 'early-processing', 'invalid-processing'] as const)('rejects %s processing metadata', async (kind) => {
+      const input = reExtractionBundle(), [original, derived] = input.comparisons, metadata = derived.reExtraction!;
+      if (kind === 'unchanged-conditions') derived.before.conditionsHash = derived.after.conditionsHash = original.before.conditionsHash;
+      if (kind === 'unchanged-version') derived.before.extractionVersion = derived.after.extractionVersion = metadata.version = original.before.extractionVersion;
+      if (kind === 'mixed-conditions') derived.before.conditionsHash = digest('FIXTURE inconsistent revised condition');
+      if (kind === 'wrong-version') metadata.version = 'FIXTURE-wrong-extractor';
+      if (kind === 'mixed-old-new') derived.before = structuredClone(original.before);
+      if (kind === 'early-processing') metadata.processedAt = '2026-01-02T00:00:59.999999999Z';
+      if (kind === 'invalid-processing') metadata.processedAt = '2026-01-03T00:00:00';
+      await expect(decodeSavedObservations(input, scope)).rejects.toBeInstanceOf(SavedObservationsError);
+    });
+
+  it('rejects hiding the processing provenance by reusing derived snapshots in a bare comparison', async () => {
+    const input = reExtractionBundle(), unlabelled = structuredClone(input.comparisons[1]);
+    unlabelled.id = 'kds_fixture_unlabelled_comparison';
+    delete unlabelled.reExtraction;
+    input.comparisons.push(unlabelled);
+    await expect(decodeSavedObservations(input, scope)).rejects.toBeInstanceOf(SavedObservationsError);
+  });
+});
+
 describe('loopback-only saved observation loader', () => {
+  it('loads version 2 through the same single local request without fetching provenance URLs', async () => {
+    const input = reExtractionBundle(), fetcher = vi.fn<typeof fetch>().mockResolvedValue(response(input));
+    expect(await loadSavedObservations(scope, { fetcher, origin: 'http://127.0.0.1:4188' })).toEqual(input);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher.mock.calls[0][0]).toBe(SAVED_OBSERVATIONS_PATH);
+  });
+
   it('performs one fixed local GET with no credentials, caching, redirects or fallback', async () => {
     const input = bundle(), fetcher = vi.fn<typeof fetch>().mockResolvedValue(response(input));
     const controller = new AbortController();

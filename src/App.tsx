@@ -129,7 +129,7 @@ export default function App() {
     );
   }
 
-  if (publicConfig.config.mode === 'signals') return <Suspense fallback={<p role="status">確認画面を読み込んでいます。</p>}><SignalWorkspace readOnly={import.meta.env.VITE_SIGNALS_READ_ONLY === 'true'} localProductSummary={localProductSummaryEnabled(import.meta.env.VITE_SIGNALS_LOCAL_PRODUCT_SUMMARY, import.meta.env.VITE_SIGNALS_READ_ONLY, typeof window === 'undefined' ? '' : window.location.hostname)} renderAnalysis={(datasetId) => <SignalRulesWorkspace key={datasetId} datasetId={datasetId} />} /></Suspense>;
+  if (publicConfig.config.mode === 'signals') return <Suspense fallback={<p role="status">確認画面を読み込んでいます。</p>}><SignalWorkspace focusJourney readOnly={import.meta.env.VITE_SIGNALS_READ_ONLY === 'true'} localProductSummary={localProductSummaryEnabled(import.meta.env.VITE_SIGNALS_LOCAL_PRODUCT_SUMMARY, import.meta.env.VITE_SIGNALS_READ_ONLY, typeof window === 'undefined' ? '' : window.location.hostname)} renderAnalysis={(datasetId) => <SignalRulesWorkspace key={datasetId} datasetId={datasetId} />} /></Suspense>;
   return publicConfig.config.mode === 'trial' ? <TrialModeApp /> : <AnalysisWorkspace />;
 }
 

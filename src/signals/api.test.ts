@@ -2,10 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readPendingRunRequest, signalApi, SignalApiError } from './api';
 import { fictionalBootstrap, fictionalRun } from './fixtures';
 import { fictionalPairsResponse, fictionalRunV22 } from './fixtures-v22';
+import { installPendingLocks } from './pending-locks.test-support';
 
 beforeEach(() => {
+  installPendingLocks();
   const values = new Map<string, string>();
   vi.stubGlobal('localStorage', {
+    get length() { return values.size; },
+    key: vi.fn((index: number) => [...values.keys()][index] ?? null),
     getItem: vi.fn((key: string) => values.get(key) ?? null),
     setItem: vi.fn((key: string, value: string) => { values.set(key, value); }),
     removeItem: vi.fn((key: string) => { values.delete(key); }),
@@ -54,6 +58,27 @@ describe('signal same-origin API boundary', () => {
     await expect(signalApi.bootstrap()).rejects.toBeInstanceOf(SignalApiError);
     await expect(signalApi.bootstrap()).rejects.not.toThrow('private backend details');
   });
+  it.each([429, 503])('does not infer admission or budget exhaustion from a GET %s', async (status) => {
+    const fetcher = vi.fn().mockResolvedValue(new Response('FIXTURE-private-infrastructure-error', { status }));
+    vi.stubGlobal('fetch', fetcher);
+    await expect(signalApi.runs('FIXTURE-WATCH')).rejects.toMatchObject({
+      code: String(status), preAdmissionRejected: false,
+      message: '保存状態を今は取得できません。少し待ってから保存履歴を再取得してください。分析は再送しません。',
+    });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+  it('preserves an explicit backend daily-limit response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ schemaVersion: '2.3.0', error: { code: 'DAILY_LIMIT' } }, { status: 429 })));
+    await expect(signalApi.runs('FIXTURE-WATCH')).rejects.toMatchObject({ code: '429', message: '実行回数または予算の上限に達しました。管理者に確認してください。' });
+  });
+  it.each([
+    { schemaVersion: '2.3.0', error: { code: 'DAILY_LIMIT', detail: 'FIXTURE-private' } },
+    { schemaVersion: 'FIXTURE-UNKNOWN', error: { code: 'DAILY_LIMIT' } },
+    { schemaVersion: '2.3.0', error: { code: 'FIXTURE-UNKNOWN' } },
+  ])('does not trust an unrecognized GET error envelope %# as a budget decision', async (body) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(body, { status: 429 })));
+    await expect(signalApi.runs('FIXTURE-WATCH')).rejects.toMatchObject({ message: expect.stringContaining('保存状態を今は取得できません') });
+  });
   it('rejects SPA fallback HTML and malformed data instead of sample fallback', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('<html>fallback</html>')));
     await expect(signalApi.bootstrap()).rejects.toThrow('表示を停止');
@@ -61,7 +86,7 @@ describe('signal same-origin API boundary', () => {
 });
 
 describe('uncertain run request recovery without POST resend', () => {
-  it('retains only request identifiers after a network failure and blocks every new POST after reload', async () => {
+  it('retains only request identifiers after a network failure and blocks the same watch after reload', async () => {
     const fetcher = vi.fn().mockRejectedValue(new TypeError('network disconnected'));
     vi.stubGlobal('fetch', fetcher);
     await expect(signalApi.start('watch-example', 'reanalyze', 'request-lost', 'private-csrf')).rejects.toMatchObject({ code: 'connection' });
@@ -72,7 +97,7 @@ describe('uncertain run request recovery without POST resend', () => {
     const reloaded = await import('./api');
     expect(reloaded.readPendingRunRequest()).toEqual({ watchId: 'watch-example', requestId: 'request-lost' });
     await expect(reloaded.signalApi.start('watch-example', 'reanalyze', 'request-lost', 'private-csrf')).rejects.toMatchObject({ code: 'pending' });
-    await expect(reloaded.signalApi.start('watch-other', 'check', 'request-new', 'private-csrf')).rejects.toMatchObject({ code: 'pending' });
+    await expect(reloaded.signalApi.start('watch-example', 'check', 'request-new', 'private-csrf')).rejects.toMatchObject({ code: 'pending' });
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
@@ -184,11 +209,13 @@ describe('uncertain run request recovery without POST resend', () => {
     const fetcher = vi.fn().mockImplementation(() => new Promise<Response>((resolve) => { respond = resolve; }));
     vi.stubGlobal('fetch', fetcher);
     const request = signalApi.start('watch-example', 'reanalyze', 'request-old', 'csrf');
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
     expect(readPendingRunRequest()?.requestId).toBe('request-old');
     const key = vi.mocked(localStorage.setItem).mock.calls[0][0];
     const newer = { watchId: 'watch-other', requestId: 'request-newer' };
     // 別のタブで旧要求を解決し、次の要求が保留された状態を再現する。
-    localStorage.setItem(key, JSON.stringify(newer));
+    localStorage.removeItem(key);
+    localStorage.setItem(`kiriko-design-signals-pending-request:${encodeURIComponent(newer.watchId)}:${newer.requestId}`, JSON.stringify(newer));
     respond(status === 200 ? Response.json(fictionalRun) : new Response('', { status }));
     if (status === 200) expect(await request).toEqual(fictionalRun);
     else await expect(request).rejects.toMatchObject({ code: String(status) });

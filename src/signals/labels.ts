@@ -1,6 +1,6 @@
 import type { Bootstrap, DataMode, Run, Signal, SignalV2 } from './contract';
 
-export const comparisonPairsVersion = (version: Bootstrap['schemaVersion'] | undefined) => version === '2.4.0' ? '2.3.0' : version === '2.2.0' || version === '2.3.0' ? version : null;
+export const comparisonPairsVersion = (version: Bootstrap['schemaVersion'] | undefined) => version === '2.4.0' || version === '2.5.0' ? '2.3.0' : version === '2.2.0' || version === '2.3.0' ? version : null;
 
 export const runLabels: Record<Run['status'], string> = {
   running: '進行中', complete: '処理終了', partial: '分析未完了（途中終了）', failed: 'API・AI処理の失敗', interrupted: '中断',

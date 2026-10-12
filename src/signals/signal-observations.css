@@ -1,0 +1,51 @@
+.signal-observations { margin: 22px 0; min-width: 0; }
+.signal-observation-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.signal-observation-toolbar label { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.signal-observation-toolbar select { max-width: 270px; padding: 8px; border: 1px solid #b9cec5; border-radius: 6px; background: white; }
+.signal-observation-summary { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 20px; background: #ecf5ef; border: 1px solid #bfd7c7; border-radius: 16px; padding: 24px 28px; }
+.signal-observation-summary h2 { font-size: 25px; margin: 6px 0 10px; line-height: 1.5; }
+.signal-observation-last { font-size: 12px; color: #536a5b; margin: 0; }
+.signal-observation-mark { display: grid; place-items: center; align-self: start; width: 50px; height: 50px; background: #d4e8da; color: #256149; border-radius: 50%; font-size: 26px; }
+.signal-observation-counts { display: flex; flex-wrap: wrap; gap: 12px 28px; grid-column: 1/-1; margin: 12px 0 2px; }
+.signal-observation-counts span { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+.signal-observation-counts strong { font-size: 23px; font-variant-numeric: tabular-nums; }
+.signal-observation-limits { grid-column: 1/-1; margin: 4px 0; font-size: 12px; color: #4e6457; }
+.signal-observation-body-state { grid-column: 1/-1; margin: 4px 0; font-size: 13px; color: #4b584f; }
+.signal-observation-next-heading { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; }
+.signal-observation-next-heading h3 { margin: 0 0 12px; font-size: 18px; }
+.signal-observation-next-heading span { font-size: 12px; color: #5e6c63; }
+.signal-observation-next { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; }
+.signal-observation-next article { display: flex; align-items: start; gap: 14px; padding: 22px; background: white; border: 1px solid #ccdcd5; border-radius: 14px; min-width: 0; }
+.signal-observation-next article > div { min-width: 0; }
+.signal-observation-next h3 { margin: 7px 0 12px; font-size: 17px; line-height: 1.6; overflow-wrap: anywhere; }
+.signal-observation-next p:not(.signal-eyebrow) { font-size: 12px; line-height: 1.7; color: #58675e; }
+.signal-observation-number { color: #376d55; font-size: 14px; border-bottom: 2px solid #82b395; padding-bottom: 8px; min-width: 20px; flex-shrink: 0; white-space: nowrap; }
+.signal-observation-next button { min-height: 44px; }
+.signal-observation-coverage { margin: 16px 0; padding: 12px 0; font-size: 12px; color: #53665b; }
+.signal-observation-coverage summary { cursor: pointer; }
+.signal-observation-coverage li { margin: 8px 0; }
+.signal-observation-coverage li span { display: block; color: #6a736c; }
+.signal-observation-back { min-height: 44px; margin: 8px 0; }
+.signal-observation-detail h2 { font-size: 23px; }
+.signal-observation-evidence { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; margin: 20px 0; }
+.signal-observation-evidence > section { padding: 18px; border-radius: 12px; background: #f4f7f5; min-width: 0; }
+.signal-observation-evidence h3 { margin: 0; }
+.signal-observation-evidence p { font-size: 12px; }
+.signal-observation-evidence blockquote { margin: 12px 0; padding-left: 14px; border-left: 3px solid #80a98f; font-size: 14px; line-height: 1.8; }
+.signal-observation-evidence pre { font: inherit; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.signal-observation-technical { margin: 20px 0 0; font-size: 12px; }
+.signal-observation-technical dd { margin: 5px 0 12px; overflow-wrap: anywhere; }
+.signal-observation-detail:focus, #signal-observation-title:focus { outline: 2px solid #286d59; outline-offset: 5px; }
+.signal-discovery-other { margin-top: 24px; border-top: 1px solid #ceddd3; padding-top: 18px; }
+.signal-discovery-other > summary { cursor: pointer; font-size: 15px; color: #365a47; padding: 8px 0; }
+.signals-discovery-mode .signal-intro { padding: 0 0 8px; }
+.signals-discovery-mode .signal-intro h1 { font-size: 28px; margin: 8px 0 6px; }
+.signals-discovery-mode .signal-intro p { margin: 8px 0; }
+.signals-discovery-mode .signal-live { margin: 8px 0; font-size: 12px; }
+.signal-discovery-scope { padding: 16px 20px; gap: 20px; }
+.signal-discovery-other .signal-discovery-scope-picker { margin-top: 18px; }
+@media(max-width:800px) { .signal-observation-next, .signal-observation-evidence { grid-template-columns: minmax(0,1fr); } .signal-observation-toolbar { align-items: start; flex-direction: column; gap: 8px; } .signal-observation-toolbar label { width: 100%; justify-content: space-between; } }
+@media(max-width:400px) { .signal-observation-summary { padding: 18px; gap: 8px; } .signal-observation-summary h2 { font-size: 21px; } .signal-observation-mark { width: 34px; height: 34px; font-size: 20px; } .signal-observation-counts { gap: 8px 18px; } .signal-observation-next article { padding: 17px; } .signal-observation-toolbar select { max-width: 190px; } .signal-observation-next-heading span { display: none; } }
+.signal-observation-reextraction { margin: 0 0 14px; padding: 12px 16px; border-left: 3px solid #ba995a; background: #fff9eb; font-size: 13px; line-height: 1.65; }
+.signal-observation-reextraction p { margin: 3px 0 0; }
+.signal-observation-legacy { font-size: 13px; line-height: 1.65; color: #54666b; }

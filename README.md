@@ -8,6 +8,8 @@ Vite / React / TypeScript のSPAで、保存条件→差分→画像観察候補
 
 `VITE_APP_MODE=signals`で新しい画面、未指定または`standard`で従来のサンプル・Contract・ルール分析を起動します。利用者認証、永続保存、実行権限、予算、AI呼出、公式サイトの有限探索はBackendが担当します。FrontendへAPIキーやGoogle credentialを設定しません。
 
+保存結果だけを公開する閲覧用ビルドでは、`VITE_APP_MODE=signals` と `VITE_SIGNALS_READ_ONLY=true` を指定します。この設定では分析開始・再分析・条件作成を表示せず、保存結果・図面・出典・履歴のGETを使います。未指定の通常ビルドは明示的な開始操作を保ちます。これは画面の機能設定で、Backendの受付状態を推測するものではありません。閲覧用の配信先でも書き込みAPIを拒否してください。
+
 このbranchの技術仕様は[Signal UI実装](docs/architecture/signal-ui.md)を参照してください。目指す価値、実装、検証したデータ・モード、実際の公開版は別の状態です。最新の候補SHA・証拠・未達・公開状態は対応するGitHub IssueとPRで確認し、文書やビルドの存在を実資料での価値実証・公開完了とは扱いません。
 
 ## 従来のstandard画面の方針（Phase 0）
@@ -94,4 +96,18 @@ pnpm run check:no-real-data
 
 ## 注意
 
+signals のローカル閲覧では、`VITE_SIGNALS_READ_ONLY=true` と `VITE_SIGNALS_LOCAL_PRODUCT_SUMMARY=true` を明示してビルドした場合に限り、ループバック上で保存資料の候補一覧を表示できます。企業・分野と見る理由から一件を選び、その資料の根拠へ進みます。既存の同一origin固定GET経路を使い、比較要約はGit・公開ビルドに同梱しません。通常配備ではこのローカル用フラグを設定しません。商品資料・公報・保存AI結果は選択に応じて表示し、原文の照合状態は保存資料の版に従います。
+
+今回取得した原文との照合記録を含む比較資料 v2 では、照合日時と値ごとの短い保存引用・取得日時・出典を表示します。v1 は従来どおり未再照合の保存要約として表示します。この追加はローカル比較資料の形式に限り、保存Run/APIの契約は変更しません。元サイトを自動取得せず、原本文や実際の比較資料をGit・配信ビルドへ含めません。
+
 standardのサンプル分析は架空データに基づく参考情報です。signalsでは保存結果のデータ区分と分析状態を確認してください。いずれも法的助言や企業戦略の断定を行うものではありません。
+
+### Local saved comparison candidates
+
+Private editorial version 3 preserves version 2 evidence and adds exact `discovery` metadata (`productKind`, editorial `selectionReason`, `comparisonBasis: "same_capture_products"`, `previousCaptureAt: null`) and a required display `label` per quote. Versions 1 and 2 remain compatible. The local read-only entry loads one saved comparison candidate (two products), then waits for explicit selection before showing the comparison. Acquisition times come from saved quotation metadata; missing prior captures remain unassessed. The independent gazette result retains its own scope.
+
+Selecting a candidate and returning to its list reuse the decoded data. Meaningful quotation links remember their originating comparison cell; the return action restores focus and scroll to that cell. Reloading starts with the candidate unselected. This remains behind the existing explicit local flag and loopback gate, introduces no Run/API fields, and never fetches official sites or starts an analysis. Real candidate data and original sources stay outside the repository and client bundle.
+
+The local discovery draft also lists individually saved `newly_observed` record facts only when the collection counts are comparable and consistent. Selecting one shows that record's metadata and available drawings; a missing drawing or date remains missing. Registered watch choices switch the saved classification and collection scope explicitly. They do not create a monitoring history. Collection input totals, target additions, product-to-product specifications, and same-record changes remain separate concepts. Saved analysis and history are secondary disclosures; Workbench remains the separate application for deeper product judgment and reporting. This local draft still requires execution and browser verification before replacing a working preview.
+
+The optional [local saved observation comparison](docs/development/local-saved-observations.md) separately validates two actual acquisition records. It reports changes only within the saved candidate subset, keeps omitted candidates and missing full bodies visible, and separates excerpt equality from article-body equality. Its fixed loopback-only GET carries private runtime data outside Git and the bundle. Source acquisition, scheduling, production APIs and model execution are not initiated by this screen.

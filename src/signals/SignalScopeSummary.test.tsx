@@ -1,0 +1,106 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it } from 'vitest';
+import { fictionalRunV22 } from './fixtures-v22';
+import type { RunV23 } from './contract';
+import { SignalScopeEvidence, SignalScopeSummary, SignalSelectedRecord } from './SignalScopeSummary';
+import { evidenceId } from './labels';
+
+function fixture(): RunV23 {
+  const run = structuredClone(fictionalRunV22);
+  return { ...run, schemaVersion: '2.3.0', versions: { ...run.versions, schema: '2.3.0' } };
+}
+
+describe('saved company and category scope', () => {
+  it('keeps a comparable zero distinct from product changes and names the saved classification, not its identifier', () => {
+    const run = fixture();
+    run.input.context.category = { id: 'kds_fixture_OPAQUE_CATEGORY', label: '架空の分類表示', scheme: null };
+    run.signal!.counts = { before: 7, after: 7, newlyObserved: 0, excludedBefore: 1, excludedAfter: 3, comparable: true };
+    run.signal!.recordFacts[0].articleName = null;
+    const before = JSON.stringify(run);
+    const html = renderToStaticMarkup(createElement(SignalScopeSummary, { run }));
+    expect(html).toContain('架空の分類表示'); expect(html).not.toContain('kds_fixture_OPAQUE_CATEGORY');
+    expect(html).toContain('物品名不明'); expect(html).toContain('<strong>0<small>件</small></strong>');
+    expect(html).toContain('形状や商品が変わっていないとは判断できません');
+    expect(html).toContain(run.input.context.beforeDataset.dataAsOf); expect(html).toContain(run.input.context.afterDataset.dataAsOf);
+    expect(html).toContain('両集合に収録（算出）'); expect(html).toContain('この範囲での新規観測は0件'); expect(JSON.stringify(run)).toBe(before);
+  });
+  it('does not report the backend placeholder zero as a measured result when scope is incomparable', () => {
+    const run = fixture(); run.signal!.counts.comparable = false; run.signal!.counts.newlyObserved = 0;
+    const html = renderToStaticMarkup(createElement(SignalScopeSummary, { run }));
+    expect(html).toContain('新規観測は比較できません'); expect(html).toContain('比較不可');
+    expect(html).not.toContain('<strong>0<small>件</small></strong>'); expect(html).not.toContain('この範囲での新規観測は0件');
+  });
+  it('does not fill an absent saved signal with zeros', () => {
+    const run = fixture(); run.signal = null;
+    expect(renderToStaticMarkup(createElement(SignalScopeSummary, { run }))).toBe('');
+    expect(renderToStaticMarkup(createElement(SignalScopeEvidence, { run }))).toBe('');
+  });
+  it.each([false, true])('does not promote a saved selection reason when comparability is %s and new count is zero', (comparable) => {
+    const run = fixture();
+    run.signal!.counts = { before: 4, after: 4, newlyObserved: 0, excludedBefore: 2, excludedAfter: 5, comparable };
+    run.signal!.recordFacts[0].selectionReason = 'newly_observed';
+    const before = JSON.stringify(run);
+    const html = renderToStaticMarkup(createElement(SignalScopeEvidence, { run }));
+    expect(html).not.toContain('この収録で新しく見つかった対象');
+    expect(html).not.toContain('この収録範囲で新規観測');
+    expect(html).toContain('新規性はここでは判定しません');
+    expect(html).toContain('図面から調べる');
+    expect(html).toContain('入力収録 6 → 9件');
+    expect(JSON.stringify(run)).toBe(before);
+  });
+  it('connects selected record facts only to their saved images and exposes missing media and collection provenance', () => {
+    const run = fixture(); const signal = run.signal!;
+    const sample = structuredClone(signal.recordFacts[0]);
+    sample.id = 'kds_fixture_SCOPE_ONLY_FACT'; sample.recordId = 'FIXTURE-SCOPE-ONLY'; sample.selectionReason = 'scope_sample';
+    sample.gazetteDate = null; sample.registrationNumber = null; signal.recordFacts.push(sample);
+    const before = JSON.stringify(run);
+    const html = renderToStaticMarkup(createElement(SignalScopeEvidence, { run }));
+    expect(html).toContain('対象全件の一覧とは限りません'); expect(html).toContain('書誌事項のみ · 保存図面なし');
+    expect(html).toContain('対象範囲から選ばれた参考資料'); expect(html).toContain('登録 不明');
+    expect(html).toContain('保存された2つの収録集合'); expect(html).toContain('理由別の件数はこの結果には保存されていません');
+    expect(html).toContain('AI分析の前回・今回の比較ではありません');
+    expect(html).toContain('保存時の対象とデータ');
+    for (const media of signal.media) {
+      const selected = renderToStaticMarkup(createElement(SignalSelectedRecord, { signal, recordId: media.recordId }));
+      expect(selected).toContain(`href="#${evidenceId(media.id)}"`);
+      for (const other of signal.media.filter((item) => item.recordId !== media.recordId)) expect(selected).not.toContain(`href="#${evidenceId(other.id)}"`);
+    }
+    const withoutMedia = renderToStaticMarkup(createElement(SignalSelectedRecord, { signal, recordId: sample.recordId }));
+    expect(withoutMedia).toContain('この結果に図面は保存されていません'); expect(withoutMedia).not.toContain('href=');
+    for (const fact of signal.recordFacts) expect(html).toContain(`id="${evidenceId(fact.id)}"`);
+    expect(JSON.stringify(run)).toBe(before);
+  });
+  it('makes the next question depend on the selected record evidence without inventing a saved AI question', () => {
+    const run = fixture(), signal = run.signal!;
+    const noImage = { ...signal.recordFacts[0], id: 'kds_fixture_NO_IMAGE_QUESTION', recordId: 'FIXTURE-NO-IMAGE-QUESTION', registrationNumber: 'FIXTURE-QUESTION-REGISTRATION', selectionReason: 'scope_sample' as const };
+    signal.recordFacts.push(noImage);
+    const before = JSON.stringify(run);
+    const withImage = renderToStaticMarkup(createElement(SignalSelectedRecord, { signal, recordId: signal.media[0].recordId }));
+    expect(withImage).toContain('この登録意匠と、公式資料の製品との対応を確認できるか？');
+    expect(withImage).toContain('対応未確認の公式引用を確かめる');
+    expect(withImage).toContain('製品写真・仕様と、この意匠の他の方向の図');
+    expect(withImage).toContain('保存されたAIの問い・回答ではありません');
+    const withoutImage = renderToStaticMarkup(createElement(SignalSelectedRecord, { signal, recordId: noImage.recordId }));
+    expect(withoutImage).toContain('この登録意匠の形を、どの図面で確認できるか？');
+    expect(withoutImage).toContain(`登録 ${noImage.registrationNumber} に対応する図面`);
+    expect(withoutImage).not.toContain('href='); expect(withoutImage).not.toContain('対応未確認の公式引用を確かめる');
+    expect(withoutImage).toContain('閲覧では新しい分析や資料取得は始まりません');
+    expect(JSON.stringify(run)).toBe(before);
+  });
+  it('does not offer absent official quotes or invent an absent registration number', () => {
+    const run = fixture(), signal = run.signal!;
+    signal.officialFacts = [];
+    let html = renderToStaticMarkup(createElement(SignalSelectedRecord, { signal, recordId: signal.media[0].recordId }));
+    expect(html).not.toContain('href="#signal-approved-sources"'); expect(html).toContain('公式引用が保存されていません');
+    signal.media = []; signal.recordFacts[0].registrationNumber = null;
+    html = renderToStaticMarkup(createElement(SignalSelectedRecord, { signal, recordId: signal.recordFacts[0].recordId }));
+    expect(html).toContain('選択した意匠に対応する図面'); expect(html).not.toContain('登録 null');
+  });
+  it('does not derive a negative or oversized intersection from inconsistent saved counts', () => {
+    const run = fixture(); run.signal!.counts = { before: 2, after: 3, newlyObserved: 0, excludedBefore: 0, excludedAfter: 0, comparable: true };
+    let html = renderToStaticMarkup(createElement(SignalScopeSummary, { run })); expect(html).toContain('算出不可');
+    run.signal!.counts.newlyObserved = 4;
+    html = renderToStaticMarkup(createElement(SignalScopeSummary, { run })); expect(html).toContain('算出不可'); expect(html).not.toContain('<strong>-1');
+  });
+});

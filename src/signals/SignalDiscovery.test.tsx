@@ -79,6 +79,7 @@ describe('discovery selection over saved evidence', () => {
     expect(html(selected)).toContain('<table'); expect(html(selected)).not.toContain('id="signal-result"');
     back(selected).props.onClick(); const returned = tree(); hooks.effects[1]();
     expect(querySelector).toHaveBeenLastCalledWith('#signal-discovery-open-product');
+    expect(html(returned)).toContain('class="signal-discovery-other" open=""');
     button(returned, 'signal-discovery-open-product').props.onClick(); tree();
     expect(loadEditorialComparison).toHaveBeenCalledOnce(); expect(JSON.stringify(fictionalRunV2)).toBe(before);
   });

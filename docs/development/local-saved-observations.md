@@ -1,0 +1,15 @@
+# Local saved observation comparison
+
+This Issue #19 preview compares saved observations through an independent, versioned local file. It does not change Contract 0.1.0, Run DTOs, the registered API, or the meaning of retrospective gazette collections. The existing read-only local flag and loopback restriction remain required. No original material is included in Git or the client build.
+
+The fixed same-origin GET `/__local/saved-observations.json` returns version 1: `entityId`, `categoryId`, `companyName`, `categoryLabel`, and nonempty `comparisons`. A comparison has an ID, label, and two snapshots. The selected entity/category must match exactly. The decoder rejects unknown fields, unsafe URLs, duplicate identities, malformed dates, contradictory snapshots, invalid hashes, and mismatched content/hash pairs. Test inputs use only fictional identifiers.
+
+Each snapshot stores an ID, batch-end `observedAt`, `conditionsHash`, `conditionsVerified` (`recorded` or `reconstructed`), scope label, source URL, extraction version, acquisition `complete`, eligible/omitted counts, candidates, and article observations. Batch completion and individual article acquisition times are different fields. Original per-request times, raw bytes, policy and extractor hashes, and acquisition outcomes belong in the private capture receipt outside Git.
+
+Candidates carry stable IDs, titles, URLs, and nullable publication dates. Each article binds to a candidate URL and records its own acquisition time, raw HTML hash, separately hashed excerpt and extraction body, `bodyComplete`, and success/error state. An absent body remains null. A saved excerpt is not a full article. Raw HTML differences alone do not establish article text changes. Acquisition completion does not imply that every eligible link or every article was captured.
+
+The comparison requires chronological observations, matching conditions, source and extraction version, successful acquisition, and validated content hashes. It distinguishes additions to the saved subset, absences from that subset, changed metadata for the same ID, and unchanged metadata. Omitted candidates are explicitly outside the zero-delta statement. Missing article bodies or failed/incomplete observations do not become `unchanged`. A candidate leaving a bounded list does not prove deletion, withdrawal, or a discontinued product.
+
+The UI shows the checked subset and final observation time, then a small number of articles with saved evidence. Selection reveals only that article's before/after evidence and restores focus on return. Other product and gazette materials remain separate disclosures. Display, reload and evidence navigation make no acquisition or model request. No recurring collection is implemented.
+
+Compatibility gap: this local file is not a production Backend endpoint or monitoring registry. Publishing it as a service requires a coordinated versioned schema, fictional fixtures, validator and documentation in both repositories, plus an explicit acquisition/coverage policy. A retrospective publication-date collection must not be relabeled as an acquisition history.

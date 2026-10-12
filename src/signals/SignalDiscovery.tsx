@@ -5,6 +5,7 @@ import { SignalEditorialComparison } from './SignalEditorialComparison';
 import { SignalResult } from './SignalResult';
 import { SignalScopeSummary } from './SignalScopeSummary';
 import { SignalDrawingComparison } from './SignalDrawingComparison';
+import { SignalObservationPanel } from './SignalObservationPanel';
 import { RecordFact } from './SignalContext';
 import { knownFailedChecks } from './result-quality';
 import type { RunReviewState } from './run-review';
@@ -22,6 +23,7 @@ export function SignalDiscovery({ run, reviewState, scopes = [], onScopeChange, 
   const [attempt, setAttempt] = useState(0);
   const [field, setField] = useState<Choice | 'all'>('all');
   const [selected, setSelected] = useState<Selection | null>(null);
+  const [materialsOpen, setMaterialsOpen] = useState(false);
   const root = useRef<HTMLElement>(null);
   const focusTarget = useRef<string | null>(null);
   useEffect(() => {
@@ -44,6 +46,7 @@ export function SignalDiscovery({ run, reviewState, scopes = [], onScopeChange, 
     focusTarget.current = null;
   }, [selected, field]);
   const choose = (choice: Selection | null) => {
+    setMaterialsOpen(true);
     focusTarget.current = choice ? '#signal-discovery-detail' : `#signal-discovery-open-${selected}`;
     setSelected(choice);
   };
@@ -65,10 +68,9 @@ export function SignalDiscovery({ run, reviewState, scopes = [], onScopeChange, 
   const gazetteTitle = !signal ? '保存結果の状態を確かめる' : !signal.counts.comparable ? '収録条件が異なり、対象の増減は比較できません' : signal.counts.newlyObserved ? `収録範囲で新しく観測された対象 ${signal.counts.newlyObserved}件` : '対象の追加は0件。収録範囲を確かめる';
   return <section className="signal-discovery" ref={root} aria-label="対象から見る資料を選ぶ">
     <div className="signal-discovery-scope">
-      <div><span className="signal-eyebrow">対象企業</span><strong>{company ?? '企業名未記録'}</strong><span className="signal-subtle">保存された対象</span></div>
-      <label className="signal-field">見る分野<select value={field} onChange={(event) => filter(event.target.value as Choice | 'all')}><option value="all">すべての保存資料</option><option value="gazette">{gazetteField} · 公報</option>{comparison ? <option value="product">{productField} · 商品資料</option> : null}</select></label>
+      <div><span className="signal-eyebrow">対象企業</span><strong>{company ?? '企業名未記録'}</strong><span className="signal-subtle">{gazetteField}</span></div>
+      <label className="signal-field">見る資料<select value={field} onChange={(event) => filter(event.target.value as Choice | 'all')}><option value="all">すべての保存資料</option><option value="gazette">{gazetteField} · 公報</option>{comparison ? <option value="product">{productField} · 商品資料</option> : null}</select></label>
       <a href="#signal-conditions" className="signal-text-button">対象・収録条件を確認</a>
-      {scopes.length > 1 && onScopeChange && scopes.some((scope) => scope.id === run.watchId) ? <label className="signal-field signal-discovery-scope-picker">公報の分野・比較範囲<select value={run.watchId} disabled={busy} onChange={(event) => onScopeChange(event.target.value)}>{scopes.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</select><small>条件を変えて保存結果を表示します。監視の新着としては扱いません。</small></label> : null}
     </div>
     {selected ? <>
       <button type="button" className="signal-text-button signal-discovery-back" onClick={() => choose(null)}>← 注目候補の一覧へ戻る</button>
@@ -91,6 +93,10 @@ export function SignalDiscovery({ run, reviewState, scopes = [], onScopeChange, 
       </div>
       <button type="button" className="signal-text-button signal-discovery-back" onClick={() => choose(null)}>← 注目候補の一覧へ戻る</button>
     </> : <>
+      {field === 'all' ? <SignalObservationPanel key={`${run.input.context.entity.id}:${run.input.context.category.id}`} entityId={run.input.context.entity.id} categoryId={run.input.context.category.id} /> : null}
+      <details className="signal-discovery-other" open={materialsOpen || field !== 'all' || scopes.some((scope) => scope.id === run.watchId) && scopes[0]?.id !== run.watchId} onToggle={(event) => setMaterialsOpen(event.currentTarget.open)}>
+      <summary>商品資料・公報の保存根拠を見る</summary>
+      {scopes.length > 1 && onScopeChange && scopes.some((scope) => scope.id === run.watchId) ? <label className="signal-field signal-discovery-scope-picker">公報の分野・比較範囲<select value={run.watchId} disabled={busy} onChange={(event) => onScopeChange(event.target.value)}>{scopes.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</select><small>条件を変えて保存結果を表示します。監視の新着としては扱いません。</small></label> : null}
       <div className="signal-discovery-list-heading"><div><p className="signal-eyebrow">保存資料から、今見る一件を選ぶ</p><h2 id="signal-discovery-list-title" tabIndex={-1}>何を確かめますか？</h2></div><span>見る理由と、確認できる範囲</span></div>
       <div className="signal-discovery-cards">
         {field !== 'product' ? newRecords.map((fact, index) => <article key={fact.id} className="signal-discovery-card signal-discovery-gazette">
@@ -120,6 +126,7 @@ export function SignalDiscovery({ run, reviewState, scopes = [], onScopeChange, 
         </article> : null}
       </div>
       <p className="signal-discovery-footnote">一覧は保存資料の種類で整理しています。重要度の自動判定ではありません。深い商品比較・判断・報告は別アプリの Workbench で行います。</p>
+      </details>
     </>}
   </section>;
 }

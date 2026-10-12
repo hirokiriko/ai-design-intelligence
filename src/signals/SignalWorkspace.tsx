@@ -9,9 +9,10 @@ import { SignalEmptyJourney, SignalPurposeIntro, SignalQuestionFocus, SignalQues
 import { analysisQuestion, sameAnalysisQuestion } from './analysis-question';
 import { decodeRunReview, runReviewKey, type RunReviews, type RunReviewState } from './run-review';
 import { startUnavailableReason } from './start-availability';
+import { SignalEditorialEntry } from './SignalEditorialEntry';
 import './signals.css';
 
-interface Props { api?: SignalApi; renderAnalysis?: (datasetId: string) => ReactNode; developmentMode?: boolean; readOnly?: boolean }
+interface Props { api?: SignalApi; renderAnalysis?: (datasetId: string) => ReactNode; developmentMode?: boolean; readOnly?: boolean; localProductSummary?: boolean }
 type PairState = 'loading' | 'ready' | 'error';
 interface ReviewRequest { promise: Promise<RunReviewState>; settled: boolean }
 interface ReviewDisplay { api: SignalApi; developmentMode: boolean; reviews: RunReviews }
@@ -36,7 +37,7 @@ function withReview(previous: ReviewDisplay, api: SignalApi, developmentMode: bo
   return { api, developmentMode, reviews: { ...reviews, [key]: state } };
 }
 
-export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMode = false, readOnly = false }: Props) {
+export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMode = false, readOnly = false, localProductSummary = false }: Props) {
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
   const [watchId, setWatchId] = useState('');
   const [runs, setRuns] = useState<Run[]>([]);
@@ -323,7 +324,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
     finally { mutation.current = false; setBusy(false); }
   };
 
-  return <div className="signals-app">
+  return <div className={`signals-app${localProductSummary && readOnly && !developmentMode ? ' signals-local-summary' : ''}`}>
     <a href="#signal-main" className="signal-skip">確認条件と結果へ移動</a>
     <header className="signal-header"><div><span className="signal-brand-mark" aria-hidden="true">K</span><strong>KIRIKO <span>Design Signals</span></strong></div><span className="signal-header-label">企業・商品の変化を確認</span></header>
     <main ref={main} id="signal-main" className="signal-main" onClick={revealEvidenceLink}>
@@ -333,7 +334,10 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
       {error ? <div className="signal-error" role="alert"><p>{error}</p>{!bootstrap ? <button type="button" className="signal-button" onClick={() => window.location.reload()}>{developmentMode ? 'ローカル保存を確認して再読み込み' : '認証・設定を確認して再読み込み'}</button> : null}</div> : null}
       {pendingRequest === 'unavailable' ? <PendingRunNotice pending={pendingRequest} busy={actionPending || !bootstrap} onRecover={() => {}} /> : pendingRequest.map((pending) => <PendingRunNotice key={`${pending.watchId}:${pending.requestId}`} pending={pending} outsideScope={!bootstrap?.watches.some((watch) => watch.id === pending.watchId)} busy={actionPending || !bootstrap} onRecover={() => void recoverPending(pending)} />)}
       {bootstrap ? <div className="signal-layout signal-saved-first">
-        <div className="signal-content">{run ? <><SignalQuestionFocus question={questionSupported ? null : question} hasEvidence={run.signal !== null} /><SignalResult key={run.id} run={run} focusOnLoad={false} developmentMode={developmentMode} reviewState={currentReviews[runReviewKey(run)]} /></> : readOnly ? <div className="signal-panel"><h2>保存結果を選ぶ</h2><p>下の保存履歴から確認する結果を開いてください。</p></div> : <SignalEmptyJourney developmentMode={developmentMode} factsOnly={bootstrap.analysisMode === 'facts_only'} questionSupported={questionSupported} />}</div>
+        <div className="signal-content">
+          {localProductSummary && readOnly && !developmentMode && run && run.schemaVersion !== '1.0.0' && run.input.context.entity.name ? <SignalEditorialEntry key={run.input.context.entity.name} companyName={run.input.context.entity.name} autoLoad summaryOnly /> : null}
+          {run ? <><SignalQuestionFocus question={questionSupported ? null : question} hasEvidence={run.signal !== null} /><SignalResult key={run.id} run={run} focusOnLoad={false} developmentMode={developmentMode} reviewState={currentReviews[runReviewKey(run)]} /></> : readOnly ? <div className="signal-panel"><h2>保存結果を選ぶ</h2><p>下の保存履歴から確認する結果を開いてください。</p></div> : <SignalEmptyJourney developmentMode={developmentMode} factsOnly={bootstrap.analysisMode === 'facts_only'} questionSupported={questionSupported} />}
+        </div>
         <aside className="signal-sidebar" aria-label="保存条件と履歴">
       {!readOnly ? <SignalQuestionPicker selected={question} disabled={actionPending || !bootstrap} analysisSupported={questionSupported} developmentMode={developmentMode} onSelect={(selected) => {
         setQuestion(selected);

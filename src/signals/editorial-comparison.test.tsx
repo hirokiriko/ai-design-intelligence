@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { decodeEditorialComparison, EditorialComparisonError, loadEditorialComparison, type EditorialComparison } from './editorial-comparison';
+import { decodeEditorialComparison, EditorialComparisonError, loadEditorialComparison, localProductSummaryEnabled, type EditorialComparison } from './editorial-comparison';
 import { SignalEditorialComparison } from './SignalEditorialComparison';
 // @ts-expect-error The local-only JavaScript middleware has no declaration file.
 import { approvedPreviewPlugin } from '../../scripts/approved-preview-middleware.mjs';
@@ -32,6 +32,32 @@ function fixture(): EditorialComparison {
 }
 
 describe('separate editorial comparison boundary', () => {
+  it('requires both explicit local flags and an exact loopback host', () => {
+    for (const hostname of ['127.0.0.1', 'localhost', '[::1]']) expect(localProductSummaryEnabled('true', 'true', hostname)).toBe(true);
+    for (const hostname of ['', 'signals.example.test', 'localhost.example.test', '127.0.0.2', '0.0.0.0']) expect(localProductSummaryEnabled('true', 'true', hostname)).toBe(false);
+    for (const flag of [undefined, false, true, '', 'false', 'TRUE']) expect(localProductSummaryEnabled(flag, 'true', 'localhost')).toBe(false);
+    expect(localProductSummaryEnabled('true', undefined, 'localhost')).toBe(false);
+    expect(localProductSummaryEnabled('true', 'false', 'localhost')).toBe(false);
+  });
+
+  it('presents exact saved summary values and references without claiming the original text was rechecked', () => {
+    const input = fixture(), before = structuredClone(input);
+    const html = renderToStaticMarkup(createElement(SignalEditorialComparison, { comparison: input, summaryOnly: true }));
+    expect(html).toContain('公式商品仕様の比較（保存済み要約）');
+    expect(html).toContain('元本文はこの環境に未保存・原文再照合未実施');
+    expect(html).toContain('公報集計・保存AI結果とは別');
+    expect(html).toContain('保存記録上の発表日'); expect(html).toContain('保存記録上の発売時期');
+    expect(html).toContain('保存記録にあるメーカーの比較試験');
+    expect(html).toContain('以下の「確認」は保存時のメモ');
+    expect(html).not.toContain('確認した原資料'); expect(html).not.toContain('発売時期（原資料の表記）');
+    const initial = html.slice(0, html.indexOf('<details'));
+    for (const product of input.products) expect(initial).toContain(product.label);
+    for (const row of input.differences) for (const value of row.values) expect(initial).toContain(value);
+    expect(initial).toContain(input.condition); expect(initial).toContain(input.whyItMatters);
+    for (const source of input.sources) expect(initial).toContain(source.label);
+    expect(input).toEqual(before);
+  });
+
   it('preserves source values, exact company binding and the release wording without inventing a date or run', () => {
     const input = fixture(), saved = structuredClone(input);
     expect(decodeEditorialComparison(input, input.companyName)).toEqual(saved);

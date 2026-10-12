@@ -44,10 +44,10 @@ vi.mock('react', async (importOriginal) => {
   };
 });
 
-function workspaceTree(api: SignalApi, developmentMode = false, readOnly = false) {
+function workspaceTree(api: SignalApi, developmentMode = false, readOnly = false, localProductSummary = false) {
   workspaceHooks.stateIndex = 0; workspaceHooks.refIndex = 0; workspaceHooks.effects = [];
   workspaceHooks.active = true;
-  try { return SignalWorkspace({ api, developmentMode, readOnly }); } finally { workspaceHooks.active = false; }
+  try { return SignalWorkspace({ api, developmentMode, readOnly, localProductSummary }); } finally { workspaceHooks.active = false; }
 }
 function buttonNamed(node: ReactNode, label: string): ReactElement<{ children?: ReactNode; disabled?: boolean; onClick: () => void }> | undefined {
   for (const child of Children.toArray(node)) {
@@ -220,6 +220,24 @@ describe('saved URL initialization', () => {
       expect(buttonNamed(workspaceTree(api), '履歴を再取得')?.props.disabled).toBe(false);
     });
   }
+
+  it('keeps the opted-in local product summary before and outside the selected saved result', async () => {
+    const api = questionApi();
+    startWorkspace(api, false, true);
+    await vi.waitFor(() => expect(historyPicker(workspaceTree(api, false, true))?.props.state).toBe('ready'));
+    const before = JSON.stringify(workspaceHooks.states[4]);
+    const html = renderToStaticMarkup(workspaceTree(api, false, true, true));
+    expect(html).toContain('signals-app signals-local-summary');
+    const summary = html.indexOf('id="signal-editorial-content"'), saved = html.indexOf('id="signal-result"');
+    expect(summary).toBeGreaterThan(-1); expect(saved).toBeGreaterThan(summary);
+    expect(html.slice(saved)).not.toContain('id="signal-editorial-content"');
+    expect(renderToStaticMarkup(workspaceTree(api, false, true))).not.toContain('id="signal-editorial-content"');
+    expect(renderToStaticMarkup(workspaceTree(api, false, true))).not.toContain('signals-local-summary');
+    expect(renderToStaticMarkup(workspaceTree(api, false, false, true))).not.toContain('id="signal-editorial-content"');
+    expect(renderToStaticMarkup(workspaceTree(api, true, true, true))).not.toContain('id="signal-editorial-content"');
+    expect(JSON.stringify(workspaceHooks.states[4])).toBe(before);
+    expect(api.start).not.toHaveBeenCalled(); expect(api.saveWatch).not.toHaveBeenCalled();
+  });
 
   it('leads with the selected saved result and hides mutation controls in an explicit read-only viewer', async () => {
     const api = questionApi();

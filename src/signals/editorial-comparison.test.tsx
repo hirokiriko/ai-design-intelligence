@@ -163,7 +163,14 @@ describe('separate editorial comparison boundary', () => {
     Object.assign(root, { contains: (target: ElementStub) => target === source, ownerDocument: { getElementById: (id: string) => id === 'signal-editorial-source-kds_fixture_SOURCE_A' ? source : null } });
     const preventDefault = vi.fn();
     const event = { defaultPrevented: false, button: 0, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, target: link, currentTarget: root, preventDefault } as unknown as MouseEvent<HTMLElement>;
-    SignalEditorialComparison({ comparison: fixture() }).props.onClickCapture(event);
+    const rendered: { capture?: (event: MouseEvent<HTMLElement>) => void } = {};
+    function NavigationHarness() {
+      const view = SignalEditorialComparison({ comparison: fixture() });
+      rendered.capture = view.props.onClickCapture;
+      return view;
+    }
+    renderToStaticMarkup(createElement(NavigationHarness));
+    rendered.capture!(event);
     expect(details.open).toBe(true); expect(preventDefault).toHaveBeenCalledTimes(1);
     expect(source.focus).toHaveBeenCalledExactlyOnceWith({ preventScroll: true });
     expect(source.scrollIntoView).toHaveBeenCalledExactlyOnceWith({ block: 'start', behavior: 'auto' });

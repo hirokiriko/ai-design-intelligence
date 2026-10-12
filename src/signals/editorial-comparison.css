@@ -50,3 +50,14 @@
   .signal-editorial-why, .signal-editorial-next { padding: 12px; }
   .signal-editorial-dates div { grid-template-columns: 1fr; gap: 4px; }
 }
+
+.signal-editorial-candidates { border-top: 4px solid var(--signal-accent); margin-bottom: 24px; }
+.signal-editorial-candidate-scope { display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 16px 0; }
+.signal-editorial-candidate-scope dt { color: var(--signal-muted); font-size: 13px; }
+.signal-editorial-candidate-scope dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.signal-editorial-candidate { padding: 16px; border: 1px solid var(--signal-line); border-radius: 8px; background: #f1f8f6; }
+.signal-editorial-candidate h4 { margin: 0 0 8px; font-size: 19px; }
+.signal-editorial-candidate .signal-primary { color: #fff; }
+.signal-editorial-back { min-height: 44px; margin-bottom: 8px; }
+.signal-editorial-gazette-heading { margin: 28px 0 16px; padding-top: 20px; border-top: 2px solid var(--signal-line); }
+.signal-editorial-candidate:focus-within { outline: 2px solid var(--signal-accent); outline-offset: 3px; }

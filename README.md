@@ -101,3 +101,9 @@ signals のローカル閲覧では、`VITE_SIGNALS_READ_ONLY=true` と `VITE_SI
 今回取得した原文との照合記録を含む比較資料 v2 では、照合日時と値ごとの短い保存引用・取得日時・出典を表示します。v1 は従来どおり未再照合の保存要約として表示します。この追加はローカル比較資料の形式に限り、保存Run/APIの契約は変更しません。元サイトを自動取得せず、原本文や実際の比較資料をGit・配信ビルドへ含めません。
 
 standardのサンプル分析は架空データに基づく参考情報です。signalsでは保存結果のデータ区分と分析状態を確認してください。いずれも法的助言や企業戦略の断定を行うものではありません。
+
+### Local saved comparison candidates
+
+Private editorial version 3 preserves version 2 evidence and adds exact `discovery` metadata (`productKind`, editorial `selectionReason`, `comparisonBasis: "same_capture_products"`, `previousCaptureAt: null`) and a required display `label` per quote. Versions 1 and 2 remain compatible. The local read-only entry loads one saved comparison candidate (two products), then waits for explicit selection before showing the comparison. Acquisition times come from saved quotation metadata; missing prior captures remain unassessed. The independent gazette result retains its own scope.
+
+Selecting a candidate and returning to its list reuse the decoded data. Meaningful quotation links remember their originating comparison cell; the return action restores focus and scroll to that cell. Reloading starts with the candidate unselected. This remains behind the existing explicit local flag and loopback gate, introduces no Run/API fields, and never fetches official sites or starts an analysis. Real candidate data and original sources stay outside the repository and client bundle.

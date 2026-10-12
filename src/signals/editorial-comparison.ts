@@ -5,7 +5,7 @@ export function localProductSummaryEnabled(flag: unknown, readOnly: unknown, hos
 }
 
 export interface EditorialComparison {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   companyName: string;
   title: string;
   products: [{ label: string }, { label: string }];
@@ -18,11 +18,12 @@ export interface EditorialComparison {
   limitations: string[];
   sources: { id: string; label: string; url: string; notes: string }[];
   verification?: EditorialVerification;
+  discovery?: { productKind: string; selectionReason: string; comparisonBasis: 'same_capture_products'; previousCaptureAt: null };
 }
 
 export interface EditorialVerification {
   checkedAt: string;
-  quotes: { id: string; sourceId: string; text: string; retrievedAt: string }[];
+  quotes: { id: string; sourceId: string; text: string; retrievedAt: string; label?: string }[];
   differenceQuoteIds: [string[], string[]][];
   conditionQuoteIds: string[];
   announcementQuoteIds: string[];
@@ -82,12 +83,12 @@ function verification(value: unknown, comparison: EditorialComparison): Editoria
   const checkedAt = timestamp(item.checkedAt);
   const sourceIds = new Set(comparison.sources.map((source) => source.id));
   const quotes = list(item.quotes, 1, 24).map((value) => {
-    const quote = record(value, ['id', 'sourceId', 'text', 'retrievedAt']);
+    const quote = record(value, ['id', 'sourceId', 'text', 'retrievedAt', ...(comparison.version === 3 ? ['label'] : [])]);
     const id = text(quote.id, 80), sourceId = text(quote.sourceId, 80), retrievedAt = timestamp(quote.retrievedAt);
     if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(id) || !sourceIds.has(sourceId) || Date.parse(retrievedAt) > Date.parse(checkedAt)
       || typeof quote.text !== 'string' || !quote.text.trim() || Array.from(quote.text).length > 1200
       || Array.from(quote.text).some((char) => { const code = char.charCodeAt(0); return (code < 32 && ![9, 10, 13].includes(code)) || code === 127; })) return fail();
-    return { id, sourceId, text: quote.text, retrievedAt };
+    return { id, sourceId, text: quote.text, retrievedAt, ...(comparison.version === 3 ? { label: text(quote.label, 80) } : {}) };
   });
   const byId = new Map(quotes.map((quote) => [quote.id, quote]));
   if (byId.size !== quotes.length || new Set(quotes.map((quote) => quote.sourceId)).size !== sourceIds.size) return fail();
@@ -117,8 +118,8 @@ function verification(value: unknown, comparison: EditorialComparison): Editoria
 // 別の編集資料として検証する。保存Run・AI評価・収録件数へ結合しない。
 export function decodeEditorialComparison(value: unknown, companyName: string): EditorialComparison {
   const version = value && typeof value === 'object' && 'version' in value ? value.version : null;
-  const item = record(value, ['version', 'companyName', 'title', 'products', 'differences', 'condition', 'whyItMatters', 'nextQuestion', 'announcement', 'manufacturerClaim', 'limitations', 'sources', ...(version === 2 ? ['verification'] : [])]);
-  if ((version !== 1 && version !== 2) || text(item.companyName, 160) !== text(companyName, 160)) return fail();
+  const item = record(value, ['version', 'companyName', 'title', 'products', 'differences', 'condition', 'whyItMatters', 'nextQuestion', 'announcement', 'manufacturerClaim', 'limitations', 'sources', ...(version === 2 || version === 3 ? ['verification'] : []), ...(version === 3 ? ['discovery'] : [])]);
+  if ((version !== 1 && version !== 2 && version !== 3) || text(item.companyName, 160) !== text(companyName, 160)) return fail();
   const sources = list(item.sources, 1, 6).map((value) => {
     const source = record(value, ['id', 'label', 'url', 'notes']);
     const id = text(source.id, 80);
@@ -148,7 +149,12 @@ export function decodeEditorialComparison(value: unknown, companyName: string): 
     manufacturerClaim: { text: text(claim.text, 600), sourceId: reference(claim.sourceId) },
     limitations: list(item.limitations, 1, 6).map((value) => text(value, 500)), sources,
   };
-  if (version === 2) comparison.verification = verification(item.verification, comparison);
+  if (version === 2 || version === 3) comparison.verification = verification(item.verification, comparison);
+  if (version === 3) {
+    const discovery = record(item.discovery, ['productKind', 'selectionReason', 'comparisonBasis', 'previousCaptureAt']);
+    if (discovery.comparisonBasis !== 'same_capture_products' || discovery.previousCaptureAt !== null) return fail();
+    comparison.discovery = { productKind: text(discovery.productKind, 120), selectionReason: text(discovery.selectionReason, 500), comparisonBasis: discovery.comparisonBasis, previousCaptureAt: null };
+  }
   return comparison;
 }
 

@@ -100,3 +100,43 @@ describe('current official excerpt bindings in private comparison v2', () => {
     });
   });
 });
+
+function candidateFixture() {
+  const data = fixture();
+  data.version = 3;
+  data.discovery = { productKind: 'FIXTURE-製品分野', selectionReason: '同じ取得回にある仕様を比較するため。', comparisonBasis: 'same_capture_products', previousCaptureAt: null };
+  data.verification.quotes = data.verification.quotes.map((quote) => ({ ...quote, label: '仕様の原文' }));
+  data.verification.quotes[2].label = '数値の原文';
+  data.verification.quotes[4].label = '測定条件';
+  return data;
+}
+
+describe('saved candidate metadata in private comparison v3', () => {
+  it('keeps the original evidence exactly while validating the explicit candidate scope', () => {
+    const input = candidateFixture(), before = structuredClone(input);
+    expect(decodeEditorialComparison(input, input.companyName)).toEqual(before);
+    expect(input).toEqual(before);
+    const html = renderToStaticMarkup(createElement(SignalEditorialComparison, { comparison: input, summaryOnly: true }));
+    expect(html).toContain('FIXTURE-製品分野'); expect(html).toContain('同じ取得回の製品間比較');
+    expect(html).toContain('数値の原文'); expect(html).toContain('測定条件');
+    expect(html).toContain('id="signal-editorial-cell-1-0"');
+    expect(html).toContain('aria-label="FIXTURE-Alpha：準備時間 12秒"');
+    expect(html).toContain('data-return-target="signal-editorial-cell-1-0"');
+    for (const quote of input.verification.quotes) expect(html).toContain(`data-return-quote="${quote.id}"`);
+  });
+
+  it.each([
+    ['missing discovery', (data: ReturnType<typeof candidateFixture>) => { Reflect.deleteProperty(data, 'discovery'); }],
+    ['unrecorded scope field', (data: ReturnType<typeof candidateFixture>) => { Object.assign(data.discovery!, { watchId: 'kds_fixture_watch' }); }],
+    ['empty product kind', (data: ReturnType<typeof candidateFixture>) => { data.discovery!.productKind = ' '; }],
+    ['empty selection reason', (data: ReturnType<typeof candidateFixture>) => { data.discovery!.selectionReason = ''; }],
+    ['invented historical basis', (data: ReturnType<typeof candidateFixture>) => { Object.assign(data.discovery!, { comparisonBasis: 'previous_capture' }); }],
+    ['invented prior acquisition', (data: ReturnType<typeof candidateFixture>) => { Object.assign(data.discovery!, { previousCaptureAt: '2024-02-01T00:00:00Z' }); }],
+    ['missing quote label', (data: ReturnType<typeof candidateFixture>) => { Reflect.deleteProperty(data.verification.quotes[0], 'label'); }],
+    ['empty quote label', (data: ReturnType<typeof candidateFixture>) => { data.verification.quotes[0].label = ''; }],
+    ['v3 metadata in v2', (data: ReturnType<typeof candidateFixture>) => { data.version = 2; }],
+  ] as const)('rejects %s', (_label, mutate) => {
+    const input = candidateFixture(); mutate(input);
+    expect(() => decodeEditorialComparison(input, input.companyName)).toThrow(EditorialComparisonError);
+  });
+});

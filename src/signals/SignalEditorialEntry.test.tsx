@@ -1,4 +1,5 @@
 import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SignalEditorialEntry } from './SignalEditorialEntry';
 import { loadEditorialComparison, type EditorialComparison } from './editorial-comparison';
@@ -24,9 +25,9 @@ const comparison: EditorialComparison = {
   manufacturerClaim: { text: '架空の説明', sourceId: 'kds_fixture_source' }, limitations: ['架空の資料'],
   sources: [{ id: 'kds_fixture_source', label: '架空の仕様', url: 'https://example.test/fixture', notes: '架空の記録' }],
 };
-function tree(autoLoad = true) {
+function tree(autoLoad = true, candidateFlow = false) {
   hooks.index = 0; hooks.effects = [];
-  return SignalEditorialEntry({ companyName: comparison.companyName, autoLoad, summaryOnly: true });
+  return SignalEditorialEntry({ companyName: comparison.companyName, autoLoad, summaryOnly: true, candidateFlow });
 }
 function button(node: ReactNode): ReactElement<{ onClick: () => void }> | undefined {
   for (const child of Children.toArray(node)) {
@@ -82,5 +83,38 @@ describe('local summary entry lifecycle', () => {
     const retry = button(failed); expect(retry).toBeDefined(); retry!.props.onClick();
     await vi.waitFor(() => expect(hooks.state).toEqual({ status: 'ready', comparison }));
     expect(loadEditorialComparison).toHaveBeenCalledTimes(2);
+  });
+
+  it('loads a candidate without opening it, then selects, returns and reselects without another GET', async () => {
+    const candidate: EditorialComparison = { ...structuredClone(comparison), version: 3,
+      discovery: { productKind: 'FIXTURE-製品分野', selectionReason: '同条件の寸法を検討するため。', comparisonBasis: 'same_capture_products', previousCaptureAt: null },
+      verification: { checkedAt: '2024-03-01T01:03:00Z', quotes: [{ id: 'kds_fixture_quote', sourceId: 'kds_fixture_source', label: '仕様の原文', text: '架空の寸法仕様。', retrievedAt: '2024-03-01T01:02:00Z' }], differenceQuoteIds: [[['kds_fixture_quote'], ['kds_fixture_quote']]], conditionQuoteIds: ['kds_fixture_quote'], announcementQuoteIds: ['kds_fixture_quote'], manufacturerClaimQuoteIds: ['kds_fixture_quote'] },
+    };
+    const before = structuredClone(candidate);
+    vi.mocked(loadEditorialComparison).mockResolvedValue(candidate);
+    tree(true, true); hooks.effects[1]();
+    await vi.waitFor(() => expect(hooks.state).toEqual({ status: 'ready', comparison: candidate }));
+    const target = { focus: vi.fn(), scrollIntoView: vi.fn() }, querySelector = vi.fn(() => target);
+    hooks.refs[1].current = { querySelector };
+    const initial = tree(true, true); hooks.effects[0]();
+    expect(querySelector).not.toHaveBeenCalled();
+    const html = renderToStaticMarkup(initial);
+    expect(html).toContain('FIXTURE-製品分野'); expect(html).toContain('比較候補 1件（2製品）');
+    expect(html).toContain('選定理由（編集）'); expect(html).toContain('前回との差は未判定');
+    expect(html).toContain('dateTime="2024-03-01T01:02:00Z"'); expect(html).not.toContain('<table');
+    // The selection action is owned by the rendered candidate component.
+    const candidateNode = Children.toArray(initial.props.children)[0] as ReactElement<{ comparison: EditorialComparison; onSelect: () => void }>;
+    candidateNode.props.onSelect();
+    const selected = tree(true, true); hooks.effects[0]();
+    expect(querySelector).toHaveBeenLastCalledWith('#signal-editorial-comparison');
+    expect(renderToStaticMarkup(selected)).toContain('<table');
+    button(selected)!.props.onClick();
+    const returned = tree(true, true); hooks.effects[0]();
+    expect(querySelector).toHaveBeenLastCalledWith('#signal-editorial-open-candidate');
+    expect(renderToStaticMarkup(returned)).not.toContain('<table');
+    const again = Children.toArray(returned.props.children)[0] as ReactElement<{ onSelect: () => void }>;
+    again.props.onSelect(); tree(true, true); hooks.effects[0]();
+    expect(loadEditorialComparison).toHaveBeenCalledTimes(1);
+    expect(candidate).toEqual(before);
   });
 });

@@ -221,18 +221,21 @@ describe('saved URL initialization', () => {
     });
   }
 
-  it('keeps the opted-in local product summary before and outside the selected saved result', async () => {
+  it('opens the opted-in local discovery list before mounting any selected evidence', async () => {
     const api = questionApi();
     startWorkspace(api, false, true);
     await vi.waitFor(() => expect(historyPicker(workspaceTree(api, false, true))?.props.state).toBe('ready'));
     const before = JSON.stringify(workspaceHooks.states[4]);
     const html = renderToStaticMarkup(workspaceTree(api, false, true, true));
     expect(html).toContain('signals-app signals-local-summary');
-    const summary = html.indexOf('id="signal-editorial-content"'), saved = html.indexOf('id="signal-result"');
-    expect(summary).toBeGreaterThan(-1); expect(saved).toBeGreaterThan(summary);
-    expect(html.slice(saved)).not.toContain('id="signal-editorial-content"');
+    expect(html).toContain('対象から見る資料を選ぶ');
+    expect(html).toContain('signal-discovery-open-gazette');
+    expect(html).not.toContain('id="signal-result"');
+    expect(html).not.toContain('id="signal-editorial-comparison"');
+    expect(html).toContain('<details class="signal-saved-tools"><summary>');
     expect(renderToStaticMarkup(workspaceTree(api, false, true))).not.toContain('id="signal-editorial-content"');
     expect(renderToStaticMarkup(workspaceTree(api, false, true))).not.toContain('signals-local-summary');
+    expect(renderToStaticMarkup(workspaceTree(api, false, true))).toContain('id="signal-result"');
     expect(renderToStaticMarkup(workspaceTree(api, false, false, true))).not.toContain('id="signal-editorial-content"');
     expect(renderToStaticMarkup(workspaceTree(api, true, true, true))).not.toContain('id="signal-editorial-content"');
     expect(JSON.stringify(workspaceHooks.states[4])).toBe(before);

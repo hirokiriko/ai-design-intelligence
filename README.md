@@ -96,7 +96,7 @@ pnpm run check:no-real-data
 
 ## 注意
 
-signals のローカル閲覧では、`VITE_SIGNALS_READ_ONLY=true` と `VITE_SIGNALS_LOCAL_PRODUCT_SUMMARY=true` を明示してビルドした場合に限り、ループバック上で保存済み商品比較要約を先頭に表示できます。既存の同一origin固定GET経路を使い、比較要約はGit・公開ビルドに同梱しません。通常配備ではこのローカル用フラグを設定しません。要約は公報集計・保存AI結果から分離し、元本文が未保存で再照合していないことを明示します。
+signals のローカル閲覧では、`VITE_SIGNALS_READ_ONLY=true` と `VITE_SIGNALS_LOCAL_PRODUCT_SUMMARY=true` を明示してビルドした場合に限り、ループバック上で保存資料の候補一覧を表示できます。企業・分野と見る理由から一件を選び、その資料の根拠へ進みます。既存の同一origin固定GET経路を使い、比較要約はGit・公開ビルドに同梱しません。通常配備ではこのローカル用フラグを設定しません。商品資料・公報・保存AI結果は選択に応じて表示し、原文の照合状態は保存資料の版に従います。
 
 今回取得した原文との照合記録を含む比較資料 v2 では、照合日時と値ごとの短い保存引用・取得日時・出典を表示します。v1 は従来どおり未再照合の保存要約として表示します。この追加はローカル比較資料の形式に限り、保存Run/APIの契約は変更しません。元サイトを自動取得せず、原本文や実際の比較資料をGit・配信ビルドへ含めません。
 
@@ -107,3 +107,5 @@ standardのサンプル分析は架空データに基づく参考情報です。
 Private editorial version 3 preserves version 2 evidence and adds exact `discovery` metadata (`productKind`, editorial `selectionReason`, `comparisonBasis: "same_capture_products"`, `previousCaptureAt: null`) and a required display `label` per quote. Versions 1 and 2 remain compatible. The local read-only entry loads one saved comparison candidate (two products), then waits for explicit selection before showing the comparison. Acquisition times come from saved quotation metadata; missing prior captures remain unassessed. The independent gazette result retains its own scope.
 
 Selecting a candidate and returning to its list reuse the decoded data. Meaningful quotation links remember their originating comparison cell; the return action restores focus and scroll to that cell. Reloading starts with the candidate unselected. This remains behind the existing explicit local flag and loopback gate, introduces no Run/API fields, and never fetches official sites or starts an analysis. Real candidate data and original sources stay outside the repository and client bundle.
+
+The local discovery draft also lists individually saved `newly_observed` record facts only when the collection counts are comparable and consistent. Selecting one shows that record's metadata and available drawings; a missing drawing or date remains missing. Registered watch choices switch the saved classification and collection scope explicitly. They do not create a monitoring history. Collection input totals, target additions, product-to-product specifications, and same-record changes remain separate concepts. Saved analysis and history are secondary disclosures; Workbench remains the separate application for deeper product judgment and reporting. This local draft still requires execution and browser verification before replacing a working preview.

@@ -9,7 +9,7 @@ import { SignalEmptyJourney, SignalPurposeIntro, SignalQuestionFocus, SignalQues
 import { analysisQuestion, sameAnalysisQuestion } from './analysis-question';
 import { decodeRunReview, runReviewKey, type RunReviews, type RunReviewState } from './run-review';
 import { startUnavailableReason } from './start-availability';
-import { SignalEditorialEntry } from './SignalEditorialEntry';
+import { SignalDiscovery } from './SignalDiscovery';
 import './signals.css';
 
 interface Props { api?: SignalApi; renderAnalysis?: (datasetId: string) => ReactNode; developmentMode?: boolean; readOnly?: boolean; localProductSummary?: boolean }
@@ -86,9 +86,11 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
   useEffect(() => {
     if (!run || busy || !resultRequested.current) return;
     resultRequested.current = false;
-    const target = main.current?.querySelector<HTMLElement>('#signal-result');
+    const discovery = localProductSummary && readOnly && !developmentMode && run.schemaVersion !== '1.0.0';
+    const target = main.current?.querySelector<HTMLElement>(discovery ? '#signal-discovery-list-title' : '#signal-result')
+      ?? (discovery ? main.current?.querySelector<HTMLElement>('#signal-discovery-detail') : null);
     if (main.current && target) revealEvidenceTarget(main.current, target);
-  }, [run, busy]);
+  }, [run, busy, localProductSummary, readOnly, developmentMode]);
 
   const recoverError = useCallback((failure: unknown) => {
     setQuestion(null);
@@ -254,6 +256,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
   };
   const changeWatch = (id: string) => {
     setQuestion(null);
+    if (localProductSummary && readOnly && !developmentMode) resultRequested.current = true;
     setWatchId(id); setRun(null); setRuns([]); setShowAnalysis(false); saveRunLocation(null);
     void loadComparisonPairs(bootstrap?.watches.find((watch) => watch.id === id), bootstrap?.schemaVersion ?? '1.0.0');
     void loadHistory(id);
@@ -324,21 +327,21 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
     finally { mutation.current = false; setBusy(false); }
   };
 
-  return <div className={`signals-app${localProductSummary && readOnly && !developmentMode ? ' signals-local-summary' : ''}`}>
+  const discoveryMode = localProductSummary && readOnly && !developmentMode;
+  return <div className={`signals-app${discoveryMode ? ' signals-local-summary signals-discovery-mode' : ''}`}>
     <a href="#signal-main" className="signal-skip">確認条件と結果へ移動</a>
     <header className="signal-header"><div><span className="signal-brand-mark" aria-hidden="true">K</span><strong>KIRIKO <span>Design Signals</span></strong></div><span className="signal-header-label">企業・商品の変化を確認</span></header>
     <main ref={main} id="signal-main" className="signal-main" onClick={revealEvidenceLink}>
-      <SignalPurposeIntro />
+      {discoveryMode ? <div className="signal-intro"><p className="signal-eyebrow">競合の動向を調べる人のために</p><h1>次に見るべき動きを、根拠から選ぶ。</h1><p>企業と分野を選び、気になる一件を開いて、何が分かるかを確かめます。</p></div> : <SignalPurposeIntro />}
       {developmentMode ? <SignalValuePreview /> : null}
       <p className="signal-live" role="status" aria-live="polite">{notice}</p>
       {error ? <div className="signal-error" role="alert"><p>{error}</p>{!bootstrap ? <button type="button" className="signal-button" onClick={() => window.location.reload()}>{developmentMode ? 'ローカル保存を確認して再読み込み' : '認証・設定を確認して再読み込み'}</button> : null}</div> : null}
       {pendingRequest === 'unavailable' ? <PendingRunNotice pending={pendingRequest} busy={actionPending || !bootstrap} onRecover={() => {}} /> : pendingRequest.map((pending) => <PendingRunNotice key={`${pending.watchId}:${pending.requestId}`} pending={pending} outsideScope={!bootstrap?.watches.some((watch) => watch.id === pending.watchId)} busy={actionPending || !bootstrap} onRecover={() => void recoverPending(pending)} />)}
       {bootstrap ? <div className="signal-layout signal-saved-first">
         <div className="signal-content">
-          {localProductSummary && readOnly && !developmentMode && run && run.schemaVersion !== '1.0.0' && run.input.context.entity.name ? <SignalEditorialEntry key={run.input.context.entity.name} companyName={run.input.context.entity.name} autoLoad summaryOnly candidateFlow /> : null}
-          {localProductSummary && readOnly && !developmentMode && run && run.schemaVersion !== '1.0.0' ? <section className="signal-editorial-gazette-heading" aria-labelledby="signal-gazette-section-title"><p className="signal-eyebrow">別の収録資料</p><h2 id="signal-gazette-section-title">公報・図面の保存比較</h2><p>{run.input.context.entity.name} · {[...new Set(run.signal?.recordFacts.map((fact) => fact.articleName).filter(Boolean) ?? [])].join(' / ') || run.input.context.category.label}</p><p className="signal-subtle">上の商品比較とは別の対象です。以下は保存した公報・図面と、その分析結果です。</p></section> : null}
-          {run ? <><SignalQuestionFocus question={questionSupported ? null : question} hasEvidence={run.signal !== null} /><SignalResult key={run.id} run={run} focusOnLoad={false} developmentMode={developmentMode} reviewState={currentReviews[runReviewKey(run)]} /></> : readOnly ? <div className="signal-panel"><h2>保存結果を選ぶ</h2><p>下の保存履歴から確認する結果を開いてください。</p></div> : <SignalEmptyJourney developmentMode={developmentMode} factsOnly={bootstrap.analysisMode === 'facts_only'} questionSupported={questionSupported} />}
+          {discoveryMode && run && run.schemaVersion !== '1.0.0' ? <SignalDiscovery key={run.id} run={run} reviewState={currentReviews[runReviewKey(run)]} scopes={bootstrap.watches.map((watch) => ({ id: watch.id, label: watch.name }))} onScopeChange={changeWatch} busy={actionPending} /> : run ? <><SignalQuestionFocus question={questionSupported ? null : question} hasEvidence={run.signal !== null} /><SignalResult key={run.id} run={run} focusOnLoad={false} developmentMode={developmentMode} reviewState={currentReviews[runReviewKey(run)]} /></> : readOnly ? <div className="signal-panel"><h2>保存結果を選ぶ</h2><p>下の保存履歴から確認する結果を開いてください。</p></div> : <SignalEmptyJourney developmentMode={developmentMode} factsOnly={bootstrap.analysisMode === 'facts_only'} questionSupported={questionSupported} />}
         </div>
+        <SavedTools collapsed={discoveryMode}>
         <aside className="signal-sidebar" aria-label="保存条件と履歴">
       {!readOnly ? <SignalQuestionPicker selected={question} disabled={actionPending || !bootstrap} analysisSupported={questionSupported} developmentMode={developmentMode} onSelect={(selected) => {
         setQuestion(selected);
@@ -361,11 +364,16 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
             {!readOnly && run && run.watchId === watchId && run.status !== 'running' ? <details className="signal-details"><summary>新しい実行として確認し直す</summary><p className="signal-subtle">{developmentMode ? '過去の比較例を残して、架空資料の模擬結果を新しくローカル保存します。実AIは実行しません。' : bootstrap.analysisMode === 'facts_only' ? '過去の結果を残して、登録済み書誌事項を新しい実行として再比較します。記事取得・AI呼出は行いません。' : bootstrap.analysisMode === 'standard' ? '過去の結果を残して、登録資料による分析を新しく実行します。AI・公式確認を含む場合があります。' : '過去の結果を残して、新しい確認処理を実行します。この接続先の分析モードは未記録です。'}</p><button className="signal-button" type="button" disabled={creationPending || selectedWatchPending || !selectionReady} onClick={() => void startRun('reanalyze')}>別の実行として再確認</button></details> : null}
           </section>
         </aside>
+        </SavedTools>
 
       </div> : null}
       {!readOnly && renderAnalysis && selectedWatch ? <section className="signal-legacy"><button className="signal-text-button" type="button" disabled={busy} aria-expanded={showAnalysis} onClick={() => setShowAnalysis(!showAnalysis)}>既存の市場・企業ルール分析 {showAnalysis ? 'を閉じる' : 'を開く'}</button>{showAnalysis ? renderAnalysis(selectedWatch.afterDatasetId) : null}</section> : null}
     </main><footer className="signal-footer">参考情報です。収録範囲外や最新の法的状態は示しません。事実・AI観察候補・関連仮説を区別して確認してください。</footer>
   </div>;
+}
+
+function SavedTools({ collapsed, children }: { collapsed: boolean; children: ReactNode }) {
+  return collapsed ? <details className="signal-saved-tools"><summary>保存条件・履歴を確認する</summary>{children}</details> : <>{children}</>;
 }
 
 export function PendingRunNotice({ pending, outsideScope = false, busy, onRecover }: { pending: PendingRunRequest | 'unavailable'; outsideScope?: boolean; busy: boolean; onRecover: () => void }) {

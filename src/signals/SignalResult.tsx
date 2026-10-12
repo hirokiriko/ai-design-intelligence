@@ -11,6 +11,8 @@ import { SignalRunReview } from './SignalRunReview';
 import { SignalDrawingComparison } from './SignalDrawingComparison';
 import type { RunReviewState } from './run-review';
 import { claimFailedChecks, knownFailedChecks, ResultQualityContext, type ArchivedResultQuality } from './result-quality';
+import { SignalSavedEntry } from './SignalSavedEntry';
+import { sourceDisplayTitle, explanationDisplayText } from './source-display';
 import { SignalQualityHold } from './SignalQualityHold';
 import { savedSourcesSummary, savedStopExplanation } from './execution-explanation';
 
@@ -45,12 +47,12 @@ function SourceCard({ source, run, developmentMode }: { source: Signal['sources'
   const factsOnly = factsOnlyRun(run);
   const manualFact = factsOnly && v2Source?.extractionVersion === 'manual-public-fact-1.0.0';
   return <article id={evidenceId(source.id)} className="signal-source" tabIndex={-1}>
-    <h4>{factsOnly || developmentMode ? source.title || 'タイトル不明' : <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title || 'タイトル不明'} ↗</a>}</h4>
+    <h4>{factsOnly || developmentMode ? sourceDisplayTitle(source.title) : <a href={source.url} target="_blank" rel="noopener noreferrer">{sourceDisplayTitle(source.title)} ↗</a>}</h4>
     <p className="signal-subtle">{run.schemaVersion !== '1.0.0' ? '発表日' : '公開日'}：{source.publishedAt ?? '不明'} · {manualFact ? '手動確認日時' : '取得日時'}：{source.retrievedAt}</p>
     {v2Source ? <p className="signal-subtle">更新日：{v2Source.updatedAt ?? '不明'} · 発売日：{v2Source.releaseAt ?? '不明'}</p> : null}
     {source.retrospective ? <p className="signal-retrospective">事後照合：意匠の基準日より後の資料を含みます。</p> : null}
     {manualFact ? <p className="signal-subtle">手動確認した参照先・URLです。記事本文・画像は保存せず、AIへ送信していません。</p> : v2Source ? <>
-      <p className="signal-subtle">{developmentMode ? '架空の保存抜粋（実AIは未実施）' : '分析用に用意した抜粋'}：先頭{v2Source.modelVisibleChars}文字 / 抽出対象{v2Source.extractedChars}文字。{v2Source.truncated ? '省略した範囲があります。全文確認ではありません。' : '抽出した範囲の抜粋です。ページ全体とは限りません。'}</p>
+      <p className="signal-subtle">{developmentMode ? '架空の保存抜粋（実AIは未実施）' : '分析用に用意した抜粋'}：{v2Source.modelVisibleChars}文字 / 抽出対象{v2Source.extractedChars}文字。{v2Source.truncated ? '省略した範囲があります。全文確認ではありません。' : '抽出した範囲の抜粋です。ページ全体とは限りません。'}</p>
       <blockquote>{Array.from(source.excerpt).slice(0, v2Source.modelVisibleChars).join('') || '抜粋なし'}</blockquote>
       {Array.from(source.excerpt).length > v2Source.modelVisibleChars ? <details><summary>保存された抜粋の残り（分析用の範囲外）</summary><blockquote>{Array.from(source.excerpt).slice(v2Source.modelVisibleChars).join('')}</blockquote></details> : null}
     </> : <blockquote>{source.excerpt || '抜粋なし'}</blockquote>}
@@ -91,20 +93,22 @@ export function SignalResult({ run, developmentMode = false, focusOnLoad = true,
   const target = run.schemaVersion === '1.0.0' ? run.input.watch.name : `${run.input.context.entity.name ?? '企業名不明'} / ${run.input.context.category.label}`;
   return <ResultQualityContext.Provider value={failedChecks}><article ref={result} id="signal-result" tabIndex={-1} className="signal-result" aria-labelledby="signal-result-heading" onClickCapture={revealEvidenceLink}>
     <div className="signal-result-title"><div><p className="signal-eyebrow">保存された確認結果</p><h2 ref={heading} tabIndex={-1} id="signal-result-heading">{savedResultTarget(run)}</h2></div><span className={`signal-badge status-${run.status}`}>{runStatusLabel(run)}</span></div>
-    <p className="signal-result-return"><a href="#signal-conditions">条件に戻って別の比較資料を選ぶ</a></p><SavedTarget run={run} />
-    <p className="signal-subtle">{developmentMode ? '架空の固定結果を保存した日時' : 'この結果を実行した日時'}：{run.createdAt}。{developmentMode ? '実AIは未実施です。' : '実行時点の資料と分析状態を表示しています。現在の最新情報とは限りません。'}</p>
-    <SignalSavedQuestion run={run} />
-    {showReview ? <SignalRunReview run={run} state={reviewState} /> : null}
-    {factsOnly ? <p className="signal-mode-note"><strong>書誌情報のみの比較・画像/記事分析は未実施</strong><br />実行時に記事本文・図面を取得せず、AI・Vertexへ送信していません。</p> : signal && !incomplete ? <p className="signal-mode-note"><strong>{statusLabels[signal.status]}</strong></p> : null}
+    <p className="signal-result-return"><a href="#signal-conditions">保存条件・履歴を開く</a></p><SavedTarget run={run} />
+    {!signal ? <details className="signal-details"><summary>この結果の問い・保存日時</summary><p className="signal-subtle">保存日時：<time dateTime={run.createdAt}>{new Intl.DateTimeFormat('ja-JP', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Tokyo' }).format(new Date(run.createdAt))}</time>（日本時間）</p><SignalSavedQuestion run={run} /></details> : null}
+    {showReview && !signal ? <SignalRunReview run={run} state={reviewState} /> : null}
+    {factsOnly ? <p className="signal-mode-note"><strong>書誌情報のみの比較・画像/記事分析は未実施</strong><br />実行時に記事本文・図面を取得せず、AI・Vertexへ送信していません。</p> : null}
     {run.versions.model === 'fixture-controller' || run.versions.model.startsWith('fictional-') ? <p className="signal-data-banner">模擬モデル（接続・保存の検証） · 実際の画像AI・公式サイト取得の評価結果ではありません。</p> : null}
     {(run.status === 'failed' || run.status === 'partial' || run.status === 'interrupted') ? <p role="alert" className="signal-error">{runStatusLabel(run)}。変化なしという結果ではありません。{run.status === 'partial' ? '資料不足という通常の結果とは別の実行状態です。' : ''}保存履歴は再取得でき、再実行は別の操作です。</p> : null}
     {stopExplanation ? <div className="signal-incomplete-guide" aria-label="途中終了後の確認"><p><strong>停止理由：</strong>{stopExplanation}</p><p>保存結果と履歴を確認できます。閲覧しても分析は再送されません。</p>{signal ? <nav className="signal-evidence-links" aria-label="保存済みの途中資料へ">{signal.media.length ? <a href="#signal-images">保存図面と観察を見る</a> : null}{signal.sources.length ? <a href="#signal-saved-sources">保存された公式資料を見る</a> : null}<a href="#signal-execution-details">保存された終了理由の詳細を見る</a></nav> : null}</div> : null}
     {sourceFailure ? <p className="signal-subtle">{sourceFailure}</p> : null}
     {run.status === 'running' ? <p role="status">バックエンドで確認中です。「履歴を再取得」で状態を読み直せます。表示のための再実行は行いません。</p> : null}
     {signal ? <>
+      <SignalSavedEntry run={run} />
+    <details className="signal-details"><summary>この結果の問い・保存日時</summary><p className="signal-subtle">保存日時：<time dateTime={run.createdAt}>{new Intl.DateTimeFormat('ja-JP', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Tokyo' }).format(new Date(run.createdAt))}</time>（日本時間）</p><SignalSavedQuestion run={run} /></details>
+      {showReview ? <SignalRunReview run={run} state={reviewState} /> : null}
       <SignalQuestionAnswer run={run} developmentMode={developmentMode} />
-      <ResultOverview run={run} developmentMode={developmentMode} />
-      <div className="signal-counts"><div><span>比較Aの対象</span><strong>{signal.counts.before}<small>件</small></strong></div><div><span>比較Bの対象</span><strong>{signal.counts.after}<small>件</small></strong></div><div><span>収録範囲での新規観測</span><strong>{signal.counts.newlyObserved}<small>件</small></strong></div></div>
+      <details className="signal-details" data-print-evidence><summary>保存された分析項目の一覧</summary><ResultOverview run={run} developmentMode={developmentMode} /></details>
+      {run.schemaVersion === '1.0.0' ? <div className="signal-counts"><div><span>比較Aの対象</span><strong>{signal.counts.before}<small>件</small></strong></div><div><span>比較Bの対象</span><strong>{signal.counts.after}<small>件</small></strong></div><div><span>収録範囲での新規観測</span><strong>{signal.counts.newlyObserved}<small>件</small></strong></div></div> : null}
       <details className="signal-details signal-facts" id="signal-design-facts" data-print-evidence><summary>意匠データの事実と個別の根拠を確認</summary><p className="signal-subtle">{comparisonCoverageSummary(signal)}</p>{run.schemaVersion !== '1.0.0' ? <p className="signal-subtle">この実行に保存された根拠意匠を表示します。元の収録データの再取得・再検証は行いません。</p> : null}{signal.designFacts.length ? signal.designFacts.map((fact, factIndex) => <div className="signal-fact" id={evidenceId(fact.id)} key={fact.id} tabIndex={-1}><p>{designFactText(fact.text, fact.field)}</p><p className="signal-subtle">項目：{designFactFieldLabel(fact.field)}</p>{run.schemaVersion !== '1.0.0' ? run.signal?.recordFacts.filter((item) => item.id === fact.id).map((item) => <RecordFact key={item.id} fact={item} />) : null}{fact.recordIds.map((recordId, recordIndex) => {
         const record = run.schemaVersion === '1.0.0' ? undefined : run.signal?.recordFacts.find((item) => item.recordId === recordId);
         if (record?.id === fact.id) return null;
@@ -117,23 +121,24 @@ export function SignalResult({ run, developmentMode = false, focusOnLoad = true,
         {signal.media.length ? <div className="signal-media-grid">{signal.media.map((media) => <MediaCard key={media.id} media={media} run={run} developmentMode={developmentMode} />)}</div> : <div className="signal-empty">保存結果に画像はありません。図面の情報だけから画像を補っていません。</div>}
         {signal.visualObservations.length ? signal.visualObservations.map((item) => <div className="signal-fact signal-observation" id={evidenceId(item.id)} key={item.id} tabIndex={-1}><SignalQualityHold checks={failedChecks.includes('V2') ? ['V2'] : []} label="保存AI観察"><p><strong>{item.part}</strong> · {observationLabels[item.status]}</p><p>{item.observation}</p></SignalQualityHold><EvidenceLinks ids={item.mediaIds} signal={signal} /></div>) : <p>画像観察の結果は未記録です。保存情報だけでは、未実施・取得失敗・判断不能を特定できません。変化なしとは扱いません。</p>}
       </section>}
-      <section id="signal-official"><h3>{developmentMode ? '架空資料の記載・固定の引用例' : partialEvaluation ? '途中結果で確認した公式記載' : incomplete ? '停止前に検証した公式記載' : '公式発表の事実'}</h3>{!factsOnly && signal.officialFacts.length ? <p className="signal-subtle">{developmentMode ? '自作した架空資料の固定の引用例です。実在企業の公式資料や実AIによる確認ではありません。' : '企業が公表した内容です。個別意匠との対応の確かさは、後の検討材料で分けて示します。'}</p> : null}{signal.officialFacts.length ? signal.officialFacts.map((fact) => {
+      <section id="signal-official"><h3>{developmentMode ? '架空資料の記載・固定の引用例' : partialEvaluation ? '途中結果で確認した公式記載' : incomplete ? '停止前に検証した公式記載' : '主張を支える公式の引用'}</h3>{!factsOnly && signal.officialFacts.length ? <p className="signal-subtle">{developmentMode ? '自作した架空資料の固定の引用例です。実在企業の公式資料や実AIによる確認ではありません。' : '企業が公表した内容です。個別意匠との対応の確かさは、後の検討材料で分けて示します。'}</p> : null}{signal.officialFacts.length ? signal.officialFacts.map((fact) => {
         const source = signal.sources.find((item) => item.id === fact.sourceId);
         const publishedBeforeComparison = run.schemaVersion !== '1.0.0' && source?.publishedAt != null
           && source.publishedAt.slice(0, 10) < run.input.context.beforeDataset.dataAsOf;
         return <div className="signal-fact" id={evidenceId(fact.id)} key={fact.id} tabIndex={-1}>
           <p>{fact.text}</p>
-          <p className="signal-subtle">出典：{source?.title || 'タイトル不明'} · {run.schemaVersion === '1.0.0' ? '公開日' : '発表日'}：{source?.publishedAt ?? '不明'}</p>
+          <p className="signal-subtle">出典：{sourceDisplayTitle(source?.title ?? '')} · {run.schemaVersion === '1.0.0' ? '公開日' : '発表日'}：{source?.publishedAt ?? '不明'}</p>
           {publishedBeforeComparison ? <p className="signal-subtle">比較Aの基準日より前の発表です。</p> : null}
           <blockquote>{fact.quote}</blockquote><EvidenceLinks ids={[fact.sourceId]} signal={signal} />
         </div>;
-      }) : <p>{factsOnly ? '未実施：公式記事の本文は保存・分析していないため、発表内容を結果の根拠に採用していません。' : sourcesSummary ?? '今回の結果に採用された公式発表はありません。保存された資料がないため、取得や評価の個別状態は特定できません。'}</p>}
-      {sourcesSummary && !factsOnly ? <p><a href="#signal-saved-sources">保存された資料・抜粋を確認する</a></p> : null}
-      {signal.sources.length ? <><h4 id="signal-saved-sources" tabIndex={-1}>{factsOnly ? '手動確認した参照先・URL' : partialEvaluation ? '取得済みの公式資料' : incomplete ? '停止前に取得した公式資料' : '確認した公式資料'}</h4>{signal.sources.map((source) => <SourceCard key={source.id} source={source} run={run} developmentMode={developmentMode} />)}</> : null}</section>
-      <section className="signal-hypotheses" id="signal-hypotheses" tabIndex={-1}><h3>{partialEvaluation ? '取得済み資料からの検討材料と未確認事項' : incomplete ? '停止前の中間候補と未確認事項' : '検討材料と未確認事項'}</h3><h4>{partialEvaluation ? '関連仮説 · 途中結果' : incomplete ? '関連仮説 · 中間候補' : '関連仮説 · 未確認'}</h4><p className="signal-subtle">{factsOnly ? '記事本文と図面を分析していないため、意匠と商品の関係は評価していません。' : partialEvaluation ? '取得済みの資料だけを使って評価した仮説です。取得できなかった資料による補足は未確認で、全体の分析は完了していません。' : incomplete ? '停止前に検証された中間候補です。分析は完了しておらず、結論として採用していません。' : run.schemaVersion !== '1.0.0' ? '関連性についての仮説とその限界です。個別製品との対応の確認状況は「個別意匠と商品の対応」で確認してください。' : '意匠と公式資料の関係は仮説です。公式に同一製品や商品化を確認したことを意味しません。'}</p>{signal.hypotheses.length ? signal.hypotheses.map((item) => <div className="signal-fact" key={item.id} id={evidenceId(item.id)} tabIndex={-1}><SignalQualityHold checks={claimFailedChecks(failedChecks, signal, item.evidenceIds)} label="保存された仮説と限界"><p>{item.text}</p><EvidenceLinks ids={item.evidenceIds} signal={signal} /><SignalEvidenceDetails ids={item.evidenceIds} signal={signal} factsOnly={factsOnly} developmentMode={developmentMode} />{item.limitations.length ? <details className="signal-details" data-print-evidence><summary>この仮説の限界（{item.limitations.length}件）</summary><ul>{item.limitations.map((text, index) => <li key={index}>{text}</li>)}</ul></details> : null}</SignalQualityHold></div>) : <p>{factsOnly ? '関連仮説の分析は未実施です。' : partialEvaluation ? '取得済みの資料から根拠のある関連仮説は得られませんでした。' : incomplete ? '保存された関連仮説の中間候補はありません。' : '根拠のある関連仮説はありません。'}</p>}
+      }) : <p>{factsOnly ? '未実施：公式記事の本文は保存・分析していないため、発表内容を結果の根拠に採用していません。' : signal.sources.length ? '図面との対応を裏付ける引用は未確認です。照合する資料を下に表示します。' : '採用された引用は未記録です。'}</p>}
+      {sourcesSummary && !factsOnly ? <details className="signal-details"><summary>資料の確認状況</summary><p>{sourcesSummary}</p></details> : null}</section>
+      <section id="signal-source-materials" aria-label="照合する公式資料">
+      {signal.sources.length ? <><h4 id="signal-saved-sources" tabIndex={-1}>{factsOnly ? '手動確認した参照先・URL' : partialEvaluation ? '取得済みの公式資料' : incomplete ? '停止前に取得した公式資料' : '照合する公式資料'}</h4>{signal.sources.map((source) => <SourceCard key={source.id} source={source} run={run} developmentMode={developmentMode} />)}</> : null}</section>
+      <section className="signal-hypotheses" id="signal-hypotheses" tabIndex={-1}><h3>{partialEvaluation ? '取得済み資料からの検討材料と未確認事項' : incomplete ? '停止前の中間候補と未確認事項' : '検討材料と未確認事項'}</h3><h4>{partialEvaluation ? '関連仮説 · 途中結果' : incomplete ? '関連仮説 · 中間候補' : '関連仮説 · 未確認'}</h4><p className="signal-subtle">{factsOnly ? '記事本文と図面を分析していないため、意匠と商品の関係は評価していません。' : partialEvaluation ? '取得済みの資料だけを使って評価した仮説です。取得できなかった資料による補足は未確認で、全体の分析は完了していません。' : incomplete ? '停止前に検証された中間候補です。分析は完了しておらず、結論として採用していません。' : run.schemaVersion !== '1.0.0' ? '関連性についての仮説とその限界です。個別製品との対応の確認状況は「個別意匠と商品の対応」で確認してください。' : '意匠と公式資料の関係は仮説です。公式に同一製品や商品化を確認したことを意味しません。'}</p>{signal.hypotheses.length ? signal.hypotheses.map((item) => <div className="signal-fact" key={item.id} id={evidenceId(item.id)} tabIndex={-1}><SignalQualityHold checks={claimFailedChecks(failedChecks, signal, item.evidenceIds)} label="保存された仮説と限界"><p>{item.text}</p><EvidenceLinks ids={item.evidenceIds} signal={signal} /><SignalEvidenceDetails ids={item.evidenceIds} signal={signal} factsOnly={factsOnly} developmentMode={developmentMode} />{item.limitations.length ? <details className="signal-details" data-print-evidence><summary>この仮説の限界（{item.limitations.length}件）</summary><ul>{item.limitations.map((text, index) => <li key={index}>{explanationDisplayText(text)}</li>)}</ul></details> : null}</SignalQualityHold></div>) : <p>{factsOnly ? '関連仮説の分析は未実施です。' : partialEvaluation ? '取得済みの資料から根拠のある関連仮説は得られませんでした。' : incomplete ? '保存された関連仮説の中間候補はありません。' : '根拠のある関連仮説はありません。'}</p>}
       {run.schemaVersion !== '1.0.0' && run.signal ? <Relationships signal={run.signal} factsOnly={factsOnly} incomplete={incomplete} partialEvaluation={partialEvaluation} developmentMode={developmentMode} /> : null}
-      <details className="signal-details" data-print-evidence><summary>次に確認する資料・未確認事項（{signal.questionsForHuman.length + signal.limitations.length}件）</summary><div id="signal-next-checks" className="signal-next-checks" tabIndex={-1}><h4>未確認事項・次に確認する資料</h4>{signal.questionsForHuman.length ? <ul>{signal.questionsForHuman.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>追加の確認事項は登録されていません。</p>}</div>
-      <h4>不明点・資料の限界</h4>{signal.limitations.length ? <ul>{signal.limitations.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>追加の不明点は登録されていません。収録範囲外は評価していません。</p>}</details></section>
+      <details className="signal-details" data-print-evidence><summary>次に確認する資料・未確認事項（{signal.questionsForHuman.length + signal.limitations.length}件）</summary><div id="signal-next-checks" className="signal-next-checks" tabIndex={-1}><h4>未確認事項・次に確認する資料</h4>{signal.questionsForHuman.length ? <ul>{signal.questionsForHuman.map((text, index) => <li key={index}>{explanationDisplayText(text)}</li>)}</ul> : <p>追加の確認事項は登録されていません。</p>}</div>
+      <h4>不明点・資料の限界</h4>{signal.limitations.length ? <ul>{signal.limitations.map((text, index) => <li key={index}>{explanationDisplayText(text)}</li>)}</ul> : <p>追加の不明点は登録されていません。収録範囲外は評価していません。</p>}</details></section>
     </> : null}
     <details className="signal-details" data-print-evidence><summary>収録条件と保存対象の詳細</summary><SavedContext run={run} /></details>
     {run.schemaVersion !== '1.0.0' ? <DiscoveryDetails run={run} developmentMode={developmentMode} /> : null}

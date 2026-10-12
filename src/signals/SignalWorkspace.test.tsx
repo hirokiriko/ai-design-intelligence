@@ -44,10 +44,10 @@ vi.mock('react', async (importOriginal) => {
   };
 });
 
-function workspaceTree(api: SignalApi, developmentMode = false) {
+function workspaceTree(api: SignalApi, developmentMode = false, readOnly = false) {
   workspaceHooks.stateIndex = 0; workspaceHooks.refIndex = 0; workspaceHooks.effects = [];
   workspaceHooks.active = true;
-  try { return SignalWorkspace({ api, developmentMode }); } finally { workspaceHooks.active = false; }
+  try { return SignalWorkspace({ api, developmentMode, readOnly }); } finally { workspaceHooks.active = false; }
 }
 function buttonNamed(node: ReactNode, label: string): ReactElement<{ children?: ReactNode; disabled?: boolean; onClick: () => void }> | undefined {
   for (const child of Children.toArray(node)) {
@@ -177,8 +177,8 @@ describe('saved URL initialization', () => {
   });
   afterEach(() => { cleanups.forEach((cleanup) => cleanup()); workspaceHooks.active = false; vi.unstubAllGlobals(); });
 
-  function startWorkspace(api: SignalApi, developmentMode = false) {
-    workspaceTree(api, developmentMode);
+  function startWorkspace(api: SignalApi, developmentMode = false, readOnly = false) {
+    workspaceTree(api, developmentMode, readOnly);
     cleanups = workspaceHooks.effects.map((effect) => effect()).filter((cleanup): cleanup is () => void => typeof cleanup === 'function');
   }
   function savedApi(): SignalApi {
@@ -221,6 +221,27 @@ describe('saved URL initialization', () => {
     });
   }
 
+  it('leads with the selected saved result and hides mutation controls in an explicit read-only viewer', async () => {
+    const api = questionApi();
+    startWorkspace(api, false, true);
+    await vi.waitFor(() => expect(api.runs).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(historyPicker(workspaceTree(api, false, true))?.props.state).toBe('ready'));
+    const tree = workspaceTree(api, false, true);
+    const html = renderToStaticMarkup(tree);
+    expect(html.indexOf('id="signal-result"')).toBeLessThan(html.indexOf('id="signal-conditions"'));
+    expect(html).not.toContain('架空の操作例');
+    expect(html).not.toContain('signal-value-preview');
+    expect(html).toContain('保存された比較条件');
+    expect(html).not.toContain('更新を確認すると新しい確認処理を開始します');
+    expect(html).toContain('保存された条件と履歴を読み込みました。');
+    expect(questionPicker(tree)).toBeUndefined();
+    expect(buttonNamed(tree, 'この問いで分析を開始')).toBeUndefined();
+    expect(buttonNamed(tree, '別の実行として再確認')).toBeUndefined();
+    expect(buttonNamed(tree, '＋ 確認条件を保存')).toBeUndefined();
+    expect(buttonNamed(tree, '履歴を再取得')?.props.disabled).toBe(false);
+    expect(api.start).not.toHaveBeenCalled(); expect(api.saveWatch).not.toHaveBeenCalled();
+  });
+
   it.each([
     new SignalApiError('404', 'FIXTURE-old-backend'), new SignalApiError('401', 'FIXTURE-unreadable-review'),
     new SignalApiError('503', 'FIXTURE-unavailable-review'), new SignalApiError('connection', 'FIXTURE-connection'), new ContractError(),
@@ -255,7 +276,7 @@ describe('saved URL initialization', () => {
     finish(savedReview(first));
     await vi.waitFor(() => { const html = renderToStaticMarkup(workspaceTree(api)); expect(html).toContain('品質未達：V2 FAIL / V4 FAIL'); expect(html).not.toContain('品質レビュー：確認中'); });
     const html = renderToStaticMarkup(workspaceTree(api));
-    const result = html.slice(html.indexOf('id="signal-result"'));
+    const result = html.slice(html.indexOf('id="signal-result"'), html.indexOf('<aside class="signal-sidebar"'));
     expect(result).toContain('品質レビュー：未記録'); expect(result).not.toContain('V2 FAIL'); expect(result).not.toContain('本人受入：未実施');
     expect(html).not.toContain('品質レビュー：確認中'); expect(new URL(location.href).searchParams.get('run')).toBe(second.id);
     historyPicker(workspaceTree(api))!.props.onSelect(first.id);

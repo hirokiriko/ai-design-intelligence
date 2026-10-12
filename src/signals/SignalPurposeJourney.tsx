@@ -9,7 +9,7 @@ const signalQuestions: { id: SignalQuestion; label: string; description: string;
 ];
 
 export function SignalPurposeIntro() {
-  return <div className="signal-intro"><p className="signal-eyebrow">知財・企画・デザインの検討へ</p><h1>企業・商品分野の変化を、<br className="signal-mobile-break" />根拠から次の検討へ。</h1><p>対象の企業・分類で何が増えたかを確認し、<strong>図面の観察・公式情報・次に調べること</strong>へ進みます。収録範囲を確かめながら、企画・開発で検討する材料を集めます。</p></div>;
+  return <div className="signal-intro"><p className="signal-eyebrow">知財・企画・デザインの検討へ</p><h1>対象の変化を見つけ、図面と公式資料で確かめる。</h1><p>保存された比較から、<strong>対象の件数・図面・商品説明</strong>を一緒に確認できます。</p></div>;
 }
 
 // 操作を説明する自作図形。保存結果・実資料・AIの評価とは分離する。

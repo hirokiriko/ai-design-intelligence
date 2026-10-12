@@ -1,3 +1,4 @@
+import { sourceDisplayTitle } from './source-display';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { ComparisonMedia, Signal, SignalV2 } from './contract';
@@ -41,7 +42,7 @@ function OriginalEvidenceLink({ id, label }: { id: string; label: string }) {
 function SourceMetadata({ source }: { source: Signal['sources'][number] }) {
   const v2 = 'extractionVersion' in source ? source as SignalV2['sources'][number] : null;
   return <>
-    <p><strong>出典：{source.title || 'タイトル不明'}</strong></p>
+    <p><strong>出典：{sourceDisplayTitle(source.title)}</strong></p>
     <p className="signal-subtle">{v2 ? '発表日' : '公開日'}：{source.publishedAt ?? '不明'} · 取得日時：{source.retrievedAt}</p>
     {v2 ? <p className="signal-subtle">更新日：{v2.updatedAt ?? '不明'} · 発売日：{v2.releaseAt ?? '不明'}。発表日とは別の情報です。</p> : null}
     {source.retrospective ? <p className="signal-retrospective">事後照合：意匠の基準日より後の資料を含みます。</p> : null}

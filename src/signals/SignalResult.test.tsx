@@ -11,7 +11,7 @@ const officialFactCard = (html: string, id: string) => html.split(`id="${evidenc
 describe('signal facts and saved result presentation', () => {
   it('separates factual sources, AI observations, hypotheses and unknown dates', () => {
     const html = renderToStaticMarkup(createElement(SignalResult, { run: fictionalRun }));
-    for (const label of ['意匠データの事実', '画像からのAI観察候補', '公式発表の事実', '関連仮説 · 未確認', '不明点・資料の限界', '公開日：不明', '事後照合', '公報日', '出願日', '縮尺は未確認', '保存条件・実行情報']) expect(html).toContain(label);
+    for (const label of ['意匠データの事実', '画像からのAI観察候補', '主張を支える公式の引用', '関連仮説 · 未確認', '不明点・資料の限界', '公開日：不明', '事後照合', '公報日', '出願日', '縮尺は未確認', '保存条件・実行情報']) expect(html).toContain(label);
     expect(html).toContain('/api/v1/media/media-a');
     expect(html).toContain(`href="#${evidenceId('source-1')}"`);
     expect(html).toContain('rel="noopener noreferrer"');

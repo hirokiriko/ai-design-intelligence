@@ -13,8 +13,8 @@ export function SignalRunReview({ run, state, compact = false }: { run: Run; sta
     : review.ownerAcceptance === 'ACCEPTED' ? '本人受入：受入記録あり' : '本人受入：未受入' : null;
   if (compact) return <span className="signal-history-review"><span>{quality}</span>{owner ? <span>{owner}</span> : null}</span>;
   return <section className="signal-mode-note" aria-label="保存結果の品質レビュー">
-    <p><strong>{quality}</strong>{owner ? <><br />{owner}</> : null}</p>
+    <p className="signal-subtle">{review !== null && !mismatch && review.failedChecks.length ? '再確認が必要な項目があります。保存された結果と根拠を照合してください。' : quality}</p><details className="signal-details"><summary>品質レビューの記録</summary><p><strong>{quality}</strong>{owner ? <><br />{owner}</> : null}</p>
     <p className="signal-subtle">処理の終了は、V1〜V5の合格や本人受入を示しません。{unavailable ? 'レビューの取得に失敗しました。保存結果は引き続き閲覧できます。' : '登録されたレビューだけを表示しています。未記録の項目は合格と判断しません。'}</p>
     {review !== null && !mismatch ? <p className="signal-subtle">レビュー日時：{review.reviewedAt ?? '未記録'} · 参照記録：{review.reviewReference}</p> : null}
-  </section>;
+  </details></section>;
 }

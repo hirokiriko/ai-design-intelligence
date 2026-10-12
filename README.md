@@ -8,6 +8,8 @@ Vite / React / TypeScript のSPAで、保存条件→差分→画像観察候補
 
 `VITE_APP_MODE=signals`で新しい画面、未指定または`standard`で従来のサンプル・Contract・ルール分析を起動します。利用者認証、永続保存、実行権限、予算、AI呼出、公式サイトの有限探索はBackendが担当します。FrontendへAPIキーやGoogle credentialを設定しません。
 
+保存結果だけを公開する閲覧用ビルドでは、`VITE_APP_MODE=signals` と `VITE_SIGNALS_READ_ONLY=true` を指定します。この設定では分析開始・再分析・条件作成を表示せず、保存結果・図面・出典・履歴のGETを使います。未指定の通常ビルドは明示的な開始操作を保ちます。これは画面の機能設定で、Backendの受付状態を推測するものではありません。閲覧用の配信先でも書き込みAPIを拒否してください。
+
 このbranchの技術仕様は[Signal UI実装](docs/architecture/signal-ui.md)を参照してください。目指す価値、実装、検証したデータ・モード、実際の公開版は別の状態です。最新の候補SHA・証拠・未達・公開状態は対応するGitHub IssueとPRで確認し、文書やビルドの存在を実資料での価値実証・公開完了とは扱いません。
 
 ## 従来のstandard画面の方針（Phase 0）

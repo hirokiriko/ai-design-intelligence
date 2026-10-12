@@ -260,11 +260,12 @@ function validateContext(run: RunV2 | RunV21 | RunV22 | RunV23 | RunV25): void {
   }
   unique(signal.discovery.candidates.map((item) => item.id));
   for (const source of signal.sources) {
-    if (!/^[a-f0-9]{64}$/.test(source.bodyHash) || !/^[a-f0-9]{64}$/.test(source.contentHash) || source.excerptStart !== 0 || source.modelVisibleChars > Array.from(source.excerpt).length || Array.from(source.excerpt).length > source.extractedChars || source.truncated !== (source.modelVisibleChars < source.extractedChars)) fail();
+    const excerptLength = Array.from(source.excerpt).length;
+    if (!/^[a-f0-9]{64}$/.test(source.bodyHash) || !/^[a-f0-9]{64}$/.test(source.contentHash) || source.modelVisibleChars > excerptLength || source.excerptStart + excerptLength > source.extractedChars || source.truncated !== (source.modelVisibleChars < source.extractedChars)) fail();
   }
   for (const fact of signal.officialFacts) {
     const source = signal.sources.find((item) => item.id === fact.sourceId);
-    if (!source || fact.end > source.modelVisibleChars) fail();
+    if (!source || fact.end > source.excerptStart + source.modelVisibleChars) fail();
   }
 }
 export function decodeWatch(value: unknown): Watch { watchCheck(value); return value as Watch; }

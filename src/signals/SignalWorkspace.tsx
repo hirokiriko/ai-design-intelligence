@@ -11,7 +11,7 @@ import { decodeRunReview, runReviewKey, type RunReviews, type RunReviewState } f
 import { startUnavailableReason } from './start-availability';
 import './signals.css';
 
-interface Props { api?: SignalApi; renderAnalysis?: (datasetId: string) => ReactNode; developmentMode?: boolean }
+interface Props { api?: SignalApi; renderAnalysis?: (datasetId: string) => ReactNode; developmentMode?: boolean; readOnly?: boolean }
 type PairState = 'loading' | 'ready' | 'error';
 interface ReviewRequest { promise: Promise<RunReviewState>; settled: boolean }
 interface ReviewDisplay { api: SignalApi; developmentMode: boolean; reviews: RunReviews }
@@ -36,7 +36,7 @@ function withReview(previous: ReviewDisplay, api: SignalApi, developmentMode: bo
   return { api, developmentMode, reviews: { ...reviews, [key]: state } };
 }
 
-export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMode = false }: Props) {
+export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMode = false, readOnly = false }: Props) {
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
   const [watchId, setWatchId] = useState('');
   const [runs, setRuns] = useState<Run[]>([]);
@@ -142,7 +142,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
       void loadComparisonPairs(loaded.watches.find((watch) => watch.id === initialWatch), loaded.schemaVersion);
       saveRunLocation(saved?.id ?? null);
       if (savedError) setError(savedError);
-      setNotice(savedError ? '指定された保存結果は取得できません。現在の登録済み条件と保留情報は保持しています。AIは実行していません。' : saved && !savedWatchListed ? '指定された保存結果を閲覧しています。この結果の条件は現在の登録範囲に含まれないため、その条件の履歴は自動取得しません。現在の登録済み条件を選び、別の確認として明示的に実行できます。' : pending === 'unavailable' ? '保留情報を確認できません。保存結果は閲覧できますが、新しい実行は開始しません。' : pending.length > 0 ? '前の実行要求を保持しています。同じ確認条件では状態の確認が必要です。別の登録済み条件は、選んで明示的に実行できます。' : '保存された条件と履歴を読み込みました。更新を確認すると新しい確認処理を開始します。');
+      setNotice(savedError ? '指定された保存結果は取得できません。現在の登録済み条件と保留情報は保持しています。AIは実行していません。' : readOnly ? saved && !savedWatchListed ? '指定された保存結果を閲覧しています。この結果の条件は現在の登録範囲に含まれません。' : pending === 'unavailable' ? '保留情報を確認できません。保存結果は閲覧できます。' : pending.length > 0 ? '前の実行要求を保持しています。保存された結果と履歴を閲覧できます。' : '保存された条件と履歴を読み込みました。' : saved && !savedWatchListed ? '指定された保存結果を閲覧しています。この結果の条件は現在の登録範囲に含まれないため、その条件の履歴は自動取得しません。現在の登録済み条件を選び、別の確認として明示的に実行できます。' : pending === 'unavailable' ? '保留情報を確認できません。保存結果は閲覧できますが、新しい実行は開始しません。' : pending.length > 0 ? '前の実行要求を保持しています。同じ確認条件では状態の確認が必要です。別の登録済み条件は、選んで明示的に実行できます。' : '保存された条件と履歴を読み込みました。更新を確認すると新しい確認処理を開始します。');
       if (!initialWatch) return;
       try {
         const history = await api.runs(initialWatch);
@@ -157,7 +157,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
       }
     }).catch((failure: unknown) => { if (active && current === revision.current) { setError(message(failure)); setNotice('読込に失敗しました。'); } });
     return () => { active = false; revision.current += 1; pairRevision.current += 1; };
-  }, [api, developmentMode, loadComparisonPairs, recoverError]);
+  }, [api, developmentMode, loadComparisonPairs, recoverError, readOnly]);
 
   useEffect(() => {
     if (reviewRequests.current.api !== api || reviewRequests.current.developmentMode !== developmentMode) {
@@ -267,11 +267,12 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
       if (current !== revision.current) return;
       if (selected.watchId !== watchId) throw new ContractError();
       setQuestion(null);
-      setRun(selected); saveRunLocation(selected.id); setNotice('保存結果を表示しました。AIは実行していません。');
+      resultRequested.current = true;
+    setRun(selected); saveRunLocation(selected.id); setNotice('保存結果を表示しました。AIは実行していません。');
     } catch (failure) { if (current === revision.current) recoverError(failure); }
   };
   const saveWatch = async (input: WatchInput) => {
-    if (!bootstrap || mutation.current || historyState === 'loading' || pendingRequest === 'unavailable') return;
+    if (readOnly || !bootstrap || mutation.current || historyState === 'loading' || pendingRequest === 'unavailable') return;
     setQuestion(null);
     mutation.current = true; revision.current += 1; setBusy(true); setError('');
     try {
@@ -284,7 +285,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
     finally { mutation.current = false; setBusy(false); }
   };
   const startRun = async (intent: 'check' | 'reanalyze') => {
-    if (!bootstrap || !selectedWatch || mutation.current || historyState === 'loading' || selectedWatchPending || !selectionReady) return;
+    if (readOnly || !bootstrap || !selectedWatch || mutation.current || historyState === 'loading' || selectedWatchPending || !selectionReady) return;
     const selectedQuestion = questionSupported && question ? analysisQuestion(question) : undefined;
     setQuestion(null);
     const comparisonPairId = supportsPairs(bootstrap.schemaVersion) ? selectedPairId : '';
@@ -327,36 +328,37 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
     <header className="signal-header"><div><span className="signal-brand-mark" aria-hidden="true">K</span><strong>KIRIKO <span>Design Signals</span></strong></div><span className="signal-header-label">企業・商品の変化を確認</span></header>
     <main ref={main} id="signal-main" className="signal-main" onClick={revealEvidenceLink}>
       <SignalPurposeIntro />
-      <SignalValuePreview />
-      <SignalQuestionPicker selected={question} disabled={actionPending || !bootstrap} analysisSupported={questionSupported} developmentMode={developmentMode} onSelect={(selected) => {
-        setQuestion(selected);
-        const target = main.current?.querySelector<HTMLElement>('#signal-conditions');
-        if (main.current && target) revealEvidenceTarget(main.current, target);
-      }} />
-      <div className="signal-data-banner">保存結果のデータ区分は、各実行に保存された情報で表示します。<span>常時監視・自動通知ではありません。</span></div>
+      {developmentMode ? <SignalValuePreview /> : null}
       <p className="signal-live" role="status" aria-live="polite">{notice}</p>
       {error ? <div className="signal-error" role="alert"><p>{error}</p>{!bootstrap ? <button type="button" className="signal-button" onClick={() => window.location.reload()}>{developmentMode ? 'ローカル保存を確認して再読み込み' : '認証・設定を確認して再読み込み'}</button> : null}</div> : null}
       {pendingRequest === 'unavailable' ? <PendingRunNotice pending={pendingRequest} busy={actionPending || !bootstrap} onRecover={() => {}} /> : pendingRequest.map((pending) => <PendingRunNotice key={`${pending.watchId}:${pending.requestId}`} pending={pending} outsideScope={!bootstrap?.watches.some((watch) => watch.id === pending.watchId)} busy={actionPending || !bootstrap} onRecover={() => void recoverPending(pending)} />)}
-      {bootstrap ? <div className="signal-layout">
+      {bootstrap ? <div className="signal-layout signal-saved-first">
+        <div className="signal-content">{run ? <><SignalQuestionFocus question={questionSupported ? null : question} hasEvidence={run.signal !== null} /><SignalResult key={run.id} run={run} focusOnLoad={false} developmentMode={developmentMode} reviewState={currentReviews[runReviewKey(run)]} /></> : readOnly ? <div className="signal-panel"><h2>保存結果を選ぶ</h2><p>下の保存履歴から確認する結果を開いてください。</p></div> : <SignalEmptyJourney developmentMode={developmentMode} factsOnly={bootstrap.analysisMode === 'facts_only'} questionSupported={questionSupported} />}</div>
         <aside className="signal-sidebar" aria-label="保存条件と履歴">
-          <section className="signal-panel" id="signal-conditions" tabIndex={-1}><p className="signal-eyebrow">2 · 対象資料を確認</p><h2>{bootstrap.analysisMode === 'facts_only' ? 'どの企業・書誌事項を確かめる？' : 'どの企業・図面を確かめる？'}</h2>
+      {!readOnly ? <SignalQuestionPicker selected={question} disabled={actionPending || !bootstrap} analysisSupported={questionSupported} developmentMode={developmentMode} onSelect={(selected) => {
+        setQuestion(selected);
+        const target = main.current?.querySelector<HTMLElement>('#signal-conditions');
+        if (main.current && target) revealEvidenceTarget(main.current, target);
+      }} /> : null}
+
+          <section className="signal-panel" id="signal-conditions" tabIndex={-1}><p className="signal-eyebrow">2 · 対象資料を確認</p><h2>{readOnly ? '保存された比較条件' : bootstrap.analysisMode === 'facts_only' ? 'どの企業・書誌事項を確かめる？' : 'どの企業・図面を確かめる？'}</h2>
             <p className="signal-subtle">保存した確認条件から、企業と対象資料を選びます。</p>
             <AnalysisModeNotice bootstrap={bootstrap} developmentMode={developmentMode} />
             <p className="signal-subtle">{bootstrap.catalog.entities.length === 1 ? '現在の登録対象は1社です。この企業の収録範囲を確認します。' : `現在の登録対象は${bootstrap.catalog.entities.length}社です。登録された企業・商品分野だけを選択できます。`}</p>
             {bootstrap.watches.length ? <label className="signal-field">確認する条件<select value={watchId} disabled={busy} onChange={(event) => changeWatch(event.target.value)}>{bootstrap.watches.map((watch) => <option key={watch.id} value={watch.id}>{watch.name}</option>)}</select></label> : <p>最初の確認条件を保存してください。</p>}
-            {selectedWatch ? <><WatchSummary watch={selectedWatch} bootstrap={bootstrap} />{supportsPairs(bootstrap.schemaVersion) ? <ComparisonPairSelector pairs={comparisonPairs} state={pairState} selectedId={selectedPairId} busy={actionPending} onSelect={setSelectedPairId} onReload={() => void loadComparisonPairs(selectedWatch, bootstrap.schemaVersion)} /> : null}<SignalStartGuide analysisMode={bootstrap.analysisMode} developmentMode={developmentMode} questionSupported={questionSupported} questionText={questionSupported && question ? analysisQuestion(question).text : undefined} /><button className="signal-button signal-primary" aria-describedby={unavailableReason ? "signal-start-explanation signal-start-unavailable" : "signal-start-explanation"} type="button" disabled={creationPending || selectedWatchPending || !selectionReady || (run?.watchId === watchId && run.status === 'running')} onClick={() => void startRun('check')}>{busy ? '確認しています…' : questionSupported ? 'この問いで分析を開始' : '更新を確認'}</button>{unavailableReason ? <p id="signal-start-unavailable" className="signal-subtle" role="status">{unavailableReason}</p> : null}<p className="signal-subtle">{questionSupported ? '同じ問い・資料・版の確認済み結果がある場合は、その保存結果を表示します。問い・比較組の選択や変更だけではAIを実行しません。' : supportsPairs(bootstrap.schemaVersion) ? '同じ条件・同じデータ・同じ比較組の確認済み結果がある場合は、保存結果を表示します。比較組の選択や変更だけではAIを実行しません。' : '同じ条件・同じデータの確認済み結果がある場合は、保存結果を表示します。'}</p></> : null}
-            {selectedWatch ? <button className="signal-text-button" type="button" disabled={actionPending} onClick={() => void refreshDatasets()}>同じ企業・商品条件で収録データを選び直す</button> : null}
-            <button className="signal-text-button" type="button" disabled={creationPending} aria-expanded={showCreate} onClick={() => setShowCreate(!showCreate)}>{showCreate ? '条件の作成を閉じる' : '＋ 確認条件を保存'}</button>
-            {showCreate || !bootstrap.watches.length ? <WatchForm key={`${selectedWatch?.id ?? 'new'}-${createRevision}`} bootstrap={bootstrap} seed={selectedWatch} busy={creationPending} onSave={saveWatch} /> : null}
+            {selectedWatch ? <><WatchSummary watch={selectedWatch} bootstrap={bootstrap} />{!readOnly ? <>{supportsPairs(bootstrap.schemaVersion) ? <ComparisonPairSelector pairs={comparisonPairs} state={pairState} selectedId={selectedPairId} busy={actionPending} onSelect={setSelectedPairId} onReload={() => void loadComparisonPairs(selectedWatch, bootstrap.schemaVersion)} /> : null}<SignalStartGuide analysisMode={bootstrap.analysisMode} developmentMode={developmentMode} questionSupported={questionSupported} questionText={questionSupported && question ? analysisQuestion(question).text : undefined} /><button className="signal-button signal-primary" aria-describedby={unavailableReason ? "signal-start-explanation signal-start-unavailable" : "signal-start-explanation"} type="button" disabled={creationPending || selectedWatchPending || !selectionReady || (run?.watchId === watchId && run.status === 'running')} onClick={() => void startRun('check')}>{busy ? '確認しています…' : questionSupported ? 'この問いで分析を開始' : '更新を確認'}</button>{unavailableReason ? <p id="signal-start-unavailable" className="signal-subtle" role="status">{unavailableReason}</p> : null}<p className="signal-subtle">{questionSupported ? '同じ問い・資料・版の確認済み結果がある場合は、その保存結果を表示します。問い・比較組の選択や変更だけではAIを実行しません。' : supportsPairs(bootstrap.schemaVersion) ? '同じ条件・同じデータ・同じ比較組の確認済み結果がある場合は、保存結果を表示します。比較組の選択や変更だけではAIを実行しません。' : '同じ条件・同じデータの確認済み結果がある場合は、保存結果を表示します。'}</p></> : <p className="signal-subtle">閲覧用の画面です。保存された比較・図面・出典・履歴を確認できます。</p>}</> : null}
+            {!readOnly && selectedWatch ? <button className="signal-text-button" type="button" disabled={actionPending} onClick={() => void refreshDatasets()}>同じ企業・商品条件で収録データを選び直す</button> : null}
+            {!readOnly ? <button className="signal-text-button" type="button" disabled={creationPending} aria-expanded={showCreate} onClick={() => setShowCreate(!showCreate)}>{showCreate ? '条件の作成を閉じる' : '＋ 確認条件を保存'}</button> : null}
+            {!readOnly && (showCreate || !bootstrap.watches.length) ? <WatchForm key={`${selectedWatch?.id ?? 'new'}-${createRevision}`} bootstrap={bootstrap} seed={selectedWatch} busy={creationPending} onSave={saveWatch} /> : null}
           </section>
-          <section className="signal-panel"><h2>保存履歴</h2><button className="signal-text-button" type="button" disabled={busy || !watchId} onClick={() => void loadHistory(watchId, true)}>履歴を再取得</button>
+          <section className="signal-panel" id="signal-history" tabIndex={-1}><h2>保存履歴</h2><button className="signal-text-button" type="button" disabled={busy || !watchId} onClick={() => void loadHistory(watchId, true)}>履歴を再取得</button>
             <SignalHistory runs={runs} selectedId={run?.id} state={historyState} disabled={actionPending} onSelect={(id) => void selectRun(id)} reviews={currentReviews} />
-            {run && run.watchId === watchId && run.status !== 'running' ? <details className="signal-details"><summary>新しい実行として確認し直す</summary><p className="signal-subtle">{developmentMode ? '過去の比較例を残して、架空資料の模擬結果を新しくローカル保存します。実AIは実行しません。' : bootstrap.analysisMode === 'facts_only' ? '過去の結果を残して、登録済み書誌事項を新しい実行として再比較します。記事取得・AI呼出は行いません。' : bootstrap.analysisMode === 'standard' ? '過去の結果を残して、登録資料による分析を新しく実行します。AI・公式確認を含む場合があります。' : '過去の結果を残して、新しい確認処理を実行します。この接続先の分析モードは未記録です。'}</p><button className="signal-button" type="button" disabled={creationPending || selectedWatchPending || !selectionReady} onClick={() => void startRun('reanalyze')}>別の実行として再確認</button></details> : null}
+            {!readOnly && run && run.watchId === watchId && run.status !== 'running' ? <details className="signal-details"><summary>新しい実行として確認し直す</summary><p className="signal-subtle">{developmentMode ? '過去の比較例を残して、架空資料の模擬結果を新しくローカル保存します。実AIは実行しません。' : bootstrap.analysisMode === 'facts_only' ? '過去の結果を残して、登録済み書誌事項を新しい実行として再比較します。記事取得・AI呼出は行いません。' : bootstrap.analysisMode === 'standard' ? '過去の結果を残して、登録資料による分析を新しく実行します。AI・公式確認を含む場合があります。' : '過去の結果を残して、新しい確認処理を実行します。この接続先の分析モードは未記録です。'}</p><button className="signal-button" type="button" disabled={creationPending || selectedWatchPending || !selectionReady} onClick={() => void startRun('reanalyze')}>別の実行として再確認</button></details> : null}
           </section>
         </aside>
-        <div className="signal-content">{run ? <><SignalQuestionFocus question={questionSupported ? null : question} hasEvidence={run.signal !== null} /><SignalResult key={run.id} run={run} developmentMode={developmentMode} reviewState={currentReviews[runReviewKey(run)]} /></> : <SignalEmptyJourney developmentMode={developmentMode} factsOnly={bootstrap.analysisMode === 'facts_only'} questionSupported={questionSupported} />}</div>
+
       </div> : null}
-      {renderAnalysis && selectedWatch ? <section className="signal-legacy"><button className="signal-text-button" type="button" disabled={busy} aria-expanded={showAnalysis} onClick={() => setShowAnalysis(!showAnalysis)}>既存の市場・企業ルール分析 {showAnalysis ? 'を閉じる' : 'を開く'}</button>{showAnalysis ? renderAnalysis(selectedWatch.afterDatasetId) : null}</section> : null}
+      {!readOnly && renderAnalysis && selectedWatch ? <section className="signal-legacy"><button className="signal-text-button" type="button" disabled={busy} aria-expanded={showAnalysis} onClick={() => setShowAnalysis(!showAnalysis)}>既存の市場・企業ルール分析 {showAnalysis ? 'を閉じる' : 'を開く'}</button>{showAnalysis ? renderAnalysis(selectedWatch.afterDatasetId) : null}</section> : null}
     </main><footer className="signal-footer">参考情報です。収録範囲外や最新の法的状態は示しません。事実・AI観察候補・関連仮説を区別して確認してください。</footer>
   </div>;
 }

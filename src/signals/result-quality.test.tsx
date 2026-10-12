@@ -184,8 +184,8 @@ describe('holds follow model claims and leave source facts intact', () => {
     const before = JSON.stringify(run), answer = run.signal.questionAnswer;
     const html = renderToStaticMarkup(createElement(SignalResult, { run, archivedQuality: archived(run) }));
     const card = elementById(html, 'signal-question-answer-title');
-    expect(card).toContain('この問いへの回答');
-    expect(html).toContain('data-quality-hold="V2 V4"'); expect(html).toContain('保存された回答と限界の原文を確認');
+    expect(card).toContain(run.input.analysisQuestion.text);
+    expect(html).toContain('data-quality-hold="V2 V4"'); expect(html).toContain('図面の読み取りに再確認が必要です。回答の採用は保留です。'); expect(html).toContain('確認状況の詳細'); expect(html).not.toContain('保存された回答と限界の原文を確認');
     expect(html).toContain(answer.text); expect(html).toContain(answer.limitations[0]); expect(html).toContain(answer.nextChecks[0]);
     expect(html).toContain(run.input.analysisQuestion.text); expect(html).toContain(run.signal.officialFacts[0].quote);
     expect(JSON.stringify(run)).toBe(before);

@@ -57,7 +57,7 @@ describe('saved partial explanation and read-only next steps', () => {
     const html = render(run);
     expect(html).not.toContain('href="#signal-saved-sources"');
     expect(html).not.toContain('公式資料の参照先が');
-    expect(html).toContain('保存された資料がないため');
+    expect(html).toContain('採用された引用は未記録です'); expect(html).not.toContain('照合する公式資料の商品説明');
   });
 
   it('distinguishes an empty saved excerpt from a retained source reference', () => {

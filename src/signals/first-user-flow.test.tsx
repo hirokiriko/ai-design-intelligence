@@ -9,11 +9,11 @@ import { SignalEmptyJourney, SignalPurposeIntro, SignalQuestionFocus, SignalQues
 import { evidenceId } from './labels';
 
 describe('first-time selection and evidence journey', () => {
-  it('shows the audience, decision and a source-linked fictional example before asking for input', () => {
+  it('explains the saved comparison and keeps the fictional illustration available for explicit development use', () => {
     const intro = renderToStaticMarkup(createElement(SignalPurposeIntro));
-    expect(intro).toContain('企業・商品分野の変化を');
-    expect(intro).toContain('企画・開発で検討する材料');
-    expect(intro).toContain('図面の観察・公式情報・次に調べること');
+    expect(intro).toContain('対象の変化を見つけ、図面と公式資料で確かめる');
+    expect(intro).toContain('保存された比較から');
+    expect(intro).toContain('対象の件数・図面・商品説明');
     const example = renderToStaticMarkup(createElement(SignalValuePreview));
     expect(example).toContain('架空の操作例 · 実AI未実施');
     expect(example).toContain('href="#signal-example-evidence"');
@@ -60,7 +60,7 @@ describe('first-time selection and evidence journey', () => {
     expect(html).toContain('この記載の引用・出典をここで確かめる');
     const result = renderToStaticMarkup(createElement(SignalResult, { run }));
     expect(result).toContain('href="#signal-images"');
-    expect(result).toContain('実行時点の資料と分析状態');
+    expect(result).toContain('保存日時：'); expect(result).toContain('（日本時間）');
     expect(result).toContain(run.createdAt);
     expect(result).toContain('実行時の問い：未記録');
     expect(result).not.toContain('閲覧する問い：');

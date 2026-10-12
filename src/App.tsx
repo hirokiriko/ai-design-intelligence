@@ -128,7 +128,7 @@ export default function App() {
     );
   }
 
-  if (publicConfig.config.mode === 'signals') return <Suspense fallback={<p role="status">確認画面を読み込んでいます。</p>}><SignalWorkspace renderAnalysis={(datasetId) => <SignalRulesWorkspace key={datasetId} datasetId={datasetId} />} /></Suspense>;
+  if (publicConfig.config.mode === 'signals') return <Suspense fallback={<p role="status">確認画面を読み込んでいます。</p>}><SignalWorkspace readOnly={import.meta.env.VITE_SIGNALS_READ_ONLY === 'true'} renderAnalysis={(datasetId) => <SignalRulesWorkspace key={datasetId} datasetId={datasetId} />} /></Suspense>;
   return publicConfig.config.mode === 'trial' ? <TrialModeApp /> : <AnalysisWorkspace />;
 }
 

@@ -1,11 +1,11 @@
 import { useContext, useEffect, useRef } from 'react';
-import type { RunV23, SignalV2 } from './contract';
+import type { Run, RunV23, SignalV2 } from './contract';
 import { classificationSchemeLabel, evidenceId } from './labels';
 import { RecordFact, SavedContext } from './SignalContext';
 import { RecordSelectionContext } from './record-selection';
 import { SignalEditorialEntry } from './SignalEditorialEntry';
 
-export function SignalScopeSummary({ run }: { run: RunV23 }) {
+export function SignalScopeSummary({ run, embedded = false }: { run: Exclude<Run, { schemaVersion: '1.0.0' }>; embedded?: boolean }) {
   const signal = run.signal;
   if (!signal) return null;
   const { context } = run.input;
@@ -16,17 +16,17 @@ export function SignalScopeSummary({ run }: { run: RunV23 }) {
   const afterTotal = signal.counts.after + signal.counts.excludedAfter;
   const barScale = Math.max(1, beforeTotal, afterTotal);
   const rows = [
-    { label: '前の収録', date: context.beforeDataset.dataAsOf, count: signal.counts.before, excluded: signal.counts.excludedBefore, total: beforeTotal },
-    { label: '後の収録', date: context.afterDataset.dataAsOf, count: signal.counts.after, excluded: signal.counts.excludedAfter, total: afterTotal },
+    { label: '比較Aの収録', date: context.beforeDataset.dataAsOf, count: signal.counts.before, excluded: signal.counts.excludedBefore, total: beforeTotal },
+    { label: '比較Bの収録', date: context.afterDataset.dataAsOf, count: signal.counts.after, excluded: signal.counts.excludedAfter, total: afterTotal },
   ];
   return <div className="signal-scope-summary" aria-label="企業・分類の収録範囲の比較">
-    <h1 id="signal-approved-scope-title">{context.entity.name ?? '企業名不明'}</h1>
+    <>{embedded ? null : <h1 id="signal-approved-scope-title">{context.entity.name ?? '企業名不明'}</h1>}</>
     <p className="signal-scope-category">{articles.join(' / ') || '物品名未収録'} <span>対象分類：{context.category.label} · {classificationSchemeLabel(context.category.scheme)}</span></p>
     <div className="signal-discovery-delta">
       <div className="signal-delta-headline"><span>収録内の新規観測</span><strong>{signal.counts.comparable ? <>{signal.counts.newlyObserved}<small>件</small></> : <small>比較不可</small>}</strong><p>対象意匠 <b>{signal.counts.before}</b> → <b>{signal.counts.after}</b>件</p><p className="signal-subtle">両集合に収録（算出）：{canDerive ? continuing + '件' : signal.counts.comparable ? '算出不可' : '比較不可'}</p></div>
       <div className="signal-collection-chart"><p><strong>収録データの内訳</strong><span>入力収録 {beforeTotal} → {afterTotal}件</span></p>
         {rows.map((row) => <div className="signal-collection-row" key={row.label}><div><strong>{row.label}</strong><time>{row.date}</time></div><div><div className="signal-collection-bar" role="img" aria-label={row.label + '：対象' + row.count + '件、除外' + row.excluded + '件、入力収録' + row.total + '件'}><span className="signal-bar-target" style={{ width: (row.count / barScale * 100) + '%' }} /><span className="signal-bar-excluded" style={{ width: (row.excluded / barScale * 100) + '%' }} /></div><p><span>対象 {row.count}</span><span>除外 {row.excluded}</span></p></div></div>)}
-        <p className="signal-subtle">除外＝企業・分類の対象外や品質上の保留。新商品の件数ではありません。</p>
+        <p className="signal-subtle">除外＝企業・分類の対象外や品質上の保留。</p>
       </div>
     </div>
     {signal.counts.comparable ? <p className="signal-delta-reading">{signal.counts.newlyObserved === 0 ? <><strong>この範囲での新規観測は0件です。</strong>次は既存の対象から、図面や製品との対応を調べます。</> : <><strong>収録内で新しく見つかった対象があります。</strong>保存された根拠から、詳しく見る対象を選びます。</>}</p> : <p className="signal-delta-reading">収録条件が異なるため、増減・新規観測は比較できません。</p>}

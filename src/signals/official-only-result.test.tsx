@@ -30,7 +30,7 @@ describe('completed official facts with no grounded hypothesis', () => {
     const html = renderToStaticMarkup(createElement(SignalResult, { run }));
     expect(html).toContain('処理終了');
     expect(html).toContain('判断する資料が不足');
-    expect(html).toContain('<h3>公式発表の事実</h3>');
+    expect(html).toContain('<h3>主張を支える公式の引用</h3>');
     expect(html).toContain(fact.text);
     expect(html).toContain(`<blockquote>${fact.quote}</blockquote>`);
     expect(html).toContain(`出典：${source.title} · 発表日：2026-08-12`);

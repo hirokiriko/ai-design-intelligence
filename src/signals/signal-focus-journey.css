@@ -34,6 +34,26 @@
 .signals-focus-mode .signal-focus-excerpt-pair i { flex: 0 0 18px; font-style: normal; font-weight: 700; color: #52686a; }
 .signals-focus-mode .signal-focus-excerpt-pair > span > span { min-width: 0; }
 .signals-focus-mode .signal-focus-candidate-link { display: block; margin-top: 13px; color: #176b5d; font-size: 14px; font-weight: 700; }
+.signals-focus-mode .signal-focus-candidate-guide { display: block; margin-top: 12px; padding-top: 10px; border-top: 1px solid #e5e9e8; overflow-wrap: anywhere; }
+.signals-focus-mode .signal-focus-candidate-guide b { display: block; font-size: 12px; color: #607078; }
+.signals-focus-mode .signal-focus-candidate-guide > span { font-size: 14px; font-weight: 600; }
+.signals-focus-mode .signal-focus-check-question { padding: 12px; background: #f6faf8; border-left: 3px solid #9bb9b0; }
+.signals-focus-mode .signal-confirmation-guide { margin: 16px 0 28px; padding: 18px; border: 1px solid #b6cdc5; border-radius: 10px; background: #f6faf8; min-width: 0; overflow-wrap: anywhere; }
+.signals-focus-mode .signal-confirmation-guide h4 { font-size: 18px; margin: 6px 0; }
+.signals-focus-mode .signal-guide-literal { margin: 16px 0; padding: 12px; background: #fff; border: 1px solid #dce4e1; }
+.signals-focus-mode .signal-guide-literal dl, .signals-focus-mode .signal-guide-decisions { margin: 10px 0; }
+.signals-focus-mode .signal-guide-literal dt, .signals-focus-mode .signal-guide-decisions dt { font-size: 13px; font-weight: 700; color: #52686a; }
+.signals-focus-mode .signal-guide-literal dd, .signals-focus-mode .signal-guide-decisions dd { margin: 4px 0 14px; }
+.signals-focus-mode .signal-guide-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.signals-focus-mode .signal-guide-actions button { white-space: normal; }
+.signals-focus-mode .signal-reference-quotes { border-top: 1px solid #dce4e1; margin-top: 22px; padding-top: 16px; min-width: 0; overflow-wrap: anywhere; }
+.signals-focus-mode .signal-reference-dates { padding: 12px; background: #f4f6f5; font-size: 14px; }
+.signals-focus-mode .signal-reference-dates p { margin: 6px 0; }
+.signals-focus-mode .signal-reference-quote { margin: 18px 0; padding: 14px; border: 1px solid #dce4e1; border-radius: 10px; }
+.signals-focus-mode .signal-reference-quote h5 { margin: 8px 0; font-size: 16px; }
+.signals-focus-mode .signal-reference-quote blockquote { margin: 14px 0; padding-left: 12px; border-left: 3px solid #9bb9b0; white-space: pre-wrap; }
+.signals-focus-mode .signal-reference-date-list { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px 12px; font-size: 13px; }
+.signals-focus-mode .signal-reference-date-list dd { margin: 0; }
 .signals-focus-mode .signal-focus-detail { min-width: 0; background: #fff; border: 1px solid #dce2e1; border-radius: 16px; padding: 25px; }
 .signals-focus-mode .signal-focus-detail-heading h2 { font-size: 26px; line-height: 1.4; margin: 4px 0; }
 .signals-focus-mode .signal-focus-detail-heading p { font-size: 14px; color: #607078; margin: 6px 0 20px; }

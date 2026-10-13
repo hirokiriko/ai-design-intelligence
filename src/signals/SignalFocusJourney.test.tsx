@@ -7,6 +7,8 @@ import { decodeRun } from './contract';
 import questionFixture from './backend-run-v2.5.fixture.json';
 import evidencePlanFixture from './backend-question-evidence-plan.fixture.json';
 import type { RunReviewState } from './run-review';
+import { SignalConfirmationGuide } from './SignalConfirmationGuide';
+import { confirmationGuide } from './confirmation-guide';
 
 const hooks = vi.hoisted(() => ({ active: false, index: 0, refIndex: 0, states: [] as unknown[], refs: [] as { current: unknown }[], effects: [] as (() => void | (() => void))[] }));
 vi.mock('react', async (original) => {
@@ -114,7 +116,9 @@ describe('selected saved observation journey', () => {
     const rendered = html(tree(run));
     expect(rendered).toContain('この着目点を裏付ける公式引用と対応評価は保存されていません');
     expect(rendered).toContain('同じ実行で取得した参考資料');
-    expect(rendered).not.toContain('FIXTURE-無関係の採用不可事実');
+    expect(rendered).toContain('実行全体の参考引用 · 選択箇所との対応はここでは未判定');
+    expect(rendered).toContain('保存AIによる記載要約');
+    expect(rendered).not.toContain('支持する根拠として保存');
   });
 
   it('keeps missing dates and next investigations explicit', () => {
@@ -301,5 +305,64 @@ describe('selected saved observation journey', () => {
     expect(find(other, item => item.props.className === 'signal-focus-investigations signal-focus-next-list')).toBeUndefined();
     expect(html(find(other, item => item.props.className === 'signal-focus-run-investigations'))).toContain('架空の対応製品図と部品表');
     expect(JSON.stringify(run)).toBe(before);
+  });
+  it('keeps fixed questions separate from source-only AI plans and quality holds for arbitrary saved observations', () => {
+    const run = decodeRun(structuredClone(questionFixture));
+    if (run.schemaVersion !== '2.5.0' || !run.signal) throw new Error('FIXTURE-question run expected');
+    const signal = run.signal, original = signal.visualObservations[0];
+    signal.visualObservations = ['外郭', '同心円', '円形と長円形', '実線と破線の混在', '別の形'].map((text, index) => ({ ...original, id: `kds_fixture_guide_${index}`, observation: `A：FIXTURE-${text}。B：FIXTURE-${text}。描画上の比較：不明。` }));
+    signal.questionAnswer.nextChecks = [`対象：${signal.sources[0].id}。FIXTURE-公式の記載を照合する`];
+    const reviewState: RunReviewState = { status: 'ready', review: { runId: run.id, schemaVersion: run.schemaVersion, promptVersion: run.versions.prompt, modelId: run.versions.model, reviewReference: 'FIXTURE-review', reviewedAt: null, failedChecks: ['V1', 'V3', 'V4'], ownerAcceptance: 'NOT_PERFORMED' } };
+    const before = JSON.stringify({ run, reviewState });
+    for (const observation of signal.visualObservations) {
+      hooks.states[0] = observation.id; hooks.states[1] = 'next';
+      const node = tree(run, reviewState), rendered = html(node);
+      expect(rendered).toContain(`data-observation-id="${observation.id}"`);
+      expect(rendered).toContain('固定の確認ガイド · 保存AIの回答ではありません');
+      expect(rendered).toContain('品質未達：V1 / V3 / V4');
+      expect(rendered).toContain('次の調査・示唆も品質未達');
+      expect(find(node, item => item.props.className === 'signal-focus-investigations signal-focus-next-list')).toBeUndefined();
+      const other = find(node, item => item.props.className === 'signal-focus-run-investigations')!;
+      expect(html(other)).toContain('資料1：');
+      expect(find(find(other, item => item.props.className === 'signal-focus-original-text'), item => item.type === 'p')!.props.children).toBe(signal.questionAnswer.nextChecks[0]);
+    }
+    expect(JSON.stringify({ run, reviewState })).toBe(before);
+  });
+
+  it('shows saved unbound quotes and distinct unknown dates with their V3 hold, safely as text', () => {
+    const run = decodeRun(structuredClone(questionFixture));
+    if (run.schemaVersion !== '2.5.0' || !run.signal) throw new Error('FIXTURE-question run expected');
+    const signal = run.signal;
+    signal.relationships = [];
+    const source = signal.sources[0]; source.publishedAt = null; source.updatedAt = null; source.releaseAt = null; source.retrospective = false;
+    source.title = 'FIXTURE-<br>保存資料';
+    signal.officialFacts = [{ ...signal.officialFacts[0], id: 'kds_fixture_quote', sourceId: source.id, quote: 'FIXTURE-<script>引用</script>', text: 'FIXTURE-保存AI要約' }];
+    const before = JSON.stringify(run);
+    const reviewState: RunReviewState = { status: 'ready', review: { runId: run.id, schemaVersion: run.schemaVersion, promptVersion: run.versions.prompt, modelId: run.versions.model, reviewReference: 'FIXTURE-review', reviewedAt: null, failedChecks: ['V3'], ownerAcceptance: 'NOT_PERFORMED' } };
+    hooks.states[1] = 'source';
+    const rendered = html(tree(run, reviewState));
+    expect(rendered).toContain('FIXTURE-&lt;script&gt;引用&lt;/script&gt;');
+    expect(rendered).not.toContain('<script>引用</script>');
+    expect(rendered).toContain('FIXTURE- 保存資料');
+    expect(rendered).toContain('発表日は不明です。取得日時から発表時期を推測できません');
+    expect(rendered).toContain('<dt>発売日</dt><dd>不明</dd>');
+    expect(rendered).toContain('<dt>取得日時</dt>');
+    expect(rendered).toContain('引用と日付条件の評価は品質未達');
+    expect(rendered).toContain('照合する箇所（保存AI記述）');
+    expect(rendered).toContain(signal.visualObservations[0].part);
+    expect(rendered).toContain('ここに示した保存記述が指す箇所との対応が明記されていますか');
+    expect(rendered).not.toContain('支持する根拠として保存');
+    expect(JSON.stringify(run)).toBe(before);
+  });
+
+  it('offers explicit guide actions without writing or invoking analysis', () => {
+    const onDrawing = vi.fn(), onSources = vi.fn();
+    const guide = confirmationGuide({ id: 'kds_fixture_guide', part: 'FIXTURE-対象', observation: 'FIXTURE-原文', status: 'unknown', mediaIds: [] }, []);
+    const node = SignalConfirmationGuide({ guide, onDrawing, onSources });
+    find(node, item => item.type === 'button' && item.props.children === 'この箇所の原図を確認する')!.props.onClick();
+    find(node, item => item.type === 'button' && item.props.children === '保存引用と日付を確認する')!.props.onClick();
+    expect(onDrawing).toHaveBeenCalledOnce(); expect(onSources).toHaveBeenCalledOnce();
+    expect(html(node)).toContain('比較A/Bの参照図面が揃っていません');
+    expect(html(node)).toContain('FIXTURE-原文');
   });
 });

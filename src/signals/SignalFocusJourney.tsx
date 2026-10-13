@@ -12,6 +12,7 @@ import { investigationsForSelection, savedObservationExcerpt } from './focus-dis
 import { confirmationGuide } from './confirmation-guide';
 import { SignalConfirmationGuide } from './SignalConfirmationGuide';
 import { SignalReferenceQuotes } from './SignalReferenceQuotes';
+import { SignalObservationReason, SignalObservationAssessment, SignalObservationNextPlan } from './SignalObservationPlan';
 import './signal-focus-journey.css';
 
 type SavedRun = Exclude<Run, { schemaVersion: '1.0.0' }>;
@@ -67,8 +68,11 @@ export function SignalFocusJourney({ run, reviewState, scopes, onScopeChange, bu
   const relationships = signal?.relationships.filter((item) => selected && [...item.supportingEvidenceIds, ...item.opposingEvidenceIds].includes(selected.id)) ?? [];
   const relatedEvidence = new Set(relationships.flatMap((item) => [...item.supportingEvidenceIds, ...item.opposingEvidenceIds]));
   const facts = signal?.officialFacts.filter((fact) => relatedEvidence.has(fact.id)) ?? [];
-  const nextChecks = run.schemaVersion === '2.5.0' ? run.signal?.questionAnswer.nextChecks ?? [] : signal?.questionsForHuman ?? [];
-  const investigations = investigationsForSelection(nextChecks, observations, selected?.id ?? '');
+  const typedPlans = run.schemaVersion === '2.6.0' ? run.signal?.questionAnswer.observationPlans ?? [] : [];
+  const selectedPlan = typedPlans.find(plan => plan.observationId === selected?.id);
+  const nextChecks = (run.schemaVersion === '2.5.0' || run.schemaVersion === '2.6.0') ? run.signal?.questionAnswer.nextChecks ?? [] : signal?.questionsForHuman ?? [];
+  // Version 2.6 scopes only through typed observationId; global prose is never parsed.
+  const investigations = run.schemaVersion === '2.6.0' ? { selected: [], other: [] } : investigationsForSelection(nextChecks, observations, selected?.id ?? '');
   const selectedMissing = relationships.flatMap((item) => item.missingEvidence);
   const otherMissing = signal?.relationships.filter((item) => !relationships.includes(item)).flatMap((item) => item.missingEvidence) ?? [];
   useEffect(() => {
@@ -108,10 +112,11 @@ export function SignalFocusJourney({ run, reviewState, scopes, onScopeChange, bu
         <div className="signal-focus-list-heading"><h2 id="signal-focus-candidates-title" tabIndex={-1}>まず、どこを見る？</h2><span>保存された観察 {observations.length}件</span></div>
         <p className="signal-subtle">見る理由から一件を選び、原図で確かめます。</p>
         {visualHeld ? <p className="signal-focus-caution">この実例のAI観察には誤りがあり、採用を保留しています。</p> : <p className="signal-subtle">AIの観察候補です。重要度の順位ではありません。</p>}
-        {observations.map((item, index) => { const excerpt = savedObservationExcerpt(item.observation), itemGuide = confirmationGuide(item, signal.media); return <button key={item.id} id={`${id}-candidate-${item.id}`} className="signal-focus-candidate" type="button" aria-pressed={selection === item.id} onClick={() => choose(item)}>
+        {observations.map((item, index) => { const excerpt = savedObservationExcerpt(item.observation), itemGuide = confirmationGuide(item, signal.media), itemPlan = typedPlans.find(plan => plan.observationId === item.id); return <button key={item.id} id={`${id}-candidate-${item.id}`} className="signal-focus-candidate" type="button" aria-pressed={selection === item.id} onClick={() => choose(item)}>
           <span className="signal-focus-candidate-top"><span>着目点 {index + 1}</span><span>{visualHeld ? '原図で再確認' : 'AI観察候補'}</span></span>
           <span className="signal-focus-candidate-body">{signal.media.find((image) => item.mediaIds.includes(image.id)) ? <Drawing media={signal.media.find((image) => item.mediaIds.includes(image.id))!} compact /> : <span className="signal-focus-no-image">図面なし</span>}<span><strong>{item.part}</strong><span>{statusText[item.status]}</span></span></span>
-          <span className="signal-focus-candidate-reason"><b>{visualHeld ? '原図で再確認する保存AI記述' : '見る理由 · 保存AI観察の抜粋'}</b>
+          {itemPlan ? <span className="signal-focus-candidate-reason" data-ai-reason={item.id}><b>保存AIの注目理由{failed.includes('V1') ? '（品質未達・採用保留）' : ''}</b><span>{itemPlan.reason}</span></span> : null}
+          <span className="signal-focus-candidate-reason"><b>{visualHeld ? '原図で再確認する保存AI記述' : itemPlan ? '保存AI観察の抜粋' : '見る理由 · 保存AI観察の抜粋'}</b>
             {excerpt.kind === 'pair' ? <span className="signal-focus-excerpt-pair"><span><i>A</i><span>{excerpt.a.text}{excerpt.a.truncated ? '…' : ''}</span></span><span><i>B</i><span>{excerpt.b.text}{excerpt.b.truncated ? '…' : ''}</span></span></span> : <span className="signal-focus-excerpt-text">{excerpt.excerpt.text || '観察本文は未記録です。'}{excerpt.excerpt.truncated ? '…' : ''}</span>}
           </span>
           <span className="signal-focus-candidate-guide"><b>固定の確認ガイド</b><span>{itemGuide.title}</span></span>
@@ -125,20 +130,27 @@ export function SignalFocusJourney({ run, reviewState, scopes, onScopeChange, bu
         <p className={failed.length ? "signal-focus-caution" : "signal-subtle"}>{failed.length ? `この保存結果の品質未達：${failed.join(' / ')}。未達の記述は採用保留です。` : reviewState?.status === 'loading' ? 'この保存結果の品質評価を確認しています。' : matchedReview ? matchedReview.ownerAcceptance === 'ACCEPTED' ? 'このrunに紐づく受入記録があります。各根拠と限界を確認してください。' : 'このrunの評価記録はありますが、OWNER受入は未完了です。' : 'このrunに紐づく品質評価は未登録または取得できません。表示できることは内容の合格を意味しません。'}</p>
         <nav className="signal-focus-steps" aria-label="選んだ候補の確認手順">{steps.map((item, index) => <button key={item.id} type="button" aria-current={step === item.id ? 'step' : undefined} onClick={() => { if (!selection) choose(selected); changeStep(item.id); }}><span>{index + 1}</span>{item.label}</button>)}</nav>
         {step === 'drawing' ? <section className="signal-focus-step" aria-labelledby={`${id}-drawing-title`}><h3 id={`${id}-drawing-title`}>この箇所を、原図で見比べる</h3>
+          {selectedPlan ? <SignalObservationReason plan={selectedPlan} held={failed.includes('V1')} /> : run.schemaVersion === '2.6.0' ? <p>この箇所のAI理由は未評価です。固定ガイドで補っていません。</p> : null}
           {guide ? <p className="signal-focus-check-question"><strong>確認したい問い（固定ガイド）：</strong>{guide.question}</p> : null}
           <div className="signal-focus-drawings">{media.map((item) => <Drawing key={item.id} media={item} />)}</div>
           {!media.length ? <p className="signal-focus-caution">対応する保存図面がありません。観察文だけで形状を確定できません。</p> : <SignalDrawingComparison media={media} focusPoints={[{ id: selected.id, text: visualHeld ? `【品質未達・採用保留の保存AI記述】${selected.observation}` : selected.observation, mediaIds: selected.mediaIds }]} onContinueToSources={() => changeStep('source')} />}
           <div className={`signal-focus-observation${visualHeld ? ' is-held' : ''}`}><h4>{visualHeld ? '再確認が必要な保存AI記述' : '保存されたAI観察候補'}</h4>{visualHeld ? <p className="signal-focus-caution">このrunの図面観察は品質未達です。以下を確認済みの事実として採用しないでください。</p> : null}<p>{selected.observation}</p></div>
           <p className="signal-subtle">比較A/Bは資料の役割です。商品の発売順・世代や共通の縮尺を示しません。</p><button className="signal-button signal-primary" type="button" onClick={() => changeStep('source')}>公式記載と関係を確かめる →</button>
         </section> : step === 'source' ? <section className="signal-focus-step" aria-labelledby={`${id}-source-title`}><h3 id={`${id}-source-title`}>この図面を、公式記載は裏付ける？</h3>
+          {run.schemaVersion === '2.6.0' ? selectedPlan ? <SignalObservationAssessment run={run} plan={selectedPlan} held={failed.includes('V3')} /> : <p>この箇所のAI引用評価は未評価です。</p> : <>
           {relationships.length ? relationships.map((relation) => <div key={relation.id} className="signal-focus-relation"><strong>{({ direct: '直接の対応として保存', category: '同じ分野として保存', candidate: '関連候補として保存', unrelated_or_conflicting: '関連しない・食い違う可能性', unknown: '対応は未確認' })[relation.relation]}</strong><p>{explanationDisplayText(relation.summary)}</p>{failed.some((item) => ['V2', 'V3', 'V4'].includes(item)) ? <p className="signal-focus-caution">未達の観察・引用・示唆を含むため、対応評価も再確認が必要です。</p> : null}{relation.missingEvidence.map((text, index) => <p key={index} className="signal-subtle">不足：{explanationDisplayText(text)}</p>)}</div>) : <p className="signal-focus-caution">この着目点を裏付ける公式引用と対応評価は保存されていません。商品と個別意匠の対応は未確認です。</p>}
           {facts.map((fact) => { const source = signal.sources.find((item) => item.id === fact.sourceId); return <article key={fact.id} className="signal-focus-source"><p className="signal-eyebrow">{relationships.some((item) => item.supportingEvidenceIds.includes(fact.id)) && relationships.some((item) => item.opposingEvidenceIds.includes(fact.id)) ? '支持・反証の両方で参照された引用' : relationships.some((item) => item.opposingEvidenceIds.includes(fact.id)) ? '反証・食い違いの根拠として保存' : '支持する根拠として保存'}</p><h4>{fact.text}</h4><blockquote>{fact.quote}</blockquote><p>{sourceDisplayTitle(source?.title ?? '')}</p><p className="signal-subtle">発表日 {source?.publishedAt ?? '不明'} · 取得 {source?.retrievedAt ?? '未記録'}</p>{source ? <a href={source.url} target="_blank" rel="noopener noreferrer">公式の出典を開く ↗</a> : null}</article>; })}
+          </>}
           <SignalReferenceQuotes signal={signal} context={run.input.context} media={media} guide={guide} held={failed.includes('V3')} />
           <h4>同じ実行で取得した参考資料</h4><p className="signal-subtle">以下は保存された原文抜粋です。この着目点への裏付け引用とは区別しています。</p>
           {signal.sources.length ? signal.sources.map((source) => <article key={source.id} className="signal-focus-source"><h4>{sourceDisplayTitle(source.title)}</h4><p className="signal-subtle">発表日 {source.publishedAt ?? '不明'} · 取得 {source.retrievedAt}</p><blockquote>{Array.from(source.excerpt).slice(0, source.modelVisibleChars).join('') || '抜粋なし'}</blockquote>{source.truncated ? <p className="signal-subtle">保存された分析用抜粋には省略があります。</p> : null}<a href={source.url} target="_blank" rel="noopener noreferrer">公式の出典を開く ↗</a></article>) : <p>この実行に公式資料は保存されていません。</p>}
           <button className="signal-button signal-primary" type="button" onClick={() => changeStep('next')}>不足から、次の調査を選ぶ →</button>
         </section> : <section className="signal-focus-step" aria-labelledby={`${id}-next-title`}><h3 id={`${id}-next-title`}>判断を進めるために、何を調べる？</h3><p>固定の確認手順と、保存されたAIの調査事項を分けて示します。</p>
-          {guide ? <SignalConfirmationGuide guide={guide} onDrawing={() => changeStep('drawing')} onSources={() => changeStep('source')} /> : null}
+          {run.schemaVersion !== '2.6.0' && guide ? <SignalConfirmationGuide guide={guide} onDrawing={() => changeStep('drawing')} onSources={() => changeStep('source')} /> : null}
+          {run.schemaVersion === '2.6.0' ? <>
+            {selectedPlan ? <SignalObservationNextPlan plan={selectedPlan} held={nextHeld} /> : <p className="signal-focus-caution">この箇所のAI調査計画は未評価です。途中の観察から計画を補っていません。</p>}
+            {nextChecks.length ? <details className="signal-focus-global-plans"><summary>実行全体の保存AI調査事項（{nextChecks.length}件）</summary><p>選択箇所との対応は指定されていません。</p><ol>{nextChecks.map((text, index) => <li key={index}>{text}</li>)}</ol></details> : null}
+          </> : <>
           <h4>保存されたAIの調査事項</h4><p className="signal-subtle">以下は、この着目点のIDを明示した保存文です。固定ガイドによって保存AIの品質評価が変わることはありません。</p>
           {nextHeld ? <p className="signal-focus-caution">次の調査・示唆も品質未達です。保存された提案を示していますが、有用性の確認は完了していません。</p> : null}
           {investigations.selected.length ? selectedInvestigationList : <p className="signal-focus-caution">{nextChecks.length ? 'この着目点を明示する調査事項は保存されていません。実行全体の情報から確認できます。' : '具体的な次の調査は保存されていません。未記録を、追加調査が不要という結果には置き換えません。'}</p>}
@@ -148,6 +160,8 @@ export function SignalFocusJourney({ run, reviewState, scopes, onScopeChange, bu
             {investigations.other.length ? otherInvestigationList : null}
             {otherMissing.length ? <div className="signal-focus-next-why"><h4>実行全体で未確認のこと</h4>{otherMissing.map((text, index) => <p key={index}>{explanationDisplayText(text)}</p>)}</div> : null}
           </details> : null}
+          </>}
+          {run.schemaVersion === '2.6.0' && guide ? <SignalConfirmationGuide guide={guide} onDrawing={() => changeStep('drawing')} onSources={() => changeStep('source')} /> : null}
           <button className="signal-button" type="button" onClick={() => changeStep('drawing')}>図面に戻って調査対象を確かめる</button>
         </section>}
         <details className="signal-focus-archive" open={archiveOpen} onToggle={(event) => setArchiveOpen(event.currentTarget.open)}><summary>この実例の保存分析・根拠・履歴情報をすべて見る</summary>{archiveOpen ? <SignalResult run={run} focusOnLoad={false} reviewState={reviewState} /> : null}</details>

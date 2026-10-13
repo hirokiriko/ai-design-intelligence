@@ -5,6 +5,7 @@ import { SignalFocusJourney } from './SignalFocusJourney';
 import { fictionalRunV2 } from './fixtures';
 import { decodeRun } from './contract';
 import questionFixture from './backend-run-v2.5.fixture.json';
+import observationPlansFixture from './backend-run-v2.6.fixture.json';
 import evidencePlanFixture from './backend-question-evidence-plan.fixture.json';
 import type { RunReviewState } from './run-review';
 import { SignalConfirmationGuide } from './SignalConfirmationGuide';
@@ -48,6 +49,51 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('selected saved observation journey', () => {
+  it('joins v2.6 reasons, assessments and plans only by observation ID, never from global prose', () => {
+    const run = decodeRun(structuredClone(observationPlansFixture));
+    if (run.schemaVersion !== '2.6.0' || !run.signal) throw new Error('FIXTURE_WRONG_VERSION');
+    const signal = run.signal, plans = signal.questionAnswer.observationPlans;
+    signal.questionAnswer.nextChecks = [`${plans[0].observationId} FIXTURE-global-only-plan`];
+    // Equal labels and reverse plan ordering must not affect exact joins.
+    signal.visualObservations.forEach(item => { item.part = 'FIXTURE-同じ箇所名'; });
+    plans.reverse();
+    const before = JSON.stringify(run);
+    const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+    for (const observation of signal.visualObservations) {
+      const plan = plans.find(item => item.observationId === observation.id)!;
+      const candidate = find(tree(run), item => item.type === 'button' && item.props.id === `kds_fixture_journey-candidate-${observation.id}`)!;
+      candidate.props.onClick();
+      expect(new URL(href).searchParams.get('focus')).toBe(observation.id);
+      const drawing = find(tree(run), item => item.props.className === 'signal-focus-step')!;
+      expect(html(drawing)).toContain(plan.reason);
+      hooks.states[1] = 'source';
+      const sources = html(find(tree(run), item => item.props.className === 'signal-focus-step')!);
+      expect(sources).toContain(plan.officialAssessment.basis);
+      expect(sources).toContain('AI評価：対応は未確認');
+      hooks.states[1] = 'next';
+      const next = html(find(tree(run), item => item.props.className === 'signal-focus-step')!);
+      for (const field of ['material', 'location', 'condition', 'decision', 'hold'] as const) expect(next).toContain(plan[field]);
+      for (const other of plans.filter(item => item !== plan)) expect(next).not.toContain(other.location);
+      expect(next).toContain('class="signal-focus-global-plans"');
+      expect(next).toContain(`${plans.find(item => item.observationId === signal.visualObservations[0].id)!.observationId} FIXTURE-global-only-plan`);
+      expect(next).not.toContain('signal-focus-observation-reference');
+      expect(next).toContain('固定の確認ガイド · 保存AIの回答ではありません');
+    }
+    expect(fetcher).not.toHaveBeenCalled(); expect(JSON.stringify(run)).toBe(before);
+  });
+
+  it('keeps partial v2.6 observations visible without synthesizing missing AI plans', () => {
+    const run = decodeRun(structuredClone(observationPlansFixture));
+    if (run.schemaVersion !== '2.6.0' || !run.signal) throw new Error('FIXTURE_WRONG_VERSION');
+    run.status = 'partial';
+    run.signal.questionAnswer = { questionId: run.input.analysisQuestion.id, questionVersion: '1.0.0', status: 'not_evaluated', text: null, evidenceIds: [], supportingEvidenceIds: [], opposingEvidenceIds: [], nextChecks: [], limitations: [], observationPlans: [] };
+    expect(() => decodeRun(run)).not.toThrow();
+    hooks.states[0] = run.signal.visualObservations[0].id; hooks.states[1] = 'next';
+    const rendered = html(tree(run));
+    expect(rendered).toContain('AI調査計画は未評価'); expect(rendered).not.toContain('class="signal-ai-next-plan"');
+    expect(rendered).toContain('固定の確認ガイド · 保存AIの回答ではありません');
+  });
+
   it('starts with real saved parts and media, not a marketing hero or a fabricated new event', () => {
     const rendered = html(tree());
     expect(rendered).toContain('まず、どこを見る？');

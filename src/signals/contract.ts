@@ -102,7 +102,17 @@ export interface SignalV25 extends SignalV2 { questionAnswer: QuestionAnswer }
 export interface RunV25 extends Omit<RunV23, 'schemaVersion' | 'input' | 'signal'> {
   schemaVersion: '2.5.0'; input: RunV23['input'] & { analysisQuestion: AnalysisQuestion }; signal: SignalV25 | null;
 }
-export type Run = RunV1 | RunV2 | RunV21 | RunV22 | RunV23 | RunV25;
+export interface ObservationPlan {
+  observationId: string; reason: string;
+  officialAssessment: { factIds: string[]; stance: 'supports' | 'conflicts' | 'unverified'; basis: string };
+  material: string; location: string; condition: string; decision: string; hold: string;
+}
+export interface QuestionAnswerV26 extends QuestionAnswer { observationPlans: ObservationPlan[] }
+export interface SignalV26 extends SignalV2 { questionAnswer: QuestionAnswerV26 }
+export interface RunV26 extends Omit<RunV25, 'schemaVersion' | 'signal'> {
+  schemaVersion: '2.6.0'; signal: SignalV26 | null;
+}
+export type Run = RunV1 | RunV2 | RunV21 | RunV22 | RunV23 | RunV25 | RunV26;
 
 type Check = (value: unknown) => void;
 export class ContractError extends Error { constructor() { super('保存データの形式または根拠の参照を確認できません。表示を停止しました。'); } }
@@ -166,8 +176,15 @@ const signalV2Shape = { ...signalShape,
 };
 const signalV2Check = object(signalV2Shape);
 const questionCheck: Check = (value) => { if (!isAnalysisQuestion(value)) fail(); };
-const questionAnswerCheck = object({ questionId: oneOf('drawings', 'support', 'next'), questionVersion: oneOf('1.0.0'), status: oneOf('answered', 'insufficient', 'not_evaluated'), text: nullable(text), evidenceIds: ids, supportingEvidenceIds: ids, opposingEvidenceIds: ids, nextChecks: strings, limitations: strings });
+const questionAnswerShape = { questionId: oneOf('drawings', 'support', 'next'), questionVersion: oneOf('1.0.0'), status: oneOf('answered', 'insufficient', 'not_evaluated'), text: nullable(text), evidenceIds: ids, supportingEvidenceIds: ids, opposingEvidenceIds: ids, nextChecks: strings, limitations: strings };
+const questionAnswerCheck = object(questionAnswerShape);
 const signalV25Check = object({ ...signalV2Shape, questionAnswer: questionAnswerCheck });
+// The new plan contract excludes controls, format characters and lone surrogates.
+// Leave all older saved-text decoders unchanged.
+const planString = (max: number): Check => (value) => { boundedText(max)(value); if (/[\p{Cc}\p{Cf}\p{Cs}]/u.test(value as string)) fail(); };
+const planText = planString(240);
+const observationPlanCheck = object({ observationId: planString(160), reason: planText, officialAssessment: object({ factIds: array(planString(160), 20), stance: oneOf('supports', 'conflicts', 'unverified'), basis: planText }), material: planText, location: planText, condition: planText, decision: planText, hold: planText });
+const signalV26Check = object({ ...signalV2Shape, questionAnswer: object({ ...questionAnswerShape, observationPlans: array(observationPlanCheck, 10) }) });
 const dataMode = oneOf('fictional', 'approved_public');
 const calendarDate: Check = (value) => { date(value); boundedText(10, 10)(value); };
 const contextDatasetCheck = object({ id: opaqueId, dataAsOf: calendarDate, coverage: boundedText(240) });
@@ -196,12 +213,13 @@ const runV21Check = object({ ...runShape, schemaVersion: oneOf('2.1.0'), input: 
 const runV22Check = object({ ...runShape, schemaVersion: oneOf('2.2.0'), input: object({ watch: watchCheck, context: contextV21Check, comparisonPair: nullable(comparisonPairCheck) }), signal: nullable(signalV2Check), versions: versionCheck('2.2.0') });
 const runV23Check = object({ ...runShape, schemaVersion: oneOf('2.3.0'), input: object({ watch: watchCheck, context: contextV23Check, comparisonPair: nullable(comparisonPairCheck) }), signal: nullable(signalV2Check), versions: versionCheck('2.3.0') });
 const runV25Check = object({ ...runShape, schemaVersion: oneOf('2.5.0'), input: object({ watch: watchCheck, context: contextV23Check, comparisonPair: nullable(comparisonPairCheck), analysisQuestion: questionCheck }), signal: nullable(signalV25Check), versions: versionCheck('2.5.0') });
+const runV26Check = object({ ...runShape, schemaVersion: oneOf('2.6.0'), input: object({ watch: watchCheck, context: contextV23Check, comparisonPair: nullable(comparisonPairCheck), analysisQuestion: questionCheck }), signal: nullable(signalV26Check), versions: versionCheck('2.6.0') });
 const hasVersion = (value: unknown, version: string): boolean => typeof value === 'object' && value !== null && 'schemaVersion' in value && value.schemaVersion === version;
-const runCheck: Check = (value) => { (hasVersion(value, '2.5.0') ? runV25Check : hasVersion(value, '2.3.0') ? runV23Check : hasVersion(value, '2.2.0') ? runV22Check : hasVersion(value, '2.1.0') ? runV21Check : hasVersion(value, '2.0.0') ? runV2Check : runV1Check)(value); };
+const runCheck: Check = (value) => { (hasVersion(value, '2.6.0') ? runV26Check : hasVersion(value, '2.5.0') ? runV25Check : hasVersion(value, '2.3.0') ? runV23Check : hasVersion(value, '2.2.0') ? runV22Check : hasVersion(value, '2.1.0') ? runV21Check : hasVersion(value, '2.0.0') ? runV2Check : runV1Check)(value); };
 const emptySha256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 function validateFactsOnlyRun(run: Run): void {
   if (run.versions.model !== 'facts-only-deterministic') return;
-  if (run.schemaVersion === '1.0.0' || run.schemaVersion === '2.0.0' || run.schemaVersion === '2.5.0') fail();
+  if (run.schemaVersion === '1.0.0' || run.schemaVersion === '2.0.0' || (run.schemaVersion === '2.5.0' || run.schemaVersion === '2.6.0')) fail();
   const factualRun = run as RunV21 | RunV22 | RunV23;
   if (factualRun.input.context.dataMode !== 'approved_public' || Object.values(factualRun.usage).some((value) => value !== 0)) fail();
   if (!factualRun.signal) return;
@@ -232,10 +250,10 @@ function validateCollection(dataset: RunContextV23['beforeDataset']): void {
   if (collection.cutoffDate > verifiedSourceDate) fail();
   if (from !== null && through !== null && (Date.parse(from) > Date.parse(through) || Date.parse(through) > Date.parse(verified))) fail();
 }
-function validateContext(run: RunV2 | RunV21 | RunV22 | RunV23 | RunV25): void {
+function validateContext(run: RunV2 | RunV21 | RunV22 | RunV23 | RunV25 | RunV26): void {
   const { watch, context } = run.input;
   if (context.entity.id !== watch.entityId || context.category.id !== watch.categoryId || context.beforeDataset.id !== watch.beforeDatasetId || context.afterDataset.id !== watch.afterDatasetId) fail();
-  if (run.schemaVersion === '2.1.0' || run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0' || run.schemaVersion === '2.5.0') {
+  if (run.schemaVersion === '2.1.0' || run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0' || (run.schemaVersion === '2.5.0' || run.schemaVersion === '2.6.0')) {
     const { beforeDataset, afterDataset } = run.input.context;
     validateCollection(beforeDataset); validateCollection(afterDataset);
     const before = beforeDataset.collection; const after = afterDataset.collection;
@@ -282,7 +300,7 @@ export function decodeRun(value: unknown): Run {
   if (run.watchId !== run.input.watch.id || (run.status === 'complete' && (!run.signal || !run.completedAt)) || (run.status === 'running' && run.completedAt !== null)) fail();
   if (run.schemaVersion !== '1.0.0') validateContext(run);
   validateFactsOnlyRun(run);
-  if ((run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0' || run.schemaVersion === '2.5.0') && run.input.comparisonPair) {
+  if ((run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0' || (run.schemaVersion === '2.5.0' || run.schemaVersion === '2.6.0')) && run.input.comparisonPair) {
     const pair = run.input.comparisonPair;
     validateComparisonPair(pair, run.input.watch);
     if (run.signal?.media.length && (run.signal.media.length !== 2 || !run.signal.media.every((media, index) => sameComparisonMedia(media, pair.media[index])))) fail();
@@ -304,7 +322,7 @@ export function decodeRun(value: unknown): Run {
     const hasChange = signal.counts.newlyObserved > 0 || signal.visualObservations.some((item) => item.status === 'change_candidate');
     if ((signal.status === 'no_change' && hasChange) || (signal.status === 'change_detected' && !hasChange) || (!signal.counts.comparable && signal.status !== 'comparison_unavailable')) fail();
   }
-  if (run.schemaVersion === '2.5.0' && run.signal) {
+  if ((run.schemaVersion === '2.5.0' || run.schemaVersion === '2.6.0') && run.signal) {
     const answer = run.signal.questionAnswer;
     const question = run.input.analysisQuestion;
     if (answer.questionId !== question.id || answer.questionVersion !== question.version) fail();
@@ -318,7 +336,22 @@ export function decodeRun(value: unknown): Run {
     if (answer.status === 'not_evaluated') {
       if (run.status === 'complete' || answer.text !== null || answer.evidenceIds.length || answer.supportingEvidenceIds.length || answer.opposingEvidenceIds.length || answer.nextChecks.length || answer.limitations.length) fail();
     } else {
-      if (answer.text === null || (answer.status === 'answered' && !answer.evidenceIds.length) || (answer.status === 'insufficient' && !answer.nextChecks.length && !answer.limitations.length)) fail();
+      if (answer.text === null || (answer.status === 'answered' && !answer.evidenceIds.length) || (answer.status === 'insufficient' && !answer.nextChecks.length && !answer.limitations.length && !(run.schemaVersion === '2.6.0' && run.signal.questionAnswer.observationPlans.length))) fail();
+    }
+  }
+  if (run.schemaVersion === '2.6.0' && run.signal) {
+    const answer = run.signal.questionAnswer;
+    const plans = answer.observationPlans;
+    const observationIds = new Set(run.signal.visualObservations.map((item) => item.id));
+    const officialIds = new Set(run.signal.officialFacts.map((item) => item.id));
+    unique(plans.map((plan) => plan.observationId));
+    if (answer.status === 'not_evaluated') {
+      if (plans.length) fail();
+    } else if (plans.length !== observationIds.size || plans.some((plan) => !observationIds.has(plan.observationId))) fail();
+    for (const plan of plans) {
+      const { factIds, stance } = plan.officialAssessment;
+      unique(factIds);
+      if (factIds.some((id) => !officialIds.has(id)) || (stance !== 'unverified' && !factIds.length)) fail();
     }
   }
   return run;

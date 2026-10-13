@@ -29,6 +29,10 @@
 .signals-focus-mode .signal-focus-candidate-body > span > span { display: block; font-size: 13px; margin-top: 7px; color: #52686a; }
 .signals-focus-mode .signal-focus-candidate-reason { display: block; margin-top: 12px; font-size: 14px; }
 .signals-focus-mode .signal-focus-candidate-reason b { display: block; font-size: 12px; color: #607078; }
+.signals-focus-mode .signal-focus-excerpt-pair, .signals-focus-mode .signal-focus-excerpt-text { display: block; margin-top: 8px; overflow-wrap: anywhere; line-height: 1.75; }
+.signals-focus-mode .signal-focus-excerpt-pair > span { display: flex; gap: 8px; align-items: baseline; margin-top: 6px; }
+.signals-focus-mode .signal-focus-excerpt-pair i { flex: 0 0 18px; font-style: normal; font-weight: 700; color: #52686a; }
+.signals-focus-mode .signal-focus-excerpt-pair > span > span { min-width: 0; }
 .signals-focus-mode .signal-focus-candidate-link { display: block; margin-top: 13px; color: #176b5d; font-size: 14px; font-weight: 700; }
 .signals-focus-mode .signal-focus-detail { min-width: 0; background: #fff; border: 1px solid #dce2e1; border-radius: 16px; padding: 25px; }
 .signals-focus-mode .signal-focus-detail-heading h2 { font-size: 26px; line-height: 1.4; margin: 4px 0; }
@@ -59,10 +63,16 @@
 .signals-focus-mode .signal-focus-source blockquote { margin: 14px 0; border-left: 3px solid #9bb9b0; padding: 5px 0 5px 14px; white-space: pre-wrap; }
 .signals-focus-mode .signal-focus-source a, .signals-focus-mode .signal-focus-saved a{ color: #176b5d; text-decoration: underline; text-underline-offset: 3px; }
 .signals-focus-mode .signal-focus-relation { border-radius: 10px; background: #f3f7f5; padding: 16px; margin-bottom: 20px; }
-.signals-focus-mode .signal-focus-next-list { list-style: none; padding: 0; margin: 20px 0; }
-.signals-focus-mode .signal-focus-next-list li { border: 1px solid #dce4e1; border-radius: 10px; padding: 16px; margin-top: 12px; }
-.signals-focus-mode .signal-focus-next-list span { color: #176b5d; font-size: 13px; font-weight: 700; }
-.signals-focus-mode .signal-focus-next-list p { margin: 6px 0; }
+.signals-focus-mode .signal-focus-investigations { list-style: none; padding: 0; margin: 20px 0; }
+.signals-focus-mode .signal-focus-investigations li { border: 1px solid #dce4e1; border-radius: 10px; padding: 16px; margin-top: 12px; overflow-wrap: anywhere; }
+.signals-focus-mode .signal-focus-investigation-label { color: #176b5d; font-size: 13px; font-weight: 700; }
+.signals-focus-mode .signal-focus-investigations p { margin: 8px 0; line-height: 1.85; }
+.signals-focus-mode .signal-focus-observation-reference { display: inline; background: transparent; border: 0; padding: 0 2px; color: #176b5d; font: inherit; line-height: inherit; text-align: left; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; cursor: pointer; }
+.signals-focus-mode .signal-focus-original-text { font-size: 13px; color: #607078; margin-top: 12px; }
+.signals-focus-mode .signal-focus-original-text summary, .signals-focus-mode .signal-focus-run-investigations > summary { cursor: pointer; }
+.signals-focus-mode .signal-focus-original-text p { white-space: pre-wrap; }
+.signals-focus-mode .signal-focus-run-investigations { margin: 22px 0; border-top: 1px solid #dce4e1; padding-top: 16px; }
+.signals-focus-mode .signal-focus-run-investigations > summary { color: #315750; line-height: 1.75; }
 .signals-focus-mode .signal-focus-next-why { border-top: 1px solid #e0e5e3; padding-top: 18px; margin: 20px 0; }
 .signals-focus-mode .signal-focus-archive { border-top: 1px solid #e0e5e3; margin-top: 25px; padding-top: 16px; font-size: 14px; }
 .signals-focus-mode .signal-focus-archive summary { cursor: pointer; color: #506768; }

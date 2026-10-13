@@ -3,7 +3,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SignalFocusJourney } from './SignalFocusJourney';
 import { fictionalRunV2 } from './fixtures';
-import type { RunV2 } from './contract';
+import { decodeRun } from './contract';
+import questionFixture from './backend-run-v2.5.fixture.json';
+import evidencePlanFixture from './backend-question-evidence-plan.fixture.json';
 import type { RunReviewState } from './run-review';
 
 const hooks = vi.hoisted(() => ({ active: false, index: 0, refIndex: 0, states: [] as unknown[], refs: [] as { current: unknown }[], effects: [] as (() => void | (() => void))[] }));
@@ -21,7 +23,7 @@ vi.mock('react', async (original) => {
     useEffect: (effect: () => void | (() => void), deps?: readonly unknown[]) => { if (hooks.active) hooks.effects.push(effect); else actual.useEffect(effect, deps); },
   };
 });
-type Control = ReactElement<{ children?: ReactNode; id?: string; onClick: () => void; className?: string; 'aria-current'?: string }>;
+type Control = ReactElement<{ children?: ReactNode; id?: string; onClick: (event?: { currentTarget: { dataset: { observationId: string } } }) => void; className?: string; 'aria-current'?: string; 'data-observation-id'?: string; open?: boolean }>;
 function find(node: ReactNode, match: (child: Control) => boolean): Control | undefined {
   for (const child of Children.toArray(node)) {
     if (!isValidElement<Control['props']>(child)) continue;
@@ -29,7 +31,7 @@ function find(node: ReactNode, match: (child: Control) => boolean): Control | un
     const found = find(child.props.children, match); if (found) return found;
   }
 }
-function tree(run: RunV2 = fictionalRunV2, reviewState?: RunReviewState) {
+function tree(run: Parameters<typeof SignalFocusJourney>[0]['run'] = fictionalRunV2, reviewState?: RunReviewState) {
   hooks.index = 0; hooks.refIndex = 0; hooks.effects = []; hooks.active = true;
   try { return SignalFocusJourney({ run, reviewState, scopes: [{ id: run.watchId, label: 'FIXTURE-保存条件' }], onScopeChange: vi.fn() }); }
   finally { hooks.active = false; }
@@ -68,7 +70,7 @@ describe('selected saved observation journey', () => {
     expect(new URL(href).searchParams.get('focus')).toBe('kds_fixture_second_observation');
     expect(new URL(href).searchParams.get('run')).toBe('kds_fixture_saved');
     expect(html(node)).toContain('FIXTURE-二つ目の記述');
-    expect(html(node)).not.toContain(first.observation);
+    expect(html(find(node, (item) => item.props.id === 'signal-focus-detail'))).not.toContain(first.observation);
     const candidate = { focus: vi.fn(), scrollIntoView: vi.fn() };
     vi.stubGlobal('document', { getElementById: vi.fn(() => candidate) });
     find(node, (item) => item.props.className?.includes('signal-focus-back') ?? false)!.props.onClick();
@@ -76,6 +78,24 @@ describe('selected saved observation journey', () => {
     expect(candidate.focus).toHaveBeenCalled();
     expect(new URL(href).searchParams.has('focus')).toBe(false);
     expect(JSON.stringify(run)).toBe(before);
+  });
+
+  it('distinguishes saved target counts from AI observations, without claiming no physical change', () => {
+    const run = structuredClone(fictionalRunV2);
+    run.signal!.counts = { before: 3, after: 3, newlyObserved: 0, excludedBefore: 1, excludedAfter: 5, comparable: true };
+    const before = JSON.stringify(run);
+    const node = tree(run);
+    const counts = html(find(node, item => item.props.className === 'signal-focus-saved-counts'));
+    expect(counts).toContain('保存集合の対象 3 → 3件');
+    expect(counts).toContain('新たに対象となった資料 0件');
+    expect(counts).not.toContain('変化なし');
+    expect(html(node)).toContain('前回監視からの新着ではありません');
+    expect(JSON.stringify(run)).toBe(before);
+    run.signal!.counts.comparable = false;
+    const unavailable = html(find(tree(run), item => item.props.className === 'signal-focus-saved-counts'));
+    expect(unavailable).toContain('保存集合の対象 3 → 3件');
+    expect(unavailable).toContain('新規対象数は比較不可');
+    expect(unavailable).not.toContain('新たに対象となった資料 0件');
   });
 
   it('restores only a focus belonging to the selected run, and ignores unrelated IDs', () => {
@@ -144,5 +164,142 @@ describe('selected saved observation journey', () => {
     expect(rendered).toContain('支持する根拠として保存');
     expect(rendered).toContain('反証・食い違いの根拠として保存');
     expect(rendered).toContain('FIXTURE-反証する記載');
+  });
+
+  it('shows different saved A/B excerpts for candidates sharing the same status and general part', () => {
+    const run = structuredClone(fictionalRunV2), first = run.signal!.visualObservations[0];
+    first.id = 'kds_fixture_outer'; first.part = 'FIXTURE-境界';
+    first.observation = 'A：FIXTURE-外側の輪郭（破線）。B：FIXTURE-外側の輪郭（実線）。描画上の比較：差異あり。';
+    run.signal!.visualObservations.push({ ...first, id: 'kds_fixture_inner', observation: 'A：FIXTURE-内側の輪郭（実線）。B：FIXTURE-内側の輪郭（実線）。描画上の比較：不明。' });
+    const before = JSON.stringify(run), node = tree(run);
+    const outer = html(find(node, item => item.props.id === 'kds_fixture_journey-candidate-kds_fixture_outer'));
+    const inner = html(find(node, item => item.props.id === 'kds_fixture_journey-candidate-kds_fixture_inner'));
+    expect(outer).toContain('FIXTURE-外側の輪郭（破線）');
+    expect(outer).toContain('FIXTURE-外側の輪郭（実線）');
+    expect(inner).toContain('FIXTURE-内側の輪郭（実線）');
+    expect(inner).not.toContain('FIXTURE-外側');
+    expect(outer).toContain('保存AI観察の抜粋');
+    expect(outer).not.toContain('AIが描画の違いを候補に挙げています');
+    expect(JSON.stringify(run)).toBe(before);
+  });
+
+  function investigationRun() {
+    const run = structuredClone(fictionalRunV2), original = run.signal!.visualObservations[0];
+    run.signal!.visualObservations = [
+      { ...original, id: 'kds_fixture_outer', part: 'FIXTURE-外側', observation: 'FIXTURE-外側の保存観察' },
+      { ...original, id: 'kds_fixture_inner', part: 'FIXTURE-内側', observation: 'FIXTURE-内側の保存観察' },
+    ];
+    run.signal!.questionsForHuman = [
+      'kds_fixture_outerのFIXTURE-外側資料を照合する',
+      'kds_fixture_innerのFIXTURE-内側資料を照合する',
+      'kds_fixture_outerとkds_fixture_innerのFIXTURE-共通資料を照合する',
+      'FIXTURE-全体の追加資料を確認する',
+      'kds_fixture_unknownのFIXTURE-参照未確認資料',
+    ];
+    run.signal!.relationships = [{ id: 'kds_fixture_unbound_relation', relation: 'unknown', summary: 'FIXTURE-対応未確認', supportingEvidenceIds: [], opposingEvidenceIds: [], missingEvidence: ['FIXTURE-実行全体の不足資料'] }];
+    return run;
+  }
+
+  it('keeps selected investigations primary, preserving other and unbound text in a closed run-wide disclosure', () => {
+    const run = investigationRun(), before = JSON.stringify(run);
+    hooks.states[1] = 'next';
+    const node = tree(run);
+    const primary = html(find(node, item => item.props.className === 'signal-focus-investigations signal-focus-next-list'));
+    expect(primary).toContain('FIXTURE-外側資料');
+    expect(primary).toContain('FIXTURE-共通資料');
+    expect(primary).not.toContain('FIXTURE-内側資料');
+    const other = find(node, item => item.props.className === 'signal-focus-run-investigations')!;
+    expect(other.props.open).toBeUndefined();
+    expect(html(other)).toContain('FIXTURE-内側資料');
+    expect(html(other)).toContain('FIXTURE-全体の追加資料');
+    expect(html(other)).toContain('kds_fixture_unknown');
+    expect(html(other)).toContain('FIXTURE-実行全体の不足資料');
+    expect(find(other, item => item.props['data-observation-id'] === 'kds_fixture_unknown')).toBeUndefined();
+    expect(JSON.stringify(run)).toBe(before);
+  });
+
+  it('opens only a known referenced candidate, clears the old investigation view and restores back focus', () => {
+    const run = investigationRun(), before = JSON.stringify(run);
+    href += '&focus=kds_fixture_outer'; hooks.states[1] = 'next';
+    let node = tree(run);
+    const primary = find(node, item => item.props.className === 'signal-focus-investigations signal-focus-next-list')!;
+    const reference = find(primary, item => item.props['data-observation-id'] === 'kds_fixture_inner')!;
+    expect(html(reference)).toContain('着目点 2：FIXTURE-内側');
+    reference.props.onClick({ currentTarget: { dataset: { observationId: reference.props['data-observation-id']! } } });
+    const target = { focus: vi.fn(), scrollIntoView: vi.fn() };
+    hooks.refs[0].current = target;
+    node = tree(run); hooks.effects[0]();
+    expect(target.focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(new URL(href).searchParams.get('focus')).toBe('kds_fixture_inner');
+    const detail = find(node, item => item.props.id === 'signal-focus-detail')!;
+    expect(html(detail)).toContain('FIXTURE-内側の保存観察');
+    expect(html(detail)).not.toContain('FIXTURE-外側の保存観察');
+    expect(html(detail)).not.toContain('signal-focus-next-list');
+    find(node, item => item.type === 'button' && html(item).includes('次の調査を決める'))!.props.onClick();
+    node = tree(run);
+    const nextPrimary = html(find(node, item => item.props.className === 'signal-focus-investigations signal-focus-next-list'));
+    expect(nextPrimary).toContain('FIXTURE-内側資料');
+    expect(nextPrimary).toContain('FIXTURE-共通資料');
+    expect(nextPrimary).not.toContain('FIXTURE-外側資料');
+    const candidate = { focus: vi.fn(), scrollIntoView: vi.fn() };
+    vi.stubGlobal('document', { getElementById: vi.fn(() => candidate) });
+    find(node, item => item.props.className?.includes('signal-focus-back') ?? false)!.props.onClick();
+    tree(run); hooks.effects[0]();
+    expect(document.getElementById).toHaveBeenCalledWith('kds_fixture_journey-candidate-kds_fixture_inner');
+    expect(candidate.focus).toHaveBeenCalled();
+    expect(new URL(href).searchParams.has('focus')).toBe(false);
+    expect(JSON.stringify(run)).toBe(before);
+  });
+
+  it('does not invent selected investigations for old unbound text, or humanize quotation text', () => {
+    const run = investigationRun();
+    run.signal!.questionsForHuman = ['FIXTURE-全体だけの調査'];
+    hooks.states[1] = 'next';
+    const node = tree(run);
+    expect(find(node, item => item.props.className === 'signal-focus-investigations signal-focus-next-list')).toBeUndefined();
+    expect(html(node)).toContain('この着目点を明示する調査事項は保存されていません');
+    const fact = run.signal!.officialFacts[0]; fact.quote = 'FIXTURE-原文のkds_fixture_outerは変えない';
+    run.signal!.relationships[0].supportingEvidenceIds = ['kds_fixture_outer', fact.id];
+    hooks.states[1] = 'source';
+    const quote = find(tree(run), item => item.type === 'blockquote')!;
+    expect(quote.props.children).toBe(fact.quote);
+  });
+
+  it('uses the saved version 2.5 question nextChecks without changing the DTO or falling back to old questions', () => {
+    const run = decodeRun(structuredClone(questionFixture));
+    if (run.schemaVersion !== '2.5.0' || !run.signal) throw new Error('FIXTURE-question run expected');
+    const observation = run.signal.visualObservations[0];
+    run.signal.questionAnswer.nextChecks = [`${observation.id}のFIXTURE-選択した問いの資料を確認`];
+    run.signal.questionsForHuman = ['FIXTURE-旧問いの代替は禁止'];
+    const before = JSON.stringify(run); hooks.states[1] = 'next';
+    const primary = html(find(tree(run), item => item.props.className === 'signal-focus-investigations signal-focus-next-list'));
+    expect(primary).toContain('FIXTURE-選択した問いの資料');
+    expect(primary).not.toContain('FIXTURE-旧問いの代替は禁止');
+    expect(JSON.stringify(run)).toBe(before);
+  });
+
+  it('scopes the actual Backend projected investigation by ID even when observation labels are identical', () => {
+    const run = decodeRun(structuredClone(questionFixture));
+    if (run.schemaVersion !== '2.5.0' || !run.signal) throw new Error('FIXTURE-question run expected');
+    const original = run.signal.visualObservations[0];
+    const target = evidencePlanFixture.context.visualObservations[0];
+    run.signal.visualObservations = [
+      { ...original, ...target },
+      { ...original, id: 'FIXTURE-CONTOUR-OTHER', part: target.part },
+    ];
+    run.signal.questionAnswer.nextChecks = [...evidencePlanFixture.projectedAnswer.nextChecks];
+    const before = JSON.stringify(run); hooks.states[1] = 'next';
+    const primary = find(tree(run), item => item.props.className === 'signal-focus-investigations signal-focus-next-list')!;
+    expect(html(primary)).toContain('架空の対応製品図と部品表');
+    expect(html(primary)).toContain('確認できない場合：同一部位との対応と機能の帰属を保留する');
+    expect(find(primary, item => item.props['data-observation-id'] === 'FIXTURE-CONTOUR')).toBeDefined();
+    expect(find(primary, item => item.props['data-observation-id'] === 'FIXTURE-CONTOUR-OTHER')).toBeUndefined();
+    const saved = find(primary, item => item.props.className === 'signal-focus-original-text')!;
+    expect(find(saved, item => item.type === 'p')!.props.children).toBe(evidencePlanFixture.projectedAnswer.nextChecks[0]);
+    hooks.states[0] = 'FIXTURE-CONTOUR-OTHER';
+    const other = tree(run);
+    expect(find(other, item => item.props.className === 'signal-focus-investigations signal-focus-next-list')).toBeUndefined();
+    expect(html(find(other, item => item.props.className === 'signal-focus-run-investigations'))).toContain('架空の対応製品図と部品表');
+    expect(JSON.stringify(run)).toBe(before);
   });
 });

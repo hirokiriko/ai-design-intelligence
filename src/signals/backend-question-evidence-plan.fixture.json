@@ -1,0 +1,88 @@
+{
+  "fictional": true,
+  "context": {
+    "selectedWireVersion": "1.0.0",
+    "watch": {
+      "id": "FIXTURE-WATCH",
+      "categoryLabel": "架空の収納器具"
+    },
+    "comparison": {
+      "designFacts": []
+    },
+    "visualObservations": [
+      {
+        "id": "FIXTURE-CONTOUR",
+        "part": "架空の左側輪郭"
+      }
+    ],
+    "sources": [
+      {
+        "id": "FIXTURE-SOURCE",
+        "title": "架空の機構説明",
+        "excerpt": "架空の留め具は固定され着脱できません。"
+      }
+    ],
+    "preserveOfficialFacts": [
+      {
+        "id": "FIXTURE-FUNCTION",
+        "quote": "架空の面には滑り止めがあります。"
+      },
+      {
+        "id": "FIXTURE-COUNTER",
+        "quote": "架空の留め具は固定され着脱できません。"
+      }
+    ]
+  },
+  "answer": {
+    "questionId": "support",
+    "questionVersion": "1.0.0",
+    "status": "insufficient",
+    "text": "独立した機能の記載と、この図面との対応は区別します。",
+    "evidenceAssessments": [
+      {
+        "evidenceId": "FIXTURE-FUNCTION",
+        "stance": "unverified",
+        "claim": null,
+        "basis": null
+      },
+      {
+        "evidenceId": "FIXTURE-COUNTER",
+        "stance": "conflicts",
+        "claim": "この説明の留め具を着脱可能として扱える",
+        "basis": "同じ説明に固定され着脱できないと明記されています"
+      }
+    ],
+    "nextChecks": [
+      {
+        "targetIds": [
+          "FIXTURE-CONTOUR",
+          "FIXTURE-SOURCE"
+        ],
+        "material": "架空の対応製品図と部品表",
+        "location": "左側留め具の取付位置と寸法",
+        "condition": "図面と製品図で位置と寸法の対応が確認できること",
+        "decision": "同じ候補部位として固定方式の比較を続ける",
+        "hold": "同一部位との対応と機能の帰属を保留する"
+      }
+    ],
+    "limitationKeys": []
+  },
+  "projectedAnswer": {
+    "questionId": "support",
+    "questionVersion": "1.0.0",
+    "status": "insufficient",
+    "text": "独立した機能の記載と、この図面との対応は区別します。\n矛盾：この説明の留め具を着脱可能として扱える 根拠：同じ説明に固定され着脱できないと明記されています",
+    "evidenceIds": [
+      "FIXTURE-FUNCTION",
+      "FIXTURE-COUNTER"
+    ],
+    "supportingEvidenceIds": [],
+    "opposingEvidenceIds": [
+      "FIXTURE-COUNTER"
+    ],
+    "nextChecks": [
+      "対象：FIXTURE-CONTOUR、FIXTURE-SOURCE。見る資料：架空の対応製品図と部品表／左側留め具の取付位置と寸法。判断条件：図面と製品図で位置と寸法の対応が確認できること。確認できた場合：同じ候補部位として固定方式の比較を続ける。確認できない場合：同一部位との対応と機能の帰属を保留する。"
+    ],
+    "limitations": []
+  }
+}

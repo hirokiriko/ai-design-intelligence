@@ -8,3 +8,16 @@ export function sourceDisplayTitle(title: string): string {
 export function explanationDisplayText(text: string | null): string {
   return (text ?? '').replace(/<br\s*\/?>/gi, ' ');
 }
+
+/** 保存された調査文の既知資料IDだけを題名へ表示変換する。引用・原文には使わない。 */
+export function sourceReferenceText(text: string, sources: readonly { id: string; title: string }[]): string {
+  const labels = new Map(sources.map((source, index) => [source.id, `資料${index + 1}：${sourceDisplayTitle(source.title)}`]));
+  const ids = [...labels.keys()].filter(Boolean).sort((a, b) => b.length - a.length);
+  if (!ids.length) return text;
+  const alternatives = ids.map(id => {
+    const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const boundary = /[^\p{ASCII}]/u.test(id) ? '\\p{L}\\p{M}\\p{N}._:-' : 'A-Za-z0-9._:-';
+    return `(?<![${boundary}])${escaped}(?![${boundary}])`;
+  });
+  return text.replace(new RegExp(alternatives.join('|'), 'gu'), id => labels.get(id)!);
+}

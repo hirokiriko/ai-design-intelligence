@@ -1,0 +1,556 @@
+{
+  "schemaVersion": "2.6.0",
+  "id": "kds_fixture_observation_plans",
+  "watchId": "FIXTURE-watch_fixture_v2",
+  "status": "complete",
+  "createdAt": "2026-09-23T00:00:00Z",
+  "completedAt": "2026-09-23T00:00:01Z",
+  "input": {
+    "watch": {
+      "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER",
+      "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE",
+      "categoryId": "FIXTURE-CLASS-A01",
+      "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+      "name": "架空意匠ラボ甲・架空携帯機器",
+      "sourceProfileId": "FIXTURE-SOURCE-COMPANY-A",
+      "id": "FIXTURE-watch_fixture_v2",
+      "createdAt": "2026-09-01T00:00:00Z"
+    },
+    "context": {
+      "dataMode": "fictional",
+      "entity": {
+        "id": "FIXTURE-ENTITY-APPLICANT-A",
+        "name": "架空意匠ラボ甲合同会社"
+      },
+      "category": {
+        "id": "FIXTURE-CLASS-A01",
+        "scheme": "FIXTURE-DESIGN-CLASS",
+        "label": "架空携帯機器"
+      },
+      "beforeDataset": {
+        "id": "FIXTURE-DATASET-SIGNAL-BEFORE",
+        "dataAsOf": "2026-04-02",
+        "coverage": "同じ架空の日刊公報選定規則で、指定した号のみを遡及して収録しました。期間中の全号・全件ではありません。",
+        "collection": {
+          "kind": "retrospective_selected_daily_gazettes",
+          "commonStartDate": "2026-04-02",
+          "cutoffDate": "2026-04-02",
+          "cutoffBasis": "source_publication_date",
+          "reconstructedAt": "2026-09-22T00:00:00Z",
+          "sourceFamilies": [
+            "FIXTURE-DAILY"
+          ],
+          "policySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "archiveSetSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "sourceAcquiredFrom": null,
+          "sourceAcquiredThrough": null,
+          "locallyVerifiedAt": "2026-09-21T00:00:00Z",
+          "retrospectiveSupplements": true,
+          "limitations": [
+            "自作架空の日刊公報選定集合です。期間内の全号・全件を収録していません。",
+            "取得日時は不明。後日取得した資料は事後の補足であり、当時サービスが取得済みだったことを示しません。"
+          ],
+          "selectedIssueDates": [
+            "2026-04-02"
+          ]
+        }
+      },
+      "afterDataset": {
+        "id": "FIXTURE-DATASET-SIGNAL-AFTER",
+        "dataAsOf": "2026-08-07",
+        "coverage": "同じ架空の日刊公報選定規則で、指定した号のみを遡及して収録しました。期間中の全号・全件ではありません。",
+        "collection": {
+          "kind": "retrospective_selected_daily_gazettes",
+          "commonStartDate": "2026-04-02",
+          "cutoffDate": "2026-08-07",
+          "cutoffBasis": "source_publication_date",
+          "reconstructedAt": "2026-09-22T00:00:00Z",
+          "sourceFamilies": [
+            "FIXTURE-DAILY"
+          ],
+          "policySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "archiveSetSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "sourceAcquiredFrom": null,
+          "sourceAcquiredThrough": null,
+          "locallyVerifiedAt": "2026-09-21T00:00:00Z",
+          "retrospectiveSupplements": true,
+          "limitations": [
+            "自作架空の日刊公報選定集合です。期間内の全号・全件を収録していません。",
+            "取得日時は不明。後日取得した資料は事後の補足であり、当時サービスが取得済みだったことを示しません。"
+          ],
+          "selectedIssueDates": [
+            "2026-04-02",
+            "2026-08-07"
+          ]
+        }
+      },
+      "knownProducts": []
+    },
+    "comparisonPair": {
+      "id": "FIXTURE-PAIR-A",
+      "label": "架空比較組 A",
+      "evidence": "自作の架空画像と架空意匠レコードの対応を管理者が確認。製品の旧新世代は示しません。",
+      "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+      "categoryId": "FIXTURE-CLASS-A01",
+      "beforeDatasetId": "FIXTURE-DATASET-SIGNAL-BEFORE",
+      "afterDatasetId": "FIXTURE-DATASET-SIGNAL-AFTER",
+      "media": [
+        {
+          "id": "FIXTURE-MEDIA-BEFORE",
+          "recordId": "kds_fixture_article_alpha",
+          "label": "架空比較形状 BEFORE",
+          "role": "comparisonA",
+          "mimeType": "image/png",
+          "width": 512,
+          "height": 512,
+          "sourceLabel": "自作の手続き的な架空図形",
+          "permission": "fixture-only: self-created procedural shapes, storage and AI test use allowed",
+          "gazetteDate": "2026-04-02",
+          "applicationDate": "2026-01-10",
+          "view": "架空正面図",
+          "comparisonStatus": "administrator_matched_fixture_not_product_generations"
+        },
+        {
+          "id": "FIXTURE-MEDIA-AFTER",
+          "recordId": "kds_fixture_article_beta",
+          "label": "架空比較形状 AFTER",
+          "role": "comparisonB",
+          "mimeType": "image/png",
+          "width": 512,
+          "height": 512,
+          "sourceLabel": "自作の手続き的な架空図形",
+          "permission": "fixture-only: self-created procedural shapes, storage and AI test use allowed",
+          "gazetteDate": "2026-08-07",
+          "applicationDate": "2026-06-01",
+          "view": "架空正面図",
+          "comparisonStatus": "administrator_matched_fixture_not_product_generations"
+        }
+      ]
+    },
+    "analysisQuestion": {
+      "text": "公式の説明は図面を裏付ける？",
+      "id": "support",
+      "version": "1.0.0"
+    }
+  },
+  "errorCode": null,
+  "signal": {
+    "counts": {
+      "before": 1,
+      "after": 2,
+      "newlyObserved": 1,
+      "excludedBefore": 0,
+      "excludedAfter": 0,
+      "comparable": true
+    },
+    "coverage": {
+      "before": "同じ架空の日刊公報選定規則で、指定した号のみを遡及して収録しました。期間中の全号・全件ではありません。",
+      "after": "同じ架空の日刊公報選定規則で、指定した号のみを遡及して収録しました。期間中の全号・全件ではありません。"
+    },
+    "limitations": [
+      "件数は承認済み収録範囲の観測数であり、市場全体の新規出願数ではありません。",
+      "指定した日刊公報だけから遡及選定した収録集合です。期間内の全号・全件や当時の稼働snapshot、予測実績ではありません。",
+      "差分は選定した公報号とrecordの追加による収録変化であり、企業活動や市場全体の増加を直接示しません。"
+    ],
+    "designFacts": [
+      {
+        "id": "FIXTURE-design-1",
+        "text": "架空携帯操作端末。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-04-02。出願日: 2026-01-10。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 持ち運び用の架空操作端末を表す契約検証データ。",
+        "recordIds": [
+          "kds_fixture_article_alpha"
+        ],
+        "field": "record"
+      },
+      {
+        "id": "FIXTURE-design-2",
+        "text": "架空携帯操作端末B。出願人: 架空意匠ラボ甲合同会社。公報日: 2026-08-07。出願日: 2026-06-01。分類: FIXTURE-DESIGN-CLASS:FIXTURE-CLASS-A01 (架空携帯機器)。説明: 手続き的に描画した架空比較形状の検証用record。実在製品ではない。",
+        "recordIds": [
+          "kds_fixture_article_beta"
+        ],
+        "field": "record"
+      }
+    ],
+    "recordFacts": [
+      {
+        "id": "FIXTURE-design-1",
+        "recordId": "kds_fixture_article_alpha",
+        "selectionReason": "comparison_pair",
+        "articleName": "架空携帯操作端末",
+        "applicant": {
+          "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+          "name": "架空意匠ラボ甲合同会社"
+        },
+        "applicationNumber": "FIXTURE-APP-A001",
+        "registrationNumber": "FIXTURE-REG-A001",
+        "classifications": [
+          {
+            "scheme": "FIXTURE-DESIGN-CLASS",
+            "code": "FIXTURE-CLASS-A01",
+            "label": "架空携帯機器"
+          }
+        ],
+        "applicationDate": "2026-01-10",
+        "gazetteDate": "2026-04-02",
+        "description": "持ち運び用の架空操作端末を表す契約検証データ。",
+        "articleDescription": "通常の物品意匠を表現する。",
+        "quality": "pass",
+        "sourceFields": [
+          "/after/document/records/0/articleName",
+          "/after/document/records/0/applicants",
+          "/after/document/records/0/classifications",
+          "/after/document/records/0/applicationNumber",
+          "/after/document/records/0/registrationNumber",
+          "/after/document/records/0/applicationDate",
+          "/after/document/records/0/gazetteDate",
+          "/after/document/records/0/description",
+          "/after/document/records/0/articleDescription",
+          "/after/document/records/0/quality"
+        ]
+      },
+      {
+        "id": "FIXTURE-design-2",
+        "recordId": "kds_fixture_article_beta",
+        "selectionReason": "comparison_pair",
+        "articleName": "架空携帯操作端末B",
+        "applicant": {
+          "entityId": "FIXTURE-ENTITY-APPLICANT-A",
+          "name": "架空意匠ラボ甲合同会社"
+        },
+        "applicationNumber": "FIXTURE-APP-A008",
+        "registrationNumber": "FIXTURE-REG-A008",
+        "classifications": [
+          {
+            "scheme": "FIXTURE-DESIGN-CLASS",
+            "code": "FIXTURE-CLASS-A01",
+            "label": "架空携帯機器"
+          }
+        ],
+        "applicationDate": "2026-06-01",
+        "gazetteDate": "2026-08-07",
+        "description": "手続き的に描画した架空比較形状の検証用record。実在製品ではない。",
+        "articleDescription": "通常の物品意匠を表現する。",
+        "quality": "pass",
+        "sourceFields": [
+          "/after/document/records/1/articleName",
+          "/after/document/records/1/applicants",
+          "/after/document/records/1/classifications",
+          "/after/document/records/1/applicationNumber",
+          "/after/document/records/1/registrationNumber",
+          "/after/document/records/1/applicationDate",
+          "/after/document/records/1/gazetteDate",
+          "/after/document/records/1/description",
+          "/after/document/records/1/articleDescription",
+          "/after/document/records/1/quality"
+        ]
+      }
+    ],
+    "status": "insufficient",
+    "visualObservations": [
+      {
+        "id": "FIXTURE-visual-fixture",
+        "part": "上部の曲線",
+        "observation": "A：架空の円弧が横線に接する。B：架空の円弧と横線の間に隙間がある。",
+        "status": "unknown",
+        "mediaIds": [
+          "FIXTURE-MEDIA-BEFORE",
+          "FIXTURE-MEDIA-AFTER"
+        ]
+      },
+      {
+        "id": "FIXTURE-observation-2",
+        "part": "中央の小円",
+        "observation": "A：架空の小円が二つ並ぶ。B：架空の小円の間隔が広い。",
+        "status": "unknown",
+        "mediaIds": [
+          "FIXTURE-MEDIA-BEFORE",
+          "FIXTURE-MEDIA-AFTER"
+        ]
+      },
+      {
+        "id": "FIXTURE-observation-3",
+        "part": "左側の短線",
+        "observation": "A：架空の短い縦線が見える。B：架空の短線の下端を読めない。",
+        "status": "unknown",
+        "mediaIds": [
+          "FIXTURE-MEDIA-BEFORE",
+          "FIXTURE-MEDIA-AFTER"
+        ]
+      },
+      {
+        "id": "FIXTURE-observation-4",
+        "part": "下部の角",
+        "observation": "A：架空の角が丸い。B：架空の角が直線で接する。",
+        "status": "unknown",
+        "mediaIds": [
+          "FIXTURE-MEDIA-BEFORE",
+          "FIXTURE-MEDIA-AFTER"
+        ]
+      }
+    ],
+    "officialFacts": [
+      {
+        "id": "FIXTURE-official-fixture",
+        "text": "出典には「架空端末の試作例には角部の丸みと中央操作面を設けています。これは実在しない試験資料です。」と記載されています。",
+        "sourceId": "FIXTURE-candidate-0887fe04fce9fea4",
+        "quote": "架空端末の試作例には角部の丸みと中央操作面を設けています。これは実在しない試験資料です。",
+        "start": 0,
+        "end": 44
+      }
+    ],
+    "hypotheses": [
+      {
+        "id": "FIXTURE-hypothesis-fixture",
+        "text": "意匠と架空資料の関係は、人による確認が必要です。",
+        "evidenceIds": [
+          "FIXTURE-official-fixture"
+        ],
+        "limitations": [
+          "実在企業の発表ではありません。"
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "id": "FIXTURE-hypothesis-fixture",
+        "relation": "candidate",
+        "summary": "架空資料の記載と意匠の対応は模擬モデルでは確定できません。",
+        "supportingEvidenceIds": [
+          "FIXTURE-official-fixture"
+        ],
+        "opposingEvidenceIds": [],
+        "missingEvidence": [
+          "意匠recordと商品・型番の対応根拠を人が確認する必要があります。"
+        ]
+      }
+    ],
+    "questionsForHuman": [
+      "比較画像の向き・縮尺・可視範囲などに未確認事項があります。同じ条件の画像または比較条件の裏付けが必要です。",
+      "意匠recordと商品・型番の対応根拠を人が確認する必要があります。",
+      "模擬モデルのため、画像候補と文章の意味を人が確認してください。"
+    ],
+    "media": [
+      {
+        "id": "FIXTURE-MEDIA-BEFORE",
+        "recordId": "kds_fixture_article_alpha",
+        "label": "架空比較形状 BEFORE",
+        "role": "comparisonA",
+        "mimeType": "image/png",
+        "width": 512,
+        "height": 512,
+        "sourceLabel": "自作の手続き的な架空図形",
+        "permission": "fixture-only: self-created procedural shapes, storage and AI test use allowed",
+        "gazetteDate": "2026-04-02",
+        "applicationDate": "2026-01-10",
+        "view": "架空正面図",
+        "comparisonStatus": "administrator_matched_fixture_not_product_generations"
+      },
+      {
+        "id": "FIXTURE-MEDIA-AFTER",
+        "recordId": "kds_fixture_article_beta",
+        "label": "架空比較形状 AFTER",
+        "role": "comparisonB",
+        "mimeType": "image/png",
+        "width": 512,
+        "height": 512,
+        "sourceLabel": "自作の手続き的な架空図形",
+        "permission": "fixture-only: self-created procedural shapes, storage and AI test use allowed",
+        "gazetteDate": "2026-08-07",
+        "applicationDate": "2026-06-01",
+        "view": "架空正面図",
+        "comparisonStatus": "administrator_matched_fixture_not_product_generations"
+      }
+    ],
+    "sources": [
+      {
+        "id": "FIXTURE-candidate-4a7d1cd5eae802b4",
+        "url": "https://fixture.example.test/news/office",
+        "title": "架空オフィスのお知らせ",
+        "publishedAt": "2026-08-12",
+        "retrievedAt": "2026-09-19T00:00:00Z",
+        "excerpt": "架空の本社移転についてのお知らせ。商品形状とは関係ありません。",
+        "excerptStart": 0,
+        "contentHash": "260c0c1a858397f7e3c0ca6505e07cc3c088cd6ab379e7cb03392468835755b4",
+        "retrospective": false,
+        "updatedAt": null,
+        "releaseAt": null,
+        "extractionVersion": "article-html-2.0.0",
+        "bodyHash": "260c0c1a858397f7e3c0ca6505e07cc3c088cd6ab379e7cb03392468835755b4",
+        "extractedChars": 31,
+        "modelVisibleChars": 31,
+        "truncated": false
+      },
+      {
+        "id": "FIXTURE-candidate-0887fe04fce9fea4",
+        "url": "https://fixture.example.test/news/product",
+        "title": "架空端末の形状案内",
+        "publishedAt": "2026-08-12",
+        "retrievedAt": "2026-09-19T00:00:00Z",
+        "excerpt": "架空端末の試作例には角部の丸みと中央操作面を設けています。これは実在しない試験資料です。",
+        "excerptStart": 0,
+        "contentHash": "afc924584e7d83128371eaff3921fc649c3c5409ce36a71bc4577e075246ad37",
+        "retrospective": false,
+        "updatedAt": null,
+        "releaseAt": null,
+        "extractionVersion": "article-html-2.0.0",
+        "bodyHash": "afc924584e7d83128371eaff3921fc649c3c5409ce36a71bc4577e075246ad37",
+        "extractedChars": 44,
+        "modelVisibleChars": 44,
+        "truncated": false
+      }
+    ],
+    "toolEvents": [
+      {
+        "tool": "list_candidates",
+        "candidateId": null,
+        "reason": "商品との関連を架空候補から確認します。",
+        "outcome": "ok",
+        "startedAt": "2026-09-21T15:57:25.994059Z",
+        "finishedAt": "2026-09-21T15:57:26.001996Z"
+      },
+      {
+        "tool": "fetch_candidate",
+        "candidateId": "FIXTURE-candidate-4a7d1cd5eae802b4",
+        "reason": "最初の候補を確認します。",
+        "outcome": "ok",
+        "startedAt": "2026-09-21T15:57:26.001996Z",
+        "finishedAt": "2026-09-21T15:57:26.001996Z"
+      },
+      {
+        "tool": "fetch_candidate",
+        "candidateId": "FIXTURE-candidate-0887fe04fce9fea4",
+        "reason": "商品と意匠の対応根拠が未確認のため、一度だけ追加確認します。",
+        "outcome": "ok",
+        "startedAt": "2026-09-21T15:57:26.00317Z",
+        "finishedAt": "2026-09-21T15:57:26.00317Z"
+      },
+      {
+        "tool": "finish",
+        "candidateId": null,
+        "reason": "追加確認1回を終了。対象対応または発表時期の裏付けは未完了。比較画像の向き・縮尺・可視範囲などに未確認事項があります。同じ条件の画像または比較条件の裏付けが必要です。",
+        "outcome": "ok",
+        "startedAt": "2026-09-21T15:57:26.004473Z",
+        "finishedAt": "2026-09-21T15:57:26.004473Z"
+      }
+    ],
+    "stopReason": "追加確認1回を終了。対象対応または発表時期の裏付けは未完了。比較画像の向き・縮尺・可視範囲などに未確認事項があります。同じ条件の画像または比較条件の裏付けが必要です。",
+    "discovery": {
+      "state": "completed",
+      "scannedLinks": 2,
+      "eligibleCandidates": 2,
+      "omittedCandidates": 0,
+      "limitations": [
+        "登録入口の有限な掲載範囲のみを確認。候補なしは企業の未発表を意味しません。"
+      ],
+      "candidates": [
+        {
+          "id": "FIXTURE-candidate-4a7d1cd5eae802b4",
+          "title": "架空オフィスのお知らせ",
+          "url": "https://fixture.example.test/news/office",
+          "publishedAt": null,
+          "dateStatus": "unknown",
+          "selectionReason": "対象語一致なし・同一許可範囲の確認候補。発表日不明"
+        },
+        {
+          "id": "FIXTURE-candidate-0887fe04fce9fea4",
+          "title": "架空端末の形状案内",
+          "url": "https://fixture.example.test/news/product",
+          "publishedAt": null,
+          "dateStatus": "unknown",
+          "selectionReason": "対象語一致なし・同一許可範囲の確認候補。発表日不明"
+        }
+      ]
+    },
+    "questionAnswer": {
+      "status": "insufficient",
+      "opposingEvidenceIds": [],
+      "questionVersion": "1.0.0",
+      "text": "架空の四つの観察について、確認理由と次の調査を分けます。引用との対応は未確認です。",
+      "evidenceIds": [
+        "FIXTURE-visual-fixture",
+        "FIXTURE-observation-2",
+        "FIXTURE-observation-3",
+        "FIXTURE-observation-4",
+        "FIXTURE-official-fixture"
+      ],
+      "limitations": [],
+      "supportingEvidenceIds": [],
+      "questionId": "support",
+      "nextChecks": [
+        "実行全体として、比較図面と架空製品を結ぶ対応資料を確認する。"
+      ],
+      "observationPlans": [
+        {
+          "observationId": "FIXTURE-visual-fixture",
+          "reason": "接続部の隙間を比較するため",
+          "officialAssessment": {
+            "factIds": [],
+            "stance": "unverified",
+            "basis": "この箇所を説明する引用は、保存された抜粋では確認できません。"
+          },
+          "material": "同じ向きの架空詳細図と寸法表",
+          "location": "円弧と横線の接点",
+          "condition": "接点に連続した輪郭があるか",
+          "decision": "上部の曲線の描画比較の材料にする",
+          "hold": "上部の曲線を判読できる詳細図が得られるまで保留する"
+        },
+        {
+          "observationId": "FIXTURE-observation-2",
+          "reason": "小円の間隔を同じ尺度で確かめるため",
+          "officialAssessment": {
+            "factIds": [
+              "FIXTURE-official-fixture"
+            ],
+            "stance": "unverified",
+            "basis": "架空資料に中央面と角の記載はありますが、この図面との対応は未確認です。"
+          },
+          "material": "同じ向きの架空詳細図と寸法表",
+          "location": "二つの小円の中心",
+          "condition": "中心間距離を同一尺度で比べられるか",
+          "decision": "中央の小円の描画比較の材料にする",
+          "hold": "中央の小円を判読できる詳細図が得られるまで保留する"
+        },
+        {
+          "observationId": "FIXTURE-observation-3",
+          "reason": "不鮮明な下端を差異と誤認しないため",
+          "officialAssessment": {
+            "factIds": [],
+            "stance": "unverified",
+            "basis": "この箇所を説明する引用は、保存された抜粋では確認できません。"
+          },
+          "material": "同じ向きの架空詳細図と寸法表",
+          "location": "左側短線の下端",
+          "condition": "下端の位置と線の連続を読めるか",
+          "decision": "左側の短線の描画比較の材料にする",
+          "hold": "左側の短線を判読できる詳細図が得られるまで保留する"
+        },
+        {
+          "observationId": "FIXTURE-observation-4",
+          "reason": "下部の曲率を図面で確かめるため",
+          "officialAssessment": {
+            "factIds": [
+              "FIXTURE-official-fixture"
+            ],
+            "stance": "unverified",
+            "basis": "架空資料に中央面と角の記載はありますが、この図面との対応は未確認です。"
+          },
+          "material": "同じ向きの架空詳細図と寸法表",
+          "location": "下部外郭の角",
+          "condition": "角の曲線と直線を区別できるか",
+          "decision": "下部の角の描画比較の材料にする",
+          "hold": "下部の角を判読できる詳細図が得られるまで保留する"
+        }
+      ]
+    }
+  },
+  "usage": {
+    "modelRequests": 4,
+    "toolCalls": 4,
+    "inputTokens": 36000,
+    "outputTokens": 0
+  },
+  "versions": {
+    "model": "FIXTURE-OBSERVATION-PLAN-MODEL",
+    "prompt": "bounded-signal-2.6.0",
+    "schema": "2.6.0"
+  }
+}

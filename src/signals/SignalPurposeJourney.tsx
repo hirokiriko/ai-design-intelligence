@@ -36,7 +36,7 @@ export function SignalQuestionFocus({ question, hasEvidence = true }: { question
 }
 
 export function SignalSavedQuestion({ run }: { run?: Run }) {
-  const saved = run?.schemaVersion === '2.5.0' ? run.input.analysisQuestion : null;
+  const saved = run?.schemaVersion === '2.5.0' || run?.schemaVersion === '2.6.0' ? run.input.analysisQuestion : null;
   return <div className="signal-question-focus" aria-label="実行時点の問い"><p><strong>実行時の問い：{saved?.text ?? '未記録'}</strong></p><p className="signal-subtle">{saved ? 'この実行に保存された分析目的です。今の選択や現在のカタログから補完していません。' : 'この結果は登録した企業・資料の確認結果です。実行時の問いは保存されていません。画面で選んだ閲覧の問いから、実行時の目的を推測していません。'}</p>{saved ? <details className="signal-details"><summary>問いと回答の照合情報</summary><p>問いの識別子：{saved.id} · 版：{saved.version} · 実行：{run?.id}</p></details> : null}</div>;
 }
 

@@ -299,8 +299,8 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
     setNotice(selectedQuestion ? `「${selectedQuestion.text}」を${developmentMode ? '架空の固定結果で確認・ローカル保存しています。実AIは実行しません。' : '選んだ資料で確認しています。回答と根拠を同じ実行に保存します。'}` : developmentMode ? '架空の固定結果を表示・保存しています。実AIによる生成は行いません。' : '選んだ資料の差分と根拠を確認しています。実施できた分析と未確認事項は結果に表示します。');
     try {
       const saved = await api.start(watchId, intent, crypto.randomUUID(), bootstrap.csrfToken, comparisonPairId || undefined, selectedQuestion);
-      const savedQuestion = saved.schemaVersion === '2.5.0' ? saved.input.analysisQuestion : undefined;
-      const savedPairId = saved.schemaVersion === '2.2.0' || saved.schemaVersion === '2.3.0' || saved.schemaVersion === '2.5.0' ? saved.input.comparisonPair?.id : undefined;
+      const savedQuestion = (saved.schemaVersion === '2.5.0' || saved.schemaVersion === '2.6.0') ? saved.input.analysisQuestion : undefined;
+      const savedPairId = saved.schemaVersion === '2.2.0' || saved.schemaVersion === '2.3.0' || (saved.schemaVersion === '2.5.0' || saved.schemaVersion === '2.6.0') ? saved.input.comparisonPair?.id : undefined;
       if (saved.watchId !== watchId || !sameAnalysisQuestion(savedQuestion, selectedQuestion) || (supportsPairs(bootstrap.schemaVersion) && savedPairId !== (comparisonPairId || undefined))) throw new ContractError();
       resultRequested.current = true;
       setPendingRequest(pendingRequestFromBrowser(developmentMode));

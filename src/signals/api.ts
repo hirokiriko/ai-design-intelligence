@@ -49,8 +49,8 @@ function samePending(left: PendingRunRequest, right: PendingRunRequest): boolean
     && sameAnalysisQuestion(left.analysisQuestion, right.analysisQuestion) && left.comparisonPairId === right.comparisonPairId;
 }
 function validateRequestRun(run: Run, snapshot: PendingRunRequest, comparePair = true): void {
-  if (run.watchId !== snapshot.watchId || !sameAnalysisQuestion(run.schemaVersion === '2.5.0' ? run.input.analysisQuestion : null, snapshot.analysisQuestion)) throw new ContractError();
-  if (comparePair && (run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0' || run.schemaVersion === '2.5.0' ? run.input.comparisonPair?.id : undefined) !== snapshot.comparisonPairId) throw new ContractError();
+  if (run.watchId !== snapshot.watchId || !sameAnalysisQuestion((run.schemaVersion === '2.5.0' || run.schemaVersion === '2.6.0') ? run.input.analysisQuestion : null, snapshot.analysisQuestion)) throw new ContractError();
+  if (comparePair && (run.schemaVersion === '2.2.0' || run.schemaVersion === '2.3.0' || (run.schemaVersion === '2.5.0' || run.schemaVersion === '2.6.0') ? run.input.comparisonPair?.id : undefined) !== snapshot.comparisonPairId) throw new ContractError();
 }
 // legacy単一keyは移行・上書きしない。別条件の未知結果も独立して保持する。
 export function readPendingRunRequests(): PendingRunRequest[] {

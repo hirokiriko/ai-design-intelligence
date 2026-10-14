@@ -23,6 +23,6 @@ export function SignalSavedEntry({ run }: { run: Run }) {
       })}</div> : null}
       {sources.length ? <div className="signal-entry-sources"><p className="signal-eyebrow">3 · 照合する公式資料の商品説明</p><div className="signal-entry-source-grid">{sources.map((source) => <article key={source.id}><h4>{sourceDisplayTitle(source.title)}</h4><blockquote>{Array.from(source.excerpt).slice(0, source.modelVisibleChars).join('')}</blockquote><a href={`#${evidenceId(source.id)}`}>この抜粋の出典・日付を確認</a></article>)}</div><p className="signal-subtle">保存された資料の原文抜粋。図面との対応は、下の回答・根拠で確認できます。</p></div> : null}
     </div> : null}
-    <nav className="signal-evidence-links" aria-label="保存結果の読み進め方">{run.schemaVersion === '2.5.0' ? <a href="#signal-question-answer-title">保存された回答を見る</a> : null}<a href="#signal-next-checks">次の調査を確認</a><a href="#signal-conditions">保存条件を確認</a><a href="#signal-history">保存履歴へ</a></nav>
+    <nav className="signal-evidence-links" aria-label="保存結果の読み進め方">{(run.schemaVersion === '2.5.0' || run.schemaVersion === '2.6.0') ? <a href="#signal-question-answer-title">保存された回答を見る</a> : null}<a href="#signal-next-checks">次の調査を確認</a><a href="#signal-conditions">保存条件を確認</a><a href="#signal-history">保存履歴へ</a></nav>
   </div>;
 }

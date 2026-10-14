@@ -1,0 +1,11 @@
+.signal-ai-reason, .signal-ai-assessment, .signal-ai-next-plan {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  margin-block: 1rem;
+}
+.signal-ai-plan-fields { display: grid; gap: .5rem; }
+.signal-ai-plan-fields dt { font-weight: 700; }
+.signal-ai-plan-fields dd { margin: 0 0 .75rem; }
+.signal-ai-plan-quote { margin-block: 1.25rem; }
+.signal-ai-plan-quote blockquote { margin-inline: 0; }
+.signal-ai-date-context { margin-block: 1rem; }

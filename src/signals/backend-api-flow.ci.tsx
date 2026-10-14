@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { analysisQuestion } from './analysis-question';
 import { readPendingRunRequest, signalApi, SignalApiError } from './api';
-import { decodeRun, type Run, type RunV25, type WatchInput } from './contract';
+import { decodeRun, type Run, type RunV26, type WatchInput } from './contract';
 import { evidenceId } from './labels';
 import { decodeRunReview, type RunReviewState } from './run-review';
 import { SignalHistory } from './SignalHistory';
@@ -24,7 +24,7 @@ interface Scenario {
     analysisQuestionId: 'support'; analysisQuestionVersion: '1.0.0';
   };
   exchanges: Exchange[]; savedRun: unknown; savedHash: string; oldRun: unknown;
-  savedReview: unknown; oldReview: unknown;
+  savedReview: unknown; oldReview: unknown; oldQuestionRun: unknown; oldQuestionReview: unknown;
   counters: {
     beginRunCalls: number; finishRunCalls: number; generationPosts: number; modelCalls: number;
     parsedOfficialPages: number; externalRequests: number; realAIExecutions: number;
@@ -46,9 +46,9 @@ function hash(value: unknown) {
   if (document === undefined) throw new Error('FIXTURE_INVALID_HASH_INPUT');
   return createHash('sha256').update(document, 'utf8').digest('hex');
 }
-function savedRun(): RunV25 {
+function savedRun(): RunV26 {
   const run = decodeRun(scenario.savedRun);
-  if (run.schemaVersion !== '2.5.0' || !run.signal) throw new Error('FIXTURE_REQUIRES_SAVED_QUESTION');
+  if (run.schemaVersion !== '2.6.0' || !run.signal) throw new Error('FIXTURE_REQUIRES_SAVED_QUESTION');
   return run;
 }
 
@@ -213,11 +213,11 @@ describe('generated fictional Backend API exchange through current question and 
     hooks.mounted = true;
     tree();
   }
-  function assertSavedDisplay(run: RunV25) {
+  function assertSavedDisplay(run: RunV26) {
     expect(displayedRun()).toEqual(run);
-    expect(displayedRun()?.schemaVersion).toBe('2.5.0');
+    expect(displayedRun()?.schemaVersion).toBe('2.6.0');
     const current = displayedRun();
-    if (current?.schemaVersion !== '2.5.0' || !current.signal || !run.signal) throw new Error('FIXTURE_MISSING_SAVED_QUESTION');
+    if (current?.schemaVersion !== '2.6.0' || !current.signal || !run.signal) throw new Error('FIXTURE_MISSING_SAVED_QUESTION');
     expect(current.input.analysisQuestion).toEqual(analysisQuestion('support'));
     expect(current.signal.questionAnswer).toEqual(run.signal.questionAnswer);
     expect(hash(current)).toBe(scenario.savedHash);
@@ -230,6 +230,12 @@ describe('generated fictional Backend API exchange through current question and 
     expect(answer.questionId).toBe('support'); expect(answer.questionVersion).toBe('1.0.0');
     expect(answer.text).not.toBeNull();
     expect(markup).toContain(encodedText(answer.text!));
+    expect(answer.observationPlans).toHaveLength(run.signal.visualObservations.length);
+    for (const plan of answer.observationPlans) {
+      expect(run.signal.visualObservations.some(item => item.id === plan.observationId)).toBe(true);
+      for (const text of [plan.reason, plan.officialAssessment.basis, plan.material, plan.location, plan.condition, plan.decision, plan.hold]) expect(markup).toContain(encodedText(text));
+      for (const id of plan.officialAssessment.factIds) expect(run.signal.officialFacts.some(fact => fact.id === id)).toBe(true);
+    }
     for (const text of [...answer.nextChecks, ...answer.limitations]) expect(markup).toContain(encodedText(text));
     for (const id of [...answer.evidenceIds, ...answer.supportingEvidenceIds, ...answer.opposingEvidenceIds]) {
       expect(markup).toContain(`href="#${evidenceId(id)}"`);
@@ -263,7 +269,7 @@ describe('generated fictional Backend API exchange through current question and 
     expect(new URL(location.href).searchParams.get('run')).toBe(run.id);
   }
 
-  it('uses generated 2.5 input and exact saved answer, with no substituted publication date', () => {
+  it('uses generated 2.6 input and exact saved answer, with no substituted publication date', () => {
     expect(scenario.schemaVersion).toBe('1.0.0'); expect(scenario.fictional).toBe(true);
     const saved = savedRun();
     expect(saved.status).toBe('complete');
@@ -392,7 +398,20 @@ describe('generated fictional Backend API exchange through current question and 
     expect(hash(scenario.counters)).toBe(countersHash);
     expect(new URL(location.href).searchParams.get('run')).toBe(old.id);
     expect(calls.filter((call) => call.path === `/api/v1/runs/${old.id}/review`)).toHaveLength(1);
-    expect(calls.filter((call) => call.path.startsWith('/api/v1/bootstrap'))).toHaveLength(3);
+    const oldQuestion = decodeRun(scenario.oldQuestionRun), oldQuestionHash = hash(oldQuestion);
+    if (oldQuestion.schemaVersion !== '2.5.0' || !oldQuestion.signal) throw new Error('FIXTURE_REQUIRES_OLD_QUESTION');
+    const oldQuestionReview = decodeRunReview(scenario.oldQuestionReview, oldQuestion);
+    unmount(); location.href = `https://kds-fixture.example.test/?run=${encodeURIComponent(oldQuestion.id)}`; mount();
+    await vi.waitFor(() => expect(displayedRun()).toEqual(oldQuestion));
+    await vi.waitFor(() => expect(displayedReview()).toEqual({ status: 'ready', review: oldQuestionReview }));
+    expect(html()).toContain(encodedText(oldQuestion.input.analysisQuestion.text));
+    expect(html()).toContain(encodedText(oldQuestion.signal.questionAnswer.text!));
+    expect(html()).not.toContain('class="signal-ai-saved-plan"');
+    expect('observationPlans' in oldQuestion.signal.questionAnswer).toBe(false);
+    expect(hash(displayedRun())).toBe(oldQuestionHash); expect(hash(scenario.oldQuestionRun)).toBe(oldQuestionHash);
+    expect(hash(scenario.counters)).toBe(countersHash);
+    expect(calls.filter((call) => call.path === `/api/v1/runs/${oldQuestion.id}/review`)).toHaveLength(1);
+    expect(calls.filter((call) => call.path.startsWith('/api/v1/bootstrap'))).toHaveLength(4);
     expect(calls.slice(viewingStart).every((call) => call.method === 'GET')).toBe(true);
     expect(calls.filter((call) => call.path.includes('/media/'))).toHaveLength(0);
     expect(runPosts()).toHaveLength(1);

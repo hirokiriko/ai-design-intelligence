@@ -3,11 +3,12 @@ import { useContext } from 'react';
 import type { Run } from './contract';
 import { SignalEvidenceDetails } from './SignalEvidenceDetails';
 import { claimFailedChecks, ResultQualityContext } from './result-quality';
+import { SignalObservationReason, SignalObservationAssessment, SignalObservationNextPlan } from './SignalObservationPlan';
 import { SignalQualityHold } from './SignalQualityHold';
 
 export function SignalQuestionAnswer({ run, developmentMode = false }: { run: Run; developmentMode?: boolean }) {
   const failedChecks = useContext(ResultQualityContext);
-  if (run.schemaVersion !== '2.5.0' || !run.signal) return null;
+  if ((run.schemaVersion !== '2.5.0' && run.schemaVersion !== '2.6.0') || !run.signal) return null;
   const answer = run.signal.questionAnswer;
   const signal = run.signal;
   return <section className="signal-overview signal-question-answer" aria-labelledby="signal-question-answer-title">
@@ -19,8 +20,14 @@ export function SignalQuestionAnswer({ run, developmentMode = false }: { run: Ru
       {answer.evidenceIds.length ? <SignalEvidenceDetails ids={answer.evidenceIds} signal={signal} developmentMode={developmentMode} label="回答で参照した根拠をすべて確かめる" /> : null}
 
     </SignalQualityHold>}
+    {run.schemaVersion === '2.6.0' ? run.signal.questionAnswer.observationPlans.map(plan => <article key={plan.observationId} className="signal-ai-saved-plan" data-observation-id={plan.observationId}>
+      <h4>{signal.visualObservations.find(item => item.id === plan.observationId)?.part}</h4>
+      <SignalObservationReason plan={plan} held={failedChecks.includes('V1')} />
+      <SignalObservationAssessment run={run} plan={plan} held={failedChecks.includes('V3')} />
+      <SignalObservationNextPlan plan={plan} held={failedChecks.includes('V4')} />
+    </article>) : null}
     <nav className="signal-evidence-links" aria-label="回答の根拠を確認">{signal.media.length ? <a href="#signal-images">対象の画像を確認</a> : null}{signal.sources.length ? <a href="#signal-saved-sources">公式資料を確認</a> : null}<a href="#signal-conditions">資料の比較へ戻る</a></nav>
-      {answer.nextChecks.length ? <div id="signal-answer-next-checks" tabIndex={-1} className="signal-next-action"><h4>次に確認すること</h4><ol>{answer.nextChecks.map((text, index) => <li key={index}>{explanationDisplayText(text)}</li>)}</ol></div> : null}
+      {answer.nextChecks.length ? <div id="signal-answer-next-checks" tabIndex={-1} className="signal-next-action"><h4>{run.schemaVersion === '2.6.0' ? '実行全体の保存AI調査事項' : '次に確認すること'}</h4><ol>{answer.nextChecks.map((text, index) => <li key={index}>{run.schemaVersion === '2.6.0' ? text : explanationDisplayText(text)}</li>)}</ol></div> : null}
       {answer.limitations.length ? <details className="signal-details"><summary>回答の限界・未確認事項</summary><ul>{answer.limitations.map((text, index) => <li key={index}>{explanationDisplayText(text)}</li>)}</ul></details> : null}
   </section>;
 }

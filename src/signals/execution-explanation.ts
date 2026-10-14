@@ -2,8 +2,17 @@ import type { Run } from './contract';
 
 export function savedStopExplanation(run: Run): string | null {
   if (!['partial', 'failed', 'interrupted'].includes(run.status)) return null;
-  if (run.versions.model !== 'facts-only-deterministic' && run.errorCode === 'MODEL_INPUT_BUDGET_EXCEEDED') {
-    return 'モデル入力の上限により停止しました。分析は未完了です。';
+  if (run.versions.model !== 'facts-only-deterministic') {
+    switch (run.errorCode) {
+      case 'MODEL_INPUT_BUDGET_EXCEEDED':
+        return 'モデル入力の上限により停止しました。分析は未完了です。';
+      case 'MODEL_HTTP_GATEWAY_TIMEOUT':
+      case 'MODEL_HTTP_REQUEST_TIMEOUT':
+      case 'MODEL_TRANSPORT_TIMEOUT':
+        return 'AIサービスからの応答待ちがタイムアウトしたため停止しました。分析は未完了です。';
+      case 'MODEL_TIMEOUT':
+        return 'モデル処理の制限時間に達したため停止しました。分析は未完了です。';
+    }
   }
   const reason = run.signal?.stopReason.trim();
   if (!reason) return '詳しい停止理由は保存されていません。';

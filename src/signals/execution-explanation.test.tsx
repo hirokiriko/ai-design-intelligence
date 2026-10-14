@@ -1,9 +1,11 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { decodeRun, type RunV25 } from './contract';
+import { decodeRun, type Run, type RunV25, type RunV26 } from './contract';
 import questionFixture from './backend-run-v2.5.fixture.json';
+import observationPlansFixture from './backend-run-v2.6.fixture.json';
 import { SignalResult } from './SignalResult';
+import { SignalFocusJourney } from './SignalFocusJourney';
 import { savedStopExplanation } from './execution-explanation';
 
 function savedPartial(): RunV25 {
@@ -22,9 +24,86 @@ function savedPartial(): RunV25 {
   run.signal.sources = [run.signal.sources[0], source];
   return decodeRun(run) as RunV25;
 }
-const render = (run: RunV25) => renderToStaticMarkup(createElement(SignalResult, { run }));
+function savedTimeout(errorCode = 'MODEL_HTTP_GATEWAY_TIMEOUT'): RunV26 {
+  const run = decodeRun(structuredClone(observationPlansFixture)) as RunV26;
+  run.status = 'partial';
+  run.errorCode = errorCode;
+  if (!run.signal) throw Error('FIXTURE-signal-required');
+  run.signal.status = 'change_detected';
+  run.signal.officialFacts = [];
+  run.signal.relationships = [];
+  run.signal.hypotheses = [];
+  run.signal.questionAnswer = { ...run.signal.questionAnswer, status: 'not_evaluated', text: null,
+    evidenceIds: [], supportingEvidenceIds: [], opposingEvidenceIds: [], nextChecks: [], limitations: [], observationPlans: [] };
+  run.signal.stopReason = 'FIXTURE-公式資料と図面を照合するため。';
+  return decodeRun(run) as RunV26;
+}
+const render = (run: Run) => renderToStaticMarkup(createElement(SignalResult, { run }));
+const knownTimeouts = [
+  ['MODEL_HTTP_GATEWAY_TIMEOUT', 'AIサービスからの応答待ちがタイムアウトしたため停止しました。分析は未完了です。'],
+  ['MODEL_HTTP_REQUEST_TIMEOUT', 'AIサービスからの応答待ちがタイムアウトしたため停止しました。分析は未完了です。'],
+  ['MODEL_TRANSPORT_TIMEOUT', 'AIサービスからの応答待ちがタイムアウトしたため停止しました。分析は未完了です。'],
+  ['MODEL_TIMEOUT', 'モデル処理の制限時間に達したため停止しました。分析は未完了です。'],
+] as const;
 
 describe('saved partial explanation and read-only next steps', () => {
+  it.each(knownTimeouts)('shows the %s cause in both saved views while preserving observations, sources and the unevaluated answer', (errorCode, explanation) => {
+    const run = savedTimeout(errorCode);
+    const before = JSON.stringify(run);
+    const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+    try {
+      const journey = renderToStaticMarkup(createElement(SignalFocusJourney, {
+        run, scopes: [{ id: run.watchId, label: 'FIXTURE-保存範囲' }], onScopeChange: vi.fn(),
+      }));
+      const html = render(run);
+      for (const view of [journey, html]) {
+        expect(view).toContain(explanation);
+        expect(view).not.toContain(errorCode);
+        expect(view).not.toContain('class="signal-ai-next-plan"');
+        expect(view).not.toContain('class="signal-ai-saved-plan"');
+      }
+      expect(journey).not.toContain(run.signal!.stopReason);
+      expect(journey).toContain(`保存された観察 ${run.signal!.visualObservations.length}件`);
+      for (const observation of run.signal!.visualObservations) expect(html).toContain(observation.observation);
+      expect(html).toContain(`公式資料の参照先が${run.signal!.sources.length}件`);
+      expect(html).toContain('この問いへの回答はまだ得られていません');
+      expect(html).not.toContain('回答あり');
+      expect(html).toContain('停止前の検討状況');
+      expect(html).toContain('停止前の検討状況と実行履歴を見る');
+      expect(html).not.toContain('保存された終了理由の詳細を見る');
+      expect(html).toContain(run.signal!.stopReason);
+      expect(html.indexOf(explanation)).toBeLessThan(html.indexOf(run.signal!.stopReason));
+      expect(JSON.stringify(run)).toBe(before);
+      expect(fetcher).not.toHaveBeenCalled();
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it.each(['partial', 'failed', 'interrupted'] as const)('explains a %s timeout even without a saved snapshot', (status) => {
+    const run = savedTimeout(); run.status = status; run.signal = null;
+    const html = render(run);
+    expect(html).toContain('AIサービスからの応答待ちがタイムアウトしたため停止しました');
+    expect(html).not.toContain('保存図面と観察を見る');
+    expect(html).not.toContain('保存された公式資料を見る');
+    expect(html).toContain('閲覧しても分析は再送されません');
+    run.status = 'complete';
+    expect(savedStopExplanation(run)).toBeNull();
+  });
+
+  it.each(knownTimeouts)('does not infer %s for the deterministic facts-only path', (errorCode, explanation) => {
+    const run = savedTimeout(errorCode); run.versions.model = 'facts-only-deterministic';
+    expect(savedStopExplanation(run)).toBe(run.signal!.stopReason);
+    expect(render(run)).not.toContain(explanation);
+  });
+
+  it('does not infer a known timeout cause from an unknown error with timeout in its name', () => {
+    const run = savedTimeout('FIXTURE_UNKNOWN_TIMEOUT');
+    expect(savedStopExplanation(run)).toBe(run.signal!.stopReason);
+    const html = render(run);
+    expect(html).not.toContain('応答待ちがタイムアウト');
+    expect(html).not.toContain('モデル処理の制限時間');
+    expect(html).toContain(run.signal!.stopReason);
+  });
+
   it('shows the input-limit reason and saved sources before the unanswered snapshot, without changing it', () => {
     const run = savedPartial();
     const before = JSON.stringify(run);

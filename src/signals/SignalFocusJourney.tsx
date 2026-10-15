@@ -57,6 +57,7 @@ export function SignalFocusJourney({ run, reviewState, scopes, onScopeChange, bu
   const pendingFocus = useRef<'detail' | string | null>(null);
   const id = useId();
   const selected = observations.find((item) => item.id === selection) ?? observations[0];
+  const selectedScope = scopes.find((scope) => scope.id === run.watchId);
   const failed = knownFailedChecks(run, reviewState);
   const visualHeld = failed.includes('V2');
   const matchedReview = reviewState?.status === 'ready' && reviewState.review && reviewMatchesRun(reviewState.review, run) ? reviewState.review : null;
@@ -103,7 +104,7 @@ export function SignalFocusJourney({ run, reviewState, scopes, onScopeChange, bu
   return <section className="signal-focus-journey" aria-label="注目候補から根拠と次の調査へ">
     <div className="signal-focus-scope">
       <div><span className="signal-eyebrow">対象企業・分野</span><h1>{run.input.context.entity.name ?? '企業名未記録'}<span>{article}</span></h1></div>
-      <label className="signal-field">保存された対象範囲<select aria-label="対象企業・分野の保存条件" value={scopes.some((scope) => scope.id === run.watchId) ? run.watchId : ''} disabled={busy} onChange={(event) => onScopeChange(event.target.value)}>{!scopes.some((scope) => scope.id === run.watchId) ? <option value="">現在の登録範囲外の保存結果</option> : null}{scopes.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</select></label>
+      <label className="signal-field">保存された対象範囲<select aria-label="対象企業・分野の保存条件" aria-describedby={`${id}-scope-value`} value={selectedScope?.id ?? ''} disabled={busy} onChange={(event) => onScopeChange(event.target.value)}>{!selectedScope ? <option value="">現在の登録範囲外の保存結果</option> : null}{scopes.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</select><span id={`${id}-scope-value`} className="signal-subtle">選択中：{selectedScope?.label ?? '現在の登録範囲外の保存結果'}</span></label>
     </div>
     <div className="signal-focus-context"><span>{run.input.context.dataMode === 'fictional' ? '架空資料の保存例' : '過去の保存実例'}</span><span>公報の比較範囲 {run.input.context.beforeDataset.dataAsOf} → {run.input.context.afterDataset.dataAsOf}</span>{signal ? <span className="signal-focus-saved-counts">保存集合の対象 {signal.counts.before} → {signal.counts.after}件 / {signal.counts.comparable ? `新たに対象となった資料 ${signal.counts.newlyObserved}件` : '新規対象数は比較不可'}</span> : null}<span>前回監視からの新着ではありません</span></div>
     {run.status !== 'complete' ? <p className="signal-focus-caution" role="status"><strong>{runStatusLabel(run)} · 保存された途中資料です。</strong> {savedStopExplanation(run) ?? '実行は完了していません。観察や引用が揃った結果とは扱いません。'}</p> : null}
@@ -133,7 +134,7 @@ export function SignalFocusJourney({ run, reviewState, scopes, onScopeChange, bu
           {selectedPlan ? <SignalObservationReason plan={selectedPlan} held={failed.includes('V1')} /> : run.schemaVersion === '2.6.0' ? <p>この箇所のAI理由は未評価です。固定ガイドで補っていません。</p> : null}
           {guide ? <p className="signal-focus-check-question"><strong>確認したい問い（固定ガイド）：</strong>{guide.question}</p> : null}
           <div className="signal-focus-drawings">{media.map((item) => <Drawing key={item.id} media={item} />)}</div>
-          {!media.length ? <p className="signal-focus-caution">対応する保存図面がありません。観察文だけで形状を確定できません。</p> : <SignalDrawingComparison media={media} focusPoints={[{ id: selected.id, text: visualHeld ? `【品質未達・採用保留の保存AI記述】${selected.observation}` : selected.observation, mediaIds: selected.mediaIds }]} onContinueToSources={() => changeStep('source')} />}
+          {!media.length ? <p className="signal-focus-caution">対応する保存図面がありません。観察文だけで形状を確定できません。</p> : <SignalDrawingComparison media={media} focusPoints={[{ id: selected.id, text: visualHeld ? `【品質未達・採用保留の保存AI記述】${selected.observation}` : selected.observation, mediaIds: selected.mediaIds, displayNumber: observations.indexOf(selected) + 1 }]} onContinueToSources={() => changeStep('source')} />}
           <div className={`signal-focus-observation${visualHeld ? ' is-held' : ''}`}><h4>{visualHeld ? '再確認が必要な保存AI記述' : '保存されたAI観察候補'}</h4>{visualHeld ? <p className="signal-focus-caution">このrunの図面観察は品質未達です。以下を確認済みの事実として採用しないでください。</p> : null}<p>{selected.observation}</p></div>
           <p className="signal-subtle">比較A/Bは資料の役割です。商品の発売順・世代や共通の縮尺を示しません。</p><button className="signal-button signal-primary" type="button" onClick={() => changeStep('source')}>公式記載と関係を確かめる →</button>
         </section> : step === 'source' ? <section className="signal-focus-step" aria-labelledby={`${id}-source-title`}><h3 id={`${id}-source-title`}>この図面を、公式記載は裏付ける？</h3>

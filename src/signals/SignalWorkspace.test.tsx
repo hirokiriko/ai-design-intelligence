@@ -670,4 +670,38 @@ describe('saved URL initialization', () => {
     expect(start).toBeDefined(); expect(start!.props.disabled).toBe(false);
     expect(api.start).not.toHaveBeenCalled(); expect(api.saveWatch).not.toHaveBeenCalled(); expect(api.requestRun).not.toHaveBeenCalled();
   });
+
+  it.each([{ history: [] }, { history: [{ ...fictionalRunV2, id: 'kds_fixture_newer_run' }] }])('preserves a deep-linked result absent from a refreshed history page %#', async ({ history }) => {
+    const api = savedApi();
+    vi.mocked(api.runs).mockResolvedValue(history);
+    startWorkspace(api);
+    await vi.waitFor(() => expect(historyPicker(workspaceTree(api))?.props.state).toBe('ready'));
+    buttonNamed(workspaceTree(api), '履歴を再取得')!.props.onClick();
+    await vi.waitFor(() => expect(api.runs).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(historyPicker(workspaceTree(api))?.props.state).toBe('ready'));
+    expect(new URL(location.href).searchParams.get('run')).toBe(fictionalRunV2.id);
+    const html = renderToStaticMarkup(workspaceTree(api));
+    expect(html).toContain(fictionalRunV2.signal!.officialFacts[0].quote);
+    expect(html).toContain('aria-current="true"');
+    expect(api.start).not.toHaveBeenCalled(); expect(api.saveWatch).not.toHaveBeenCalled();
+  });
+
+  it('keeps a readable result after a failed history selection and can reopen it without generation', async () => {
+    const api = savedApi();
+    const other = { ...fictionalRunV2, id: 'kds_fixture_unavailable_result' };
+    vi.mocked(api.runs).mockResolvedValue([fictionalRunV2, other]);
+    vi.mocked(api.run).mockResolvedValueOnce(fictionalRunV2).mockRejectedValueOnce(new SignalApiError('503', '保存結果を取得できません。')).mockResolvedValue(fictionalRunV2);
+    startWorkspace(api);
+    await vi.waitFor(() => expect(historyPicker(workspaceTree(api))?.props.state).toBe('ready'));
+    historyPicker(workspaceTree(api))!.props.onSelect(other.id);
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('選んだ保存結果を取得できません'));
+    const failed = renderToStaticMarkup(workspaceTree(api));
+    expect(failed).not.toContain('保存結果を再取得しています。');
+    expect(failed).toContain(fictionalRunV2.signal!.officialFacts[0].quote);
+    expect(new URL(location.href).searchParams.get('run')).toBe(fictionalRunV2.id);
+    historyPicker(workspaceTree(api))!.props.onSelect(fictionalRunV2.id);
+    await vi.waitFor(() => expect(renderToStaticMarkup(workspaceTree(api))).toContain('保存結果を表示しました。AIは実行していません。'));
+    expect(api.run).toHaveBeenCalledTimes(3);
+    expect(api.start).not.toHaveBeenCalled(); expect(api.saveWatch).not.toHaveBeenCalled(); expect(api.requestRun).not.toHaveBeenCalled();
+  });
 });

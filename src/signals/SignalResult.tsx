@@ -21,13 +21,16 @@ const observationLabels = { change_candidate: '変化の候補', no_change: '変
 
 function MediaCard({ media, run, developmentMode = false }: { media: Signal['media'][number]; run: Run; developmentMode?: boolean }) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [dialogState, setDialogState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const dialog = useRef<HTMLDialogElement>(null);
   const path = `/api/v1/media/${encodeURIComponent(media.id)}`;
   const record = run.schemaVersion === '1.0.0' ? undefined : run.signal?.recordFacts.find((item) => item.recordId === media.recordId);
   return <figure id={evidenceId(media.id)} className="signal-media-card" tabIndex={-1}>
     <figcaption><strong>{media.role === 'comparisonA' ? '比較A' : '比較B'} · {media.label}</strong></figcaption>
-    {failed ? <p role="status">画像の取得失敗：保存結果の画像を表示できません。認証または資料の配置を確認してください。画像の変化を判定した結果ではありません。</p> : <button className="signal-image-button" type="button" onClick={() => dialog.current?.showModal()} aria-label={`${media.label}を拡大`}>
-      <img src={path} width={media.width} height={media.height} alt={`${media.label}。${media.view ?? '方向不明'}。${comparisonStatusLabel(media.comparisonStatus)}`} onError={() => setFailed(true)} />
+    {failed ? <p role="status">画像の取得失敗：保存結果の画像を表示できません。保存された説明と出典情報を確認してください。画像の変化を判定した結果ではありません。</p> : <button className="signal-image-button" type="button" onClick={() => dialog.current?.showModal()} aria-label={`${media.label}を拡大`} aria-busy={!loaded}>
+      {!loaded ? <span role="status">図面を読み込み中…</span> : null}
+      <img src={path} width={media.width} height={media.height} alt={`${media.label}。${media.view ?? '方向不明'}。${comparisonStatusLabel(media.comparisonStatus)}`} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
       <span>画像を拡大</span>
     </button>}
     <dl className="signal-metadata"><div><dt>登録番号</dt><dd>{record?.registrationNumber ?? '不明'}</dd></div><div><dt>公報日</dt><dd>{media.gazetteDate ?? '不明'}</dd></div><div><dt>出願日</dt><dd>{media.applicationDate ?? '不明'}</dd></div><div><dt>方向・対応条件</dt><dd>{media.view ?? '方向不明'} / {comparisonStatusLabel(media.comparisonStatus)}</dd></div><div><dt>情報源・利用条件</dt><dd>{media.sourceLabel} / {media.permission}</dd></div></dl>
@@ -37,7 +40,7 @@ function MediaCard({ media, run, developmentMode = false }: { media: Signal['med
       <p><strong>{media.role === 'comparisonA' ? '比較A' : '比較B'} · {media.label}</strong></p>
       <p className="signal-subtle">{developmentMode ? '自作の架空図面と固定の模擬観察を確かめる表示です。実AIによる観察は未実施です。' : '形状比較とAI観察候補の内容を確かめるための根拠資料です。'}比較A / Bは資料の役割であり、商品の新旧世代や発売順を示しません。</p>
       <dl className="signal-metadata"><div><dt>情報源・利用条件</dt><dd>{media.sourceLabel} / {media.permission}</dd></div><div><dt>物品名 / 登録番号</dt><dd>{record?.articleName ?? media.label} / {record?.registrationNumber ?? '不明'}</dd></div><div><dt>公報日 / 出願日</dt><dd>{media.gazetteDate ?? '不明'} / {media.applicationDate ?? '不明'}</dd></div><div><dt>方向・対応条件</dt><dd>{media.view ?? '方向不明'} / {comparisonStatusLabel(media.comparisonStatus)}</dd></div></dl>
-      {!failed ? <img src={path} alt={media.label} /> : null}
+      {failed || dialogState === 'failed' ? <p role="status">拡大画像を表示できません。閉じて保存された説明と公式出典を確認してください。画像を確認できるまで、形状は判断しません。</p> : <div aria-busy={dialogState === 'loading'}>{dialogState === 'loading' ? <p role="status">拡大画像を読み込み中…</p> : null}<img src={path} alt={media.label} onLoad={() => setDialogState('ready')} onError={() => setDialogState('failed')} /></div>}
     </dialog>
   </figure>;
 }
@@ -99,11 +102,11 @@ export function SignalResult({ run, developmentMode = false, focusOnLoad = true,
     {factsOnly ? <p className="signal-mode-note"><strong>書誌情報のみの比較・画像/記事分析は未実施</strong><br />実行時に記事本文・図面を取得せず、AI・Vertexへ送信していません。</p> : null}
     {run.versions.model === 'fixture-controller' || run.versions.model.startsWith('fictional-') ? <p className="signal-data-banner">模擬モデル（接続・保存の検証） · 実際の画像AI・公式サイト取得の評価結果ではありません。</p> : null}
     {(run.status === 'failed' || run.status === 'partial' || run.status === 'interrupted') ? <p role="alert" className="signal-error">{runStatusLabel(run)}。変化なしという結果ではありません。{run.status === 'partial' ? '資料不足という通常の結果とは別の実行状態です。' : ''}保存履歴は再取得でき、再実行は別の操作です。</p> : null}
-    {stopExplanation ? <div className="signal-incomplete-guide" aria-label="途中終了後の確認"><p><strong>停止理由：</strong>{stopExplanation}</p><p>保存結果と履歴を確認できます。閲覧しても分析は再送されません。</p>{signal ? <nav className="signal-evidence-links" aria-label="保存済みの途中資料へ">{signal.media.length ? <a href="#signal-images">保存図面と観察を見る</a> : null}{signal.sources.length ? <a href="#signal-saved-sources">保存された公式資料を見る</a> : null}<a href="#signal-execution-details">保存された終了理由の詳細を見る</a></nav> : null}</div> : null}
+    {stopExplanation ? <div className="signal-incomplete-guide" aria-label="途中終了後の確認"><p><strong>停止理由：</strong>{stopExplanation}</p><p>保存結果と履歴を確認できます。閲覧しても分析は再送されません。</p>{signal ? <nav className="signal-evidence-links" aria-label="保存済みの途中資料へ">{signal.media.length ? <a href="#signal-images">保存図面と観察を見る</a> : null}{signal.sources.length ? <a href="#signal-saved-sources">保存された公式資料を見る</a> : null}<a href="#signal-execution-details">停止前の検討状況と実行履歴を見る</a></nav> : null}</div> : null}
     {sourceFailure ? <p className="signal-subtle">{sourceFailure}</p> : null}
     {run.status === 'running' ? <p role="status">バックエンドで確認中です。「履歴を再取得」で状態を読み直せます。表示のための再実行は行いません。</p> : null}
     {signal ? <>
-      <SignalSavedEntry run={run} />
+      <SignalSavedEntry run={run} developmentMode={developmentMode} />
     <details className="signal-details"><summary>この結果の問い・保存日時</summary><p className="signal-subtle">保存日時：<time dateTime={run.createdAt}>{new Intl.DateTimeFormat('ja-JP', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Tokyo' }).format(new Date(run.createdAt))}</time>（日本時間）</p><SignalSavedQuestion run={run} /></details>
       {showReview ? <SignalRunReview run={run} state={reviewState} /> : null}
       <SignalQuestionAnswer run={run} developmentMode={developmentMode} />
@@ -142,7 +145,7 @@ export function SignalResult({ run, developmentMode = false, focusOnLoad = true,
     </> : null}
     <details className="signal-details" data-print-evidence><summary>収録条件と保存対象の詳細</summary><SavedContext run={run} /></details>
     {run.schemaVersion !== '1.0.0' ? <DiscoveryDetails run={run} developmentMode={developmentMode} /> : null}
-    {signal ? <details className="signal-details" id="signal-execution-details"><summary>短い実行履歴と終了理由</summary>{!incomplete ? <p>保存された総合判定：{statusLabels[signal.status]}</p> : null}<ol>{signal.toolEvents.map((event, index) => <li key={index}><strong>{event.tool === 'finish' ? partialEvaluation && event.outcome === 'ok' ? '取得済み資料の評価' : incomplete ? '途中段階の記録' : '終了 / 不足' : event.tool === 'list_candidates' ? '公式候補確認' : '追加確認'}</strong> · {event.outcome}<p>{event.reason}</p><p className="signal-subtle">{event.startedAt} → {event.finishedAt}</p></li>)}</ol><p><strong>{partialEvaluation ? '取得済み資料での検討状況' : incomplete ? '停止前の検討状況' : '終了 / 不足'}</strong>：{signal.stopReason}</p></details> : null}
+    {signal ? <details className="signal-details" id="signal-execution-details"><summary>{incomplete ? '停止前の検討状況と実行履歴' : '短い実行履歴と終了理由'}</summary>{!incomplete ? <p>保存された総合判定：{statusLabels[signal.status]}</p> : null}<ol>{signal.toolEvents.map((event, index) => <li key={index}><strong>{event.tool === 'finish' ? partialEvaluation && event.outcome === 'ok' ? '取得済み資料の評価' : incomplete ? '途中段階の記録' : '終了 / 不足' : event.tool === 'list_candidates' ? '公式候補確認' : '追加確認'}</strong> · {event.outcome}<p>{event.reason}</p><p className="signal-subtle">{event.startedAt} → {event.finishedAt}</p></li>)}</ol><p><strong>{partialEvaluation ? '取得済み資料での検討状況' : incomplete ? '停止前の検討状況' : '終了 / 不足'}</strong>：{signal.stopReason}</p></details> : null}
     <details className="signal-details" data-print-evidence><summary>保存条件・実行情報</summary><dl className="signal-metadata">{failureDetail ? <div><dt>保存された停止理由</dt><dd>{failureDetail}</dd></div> : null}<div><dt>実行日時</dt><dd>{run.createdAt}</dd></div><div><dt>終了日時</dt><dd>{run.completedAt ?? '未完了'}</dd></div><div><dt>企業 / 分類</dt><dd>{run.schemaVersion === '1.0.0' ? '旧版には表示名未記録' : target}</dd></div><div><dt>比較A / 比較Bの基準日</dt><dd>{run.schemaVersion === '1.0.0' ? '旧版には基準日未記録' : `${run.input.context.beforeDataset.dataAsOf} / ${run.input.context.afterDataset.dataAsOf}`}</dd></div><div><dt>AIモデル</dt><dd>{run.versions.model}</dd></div><div><dt>AI呼出 / 確認処理</dt><dd>{run.usage.modelRequests} / {run.usage.toolCalls}</dd></div><div><dt>入力 / 出力トークン</dt><dd>{run.usage.inputTokens} / {run.usage.outputTokens}</dd></div></dl>{run.status === 'complete' ? <p className="signal-subtle">処理終了は、同一製品・商品化やすべての根拠の確認が済んだことを意味しません。</p> : null}<p className="signal-subtle">保存履歴の再表示・再読み込みではAIを呼び出しません。過去の結果は上書きしません。</p></details>
   </article></ResultQualityContext.Provider>;
 }

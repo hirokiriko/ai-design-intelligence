@@ -6,7 +6,7 @@ import './SignalDrawingComparison.css';
 interface SignalDrawingComparisonProps {
   media: readonly ComparisonMedia[];
   mediaUrl?: (media: ComparisonMedia) => string;
-  focusPoints?: readonly { id: string; text: string; mediaIds: readonly string[] }[];
+  focusPoints?: readonly { id: string; text: string; mediaIds: readonly string[]; displayNumber?: number }[];
   onContinueToSources?: () => void;
 }
 
@@ -54,11 +54,11 @@ export function SignalDrawingComparison({ media, mediaUrl = normalMediaUrl, focu
     setFocusId(pointId); setZoomIndex(0); setOpen(true);
   };
   return <div className="signal-drawing-comparison">
-    {focusPoints.length ? <div className="signal-drawing-focus-start" role="group" aria-label="着目点を選んで原図と見比べる">{focusPoints.map((point, index) => <button key={point.id} type="button" className="signal-drawing-focus-card" disabled={!canInspect(point)} aria-haspopup="dialog" aria-controls={open ? id : undefined} onClick={(event) => openComparison(event.currentTarget, point.id)}><span>着目点 {index + 1}</span><strong>{point.text.split('。')[0]}{point.text.includes('。') ? '。' : ''}</strong><span>{canInspect(point) ? '観察全文と参照図面を開く →' : '参照図面を確認できません'}</span></button>)}</div> : null}
+    {focusPoints.length ? <div className="signal-drawing-focus-start" role="group" aria-label="着目点を選んで原図と見比べる">{focusPoints.map((point, index) => <button key={point.id} type="button" className="signal-drawing-focus-card" disabled={!canInspect(point)} aria-haspopup="dialog" aria-controls={open ? id : undefined} onClick={(event) => openComparison(event.currentTarget, point.id)}><span>着目点 {point.displayNumber ?? index + 1}</span><strong>{point.text.split('。')[0]}{point.text.includes('。') ? '。' : ''}</strong><span>{canInspect(point) ? '観察全文と参照図面を開く →' : '参照図面を確認できません'}</span></button>)}</div> : null}
     <button ref={trigger} type="button" className="signal-button" aria-haspopup="dialog" aria-controls={open ? id : undefined} onClick={(event) => openComparison(event.currentTarget, null)}>比較A・Bの図面を並べて拡大</button>
     {open ? <dialog ref={dialog} id={id} className="signal-drawing-dialog" aria-labelledby={`${id}-title`} aria-describedby={selectedPoint ? `${id}-focus-text` : `${id}-guide`} onClose={restoreFocus}>
       <header className="signal-drawing-header"><h2 id={`${id}-title`}>比較A・Bの図面を見比べる</h2><button type="button" className="signal-button" autoFocus onClick={() => dialog.current?.close()}>閉じる</button></header>
-      {focusPoints.length ? <section className="signal-drawing-inspection" aria-label="原図と照合する着目点"><div className="signal-drawing-focus-switch" role="group" aria-label="照合する着目点"><button className="signal-text-button" type="button" aria-pressed={!selectedPoint} onClick={() => setFocusId(null)}>全体を見る</button>{focusPoints.map((point, index) => <button key={point.id} className="signal-text-button" type="button" disabled={!canInspect(point)} aria-pressed={selectedPoint?.id === point.id} onClick={() => setFocusId(point.id)}>着目点 {index + 1}</button>)}</div>{selectedPoint ? <p id={`${id}-focus-text`} aria-live="polite">{selectedPoint.text}</p> : <p className="signal-subtle">着目点を選ぶと、保存された観察全文と参照する図面を一緒に確認できます。</p>}</section> : null}
+      {focusPoints.length ? <section className="signal-drawing-inspection" aria-label="原図と照合する着目点"><div className="signal-drawing-focus-switch" role="group" aria-label="照合する着目点"><button className="signal-text-button" type="button" aria-pressed={!selectedPoint} onClick={() => setFocusId(null)}>全体を見る</button>{focusPoints.map((point, index) => <button key={point.id} className="signal-text-button" type="button" disabled={!canInspect(point)} aria-pressed={selectedPoint?.id === point.id} onClick={() => setFocusId(point.id)}>着目点 {point.displayNumber ?? index + 1}</button>)}</div>{selectedPoint ? <p id={`${id}-focus-text`} aria-live="polite">{selectedPoint.text}</p> : <p className="signal-subtle">着目点を選ぶと、保存された観察全文と参照する図面を一緒に確認できます。</p>}</section> : null}
       <details className="signal-drawing-guide"><summary>比較条件・表示倍率について</summary><p id={`${id}-guide`} className="signal-subtle">2枚に同じ表示倍率を適用します。細部はそれぞれの図面をスクロールして確認できます。比較A/Bは資料の役割で、図面の縮尺・製品の世代・発売順を示しません。着目点は参照図面との対応です。図面内の位置を自動で特定した表示ではありません。</p></details>
       <div className="signal-drawing-toolbar" role="group" aria-label="2枚の図面の表示倍率">
         <button type="button" className="signal-button" disabled={zoomIndex === 0} onClick={() => setZoomIndex((index) => Math.max(0, index - 1))}>縮小</button>

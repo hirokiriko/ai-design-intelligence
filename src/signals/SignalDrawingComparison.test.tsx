@@ -32,10 +32,17 @@ describe('saved drawing comparison', () => {
     const html = renderToStaticMarkup(createElement(SignalDrawingComparison, { media, focusPoints }));
     const buttons = html.match(/<button[^>]*class="signal-drawing-focus-card"[^>]*>[\s\S]*?<\/button>/g)!;
     expect(buttons).toHaveLength(3);
+    buttons.forEach((button, index) => expect(button).toContain(`着目点 ${index + 1}`));
     expect(buttons[0]).not.toContain('disabled');
     expect(buttons.slice(1).every((button) => button.includes('disabled') && button.includes('参照図面を確認できません'))).toBe(true);
     expect(html).not.toContain('<img');
     expect(JSON.stringify({ media, focusPoints })).toBe(original);
+  });
+  it('retains a supplied list number when only one saved focus point is shown', () => {
+    const focusPoints = [{ id: 'FIXTURE-focus-second', text: 'FIXTURE-二つ目の保存観察。', mediaIds: media.map(item => item.id), displayNumber: 2 }];
+    const html = renderToStaticMarkup(createElement(SignalDrawingComparison, { media, focusPoints }));
+    expect(html).toContain('着目点 2');
+    expect(html).not.toContain('着目点 1');
   });
   it('uses the saved selected comparison when the result also contains other drawings', () => {
     const run = structuredClone(fictionalRunV22);

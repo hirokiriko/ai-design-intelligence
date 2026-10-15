@@ -221,7 +221,8 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
       const history = await api.runs(id);
       if (current !== revision.current) return;
       const recoveredRun = recovered;
-      const selected = recoveredRun ? history.find((item) => item.id === recoveredRun.id) ?? recoveredRun : (preserveRun ? history.find((item) => item.id === run?.id) ?? history[0] ?? null : history[0] ?? null);
+      const previousRun = preserveRun && run?.watchId === id ? run : null;
+      const selected = recoveredRun ? history.find((item) => item.id === recoveredRun.id) ?? recoveredRun : previousRun ? history.find((item) => item.id === previousRun.id) ?? previousRun : history[0] ?? null;
       const selectedReviewKey = selected ? reviewRequestKey(selected) : null;
       if (selectedReviewKey && reviewRequests.current === reviewContext
         && settledReviews.has(selectedReviewKey) && reviewContext.requests.get(selectedReviewKey) === settledReviews.get(selectedReviewKey)) {
@@ -230,7 +231,7 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
       }
       const pending = pendingRequestFromBrowser(developmentMode);
       setPendingRequest(pending);
-      setRuns(recovered && selected ? [selected, ...history.filter((item) => item.id !== selected.id)] : history); setHistoryState('ready'); setRun(selected); saveRunLocation(selected?.id ?? null);
+      setRuns(selected && !history.some((item) => item.id === selected.id) ? [selected, ...history] : history); setHistoryState('ready'); setRun(selected); saveRunLocation(selected?.id ?? null);
       if (lookupError) setError(lookupError);
       setNotice(pending === 'unavailable' || pending.some((item) => item.watchId === id) ? '保存履歴を再取得しました。この条件の前の実行要求の成否はまだ確定していません。要求を再送せず、状態を確認してください。AIは実行していません。' : '保存履歴を再取得しました。AIは実行していません。');
     } catch (failure) { if (current === revision.current) {
@@ -275,7 +276,10 @@ export function SignalWorkspace({ api = signalApi, renderAnalysis, developmentMo
       setQuestion(null);
       resultRequested.current = true;
     setRun(selected); saveRunLocation(selected.id); setNotice('保存結果を表示しました。AIは実行していません。');
-    } catch (failure) { if (current === revision.current) recoverError(failure); }
+    } catch (failure) { if (current === revision.current) {
+      recoverError(failure);
+      setNotice('選んだ保存結果を取得できません。保存履歴から別の結果を選ぶか、履歴を再取得してください。分析は再送していません。');
+    } }
   };
   const saveWatch = async (input: WatchInput) => {
     if (readOnly || !bootstrap || mutation.current || historyState === 'loading' || pendingRequest === 'unavailable') return;

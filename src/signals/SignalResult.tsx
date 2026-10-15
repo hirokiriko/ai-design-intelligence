@@ -21,13 +21,16 @@ const observationLabels = { change_candidate: '変化の候補', no_change: '変
 
 function MediaCard({ media, run, developmentMode = false }: { media: Signal['media'][number]; run: Run; developmentMode?: boolean }) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [dialogState, setDialogState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const dialog = useRef<HTMLDialogElement>(null);
   const path = `/api/v1/media/${encodeURIComponent(media.id)}`;
   const record = run.schemaVersion === '1.0.0' ? undefined : run.signal?.recordFacts.find((item) => item.recordId === media.recordId);
   return <figure id={evidenceId(media.id)} className="signal-media-card" tabIndex={-1}>
     <figcaption><strong>{media.role === 'comparisonA' ? '比較A' : '比較B'} · {media.label}</strong></figcaption>
-    {failed ? <p role="status">画像の取得失敗：保存結果の画像を表示できません。認証または資料の配置を確認してください。画像の変化を判定した結果ではありません。</p> : <button className="signal-image-button" type="button" onClick={() => dialog.current?.showModal()} aria-label={`${media.label}を拡大`}>
-      <img src={path} width={media.width} height={media.height} alt={`${media.label}。${media.view ?? '方向不明'}。${comparisonStatusLabel(media.comparisonStatus)}`} onError={() => setFailed(true)} />
+    {failed ? <p role="status">画像の取得失敗：保存結果の画像を表示できません。保存された説明と出典情報を確認してください。画像の変化を判定した結果ではありません。</p> : <button className="signal-image-button" type="button" onClick={() => dialog.current?.showModal()} aria-label={`${media.label}を拡大`} aria-busy={!loaded}>
+      {!loaded ? <span role="status">図面を読み込み中…</span> : null}
+      <img src={path} width={media.width} height={media.height} alt={`${media.label}。${media.view ?? '方向不明'}。${comparisonStatusLabel(media.comparisonStatus)}`} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
       <span>画像を拡大</span>
     </button>}
     <dl className="signal-metadata"><div><dt>登録番号</dt><dd>{record?.registrationNumber ?? '不明'}</dd></div><div><dt>公報日</dt><dd>{media.gazetteDate ?? '不明'}</dd></div><div><dt>出願日</dt><dd>{media.applicationDate ?? '不明'}</dd></div><div><dt>方向・対応条件</dt><dd>{media.view ?? '方向不明'} / {comparisonStatusLabel(media.comparisonStatus)}</dd></div><div><dt>情報源・利用条件</dt><dd>{media.sourceLabel} / {media.permission}</dd></div></dl>
@@ -37,7 +40,7 @@ function MediaCard({ media, run, developmentMode = false }: { media: Signal['med
       <p><strong>{media.role === 'comparisonA' ? '比較A' : '比較B'} · {media.label}</strong></p>
       <p className="signal-subtle">{developmentMode ? '自作の架空図面と固定の模擬観察を確かめる表示です。実AIによる観察は未実施です。' : '形状比較とAI観察候補の内容を確かめるための根拠資料です。'}比較A / Bは資料の役割であり、商品の新旧世代や発売順を示しません。</p>
       <dl className="signal-metadata"><div><dt>情報源・利用条件</dt><dd>{media.sourceLabel} / {media.permission}</dd></div><div><dt>物品名 / 登録番号</dt><dd>{record?.articleName ?? media.label} / {record?.registrationNumber ?? '不明'}</dd></div><div><dt>公報日 / 出願日</dt><dd>{media.gazetteDate ?? '不明'} / {media.applicationDate ?? '不明'}</dd></div><div><dt>方向・対応条件</dt><dd>{media.view ?? '方向不明'} / {comparisonStatusLabel(media.comparisonStatus)}</dd></div></dl>
-      {!failed ? <img src={path} alt={media.label} /> : null}
+      {failed || dialogState === 'failed' ? <p role="status">拡大画像を表示できません。閉じて保存された説明と公式出典を確認してください。画像を確認できるまで、形状は判断しません。</p> : <div aria-busy={dialogState === 'loading'}>{dialogState === 'loading' ? <p role="status">拡大画像を読み込み中…</p> : null}<img src={path} alt={media.label} onLoad={() => setDialogState('ready')} onError={() => setDialogState('failed')} /></div>}
     </dialog>
   </figure>;
 }
@@ -103,7 +106,7 @@ export function SignalResult({ run, developmentMode = false, focusOnLoad = true,
     {sourceFailure ? <p className="signal-subtle">{sourceFailure}</p> : null}
     {run.status === 'running' ? <p role="status">バックエンドで確認中です。「履歴を再取得」で状態を読み直せます。表示のための再実行は行いません。</p> : null}
     {signal ? <>
-      <SignalSavedEntry run={run} />
+      <SignalSavedEntry run={run} developmentMode={developmentMode} />
     <details className="signal-details"><summary>この結果の問い・保存日時</summary><p className="signal-subtle">保存日時：<time dateTime={run.createdAt}>{new Intl.DateTimeFormat('ja-JP', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Tokyo' }).format(new Date(run.createdAt))}</time>（日本時間）</p><SignalSavedQuestion run={run} /></details>
       {showReview ? <SignalRunReview run={run} state={reviewState} /> : null}
       <SignalQuestionAnswer run={run} developmentMode={developmentMode} />

@@ -34,9 +34,9 @@ function find(node: ReactNode, match: (child: Control) => boolean): Control | un
     const found = find(child.props.children, match); if (found) return found;
   }
 }
-function tree(run: Parameters<typeof SignalFocusJourney>[0]['run'] = fictionalRunV2, reviewState?: RunReviewState) {
+function tree(run: Parameters<typeof SignalFocusJourney>[0]['run'] = fictionalRunV2, reviewState?: RunReviewState, scopes = [{ id: run.watchId, label: 'FIXTURE-保存条件' }]) {
   hooks.index = 0; hooks.refIndex = 0; hooks.effects = []; hooks.active = true;
-  try { return SignalFocusJourney({ run, reviewState, scopes: [{ id: run.watchId, label: 'FIXTURE-保存条件' }], onScopeChange: vi.fn() }); }
+  try { return SignalFocusJourney({ run, reviewState, scopes, onScopeChange: vi.fn() }); }
   finally { hooks.active = false; }
 }
 const html = (node: ReactNode) => renderToStaticMarkup(node);
@@ -119,13 +119,38 @@ describe('selected saved observation journey', () => {
     expect(new URL(href).searchParams.get('run')).toBe('kds_fixture_saved');
     expect(html(node)).toContain('FIXTURE-二つ目の記述');
     expect(html(find(node, (item) => item.props.id === 'signal-focus-detail'))).not.toContain(first.observation);
+    const detailHtml = html(find(node, item => item.props.id === 'signal-focus-detail'));
+    expect(detailHtml).toContain('<span>着目点 2</span>');
+    expect(detailHtml).not.toContain('<span>着目点 1</span>');
     const candidate = { focus: vi.fn(), scrollIntoView: vi.fn() };
     vi.stubGlobal('document', { getElementById: vi.fn(() => candidate) });
     find(node, (item) => item.props.className?.includes('signal-focus-back') ?? false)!.props.onClick();
-    tree(run); hooks.effects[0]();
+    node = tree(run); hooks.effects[0]();
     expect(candidate.focus).toHaveBeenCalled();
     expect(new URL(href).searchParams.has('focus')).toBe(false);
+    expect(html(find(node, item => item.props.id === 'signal-focus-detail'))).toContain('<span>着目点 1</span>');
     expect(JSON.stringify(run)).toBe(before);
+  });
+
+  it('restores the saved list number from the URL even when observation labels are identical', () => {
+    const run = structuredClone(fictionalRunV2), first = run.signal!.visualObservations[0];
+    run.signal!.visualObservations.push({ ...first, id: 'kds_fixture_second_observation' }, { ...first, id: 'kds_fixture_third_observation' });
+    href += '&focus=kds_fixture_third_observation';
+    const before = JSON.stringify(run);
+    const detailHtml = html(find(tree(run), item => item.props.id === 'signal-focus-detail'));
+    expect(detailHtml).toContain('<span>着目点 3</span>');
+    expect(detailHtml).not.toContain('<span>着目点 1</span>');
+    expect(JSON.stringify(run)).toBe(before);
+  });
+
+  it('makes the full selected scope label readable outside the native select', () => {
+    const label = 'FIXTURE-同じ企業と分野・長い保存条件の先頭・比較対象と期間を区別する末尾';
+    const scopes = [{ id: 'kds_fixture_other_scope', label: 'FIXTURE-別の範囲' }, { id: fictionalRunV2.watchId, label }];
+    const node = tree(fictionalRunV2, undefined, scopes);
+    expect(html(find(node, item => item.props.id === 'kds_fixture_journey-scope-value'))).toContain(`選択中：${label}`);
+    expect(html(node)).toContain('aria-describedby="kds_fixture_journey-scope-value"');
+    const missing = tree(fictionalRunV2, undefined, scopes.slice(0, 1));
+    expect(html(find(missing, item => item.props.id === 'kds_fixture_journey-scope-value'))).toContain('選択中：現在の登録範囲外の保存結果');
   });
 
   it('distinguishes saved target counts from AI observations, without claiming no physical change', () => {

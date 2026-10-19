@@ -1,44 +1,103 @@
-.signals-app.signals-focus-mode { background: #f5f7f6; font-family: "Yu Gothic UI", "Meiryo", system-ui, sans-serif; font-size: 16px; }
+.signals-app.signals-focus-mode { --signal-ink: #20343e; --signal-accent: #146d62; --signal-muted: #596b75; --signal-line: #d8e2e6; background: #fff; font-family: "Yu Gothic UI", "Meiryo", system-ui, sans-serif; font-size: 16px; }
 .signals-focus-mode .signal-header { background: #fff; padding: 12px 28px; }
-.signals-focus-mode .signal-brand-mark { width: 30px; height: 30px; }
-.signals-focus-mode .signal-main { max-width: 1440px; padding-top: 20px; }
-.signals-focus-mode .signal-live { margin: 0 0 14px; padding: 0; min-height: 22px; font-size: 13px; color: #607078; }
+.signals-focus-mode .signal-brand-mark { width: 32px; height: 32px; border-radius: 6px; background: #146d62; }
+.signals-focus-mode .signal-main { max-width: 1600px; padding-top: 0; }
+.signals-focus-mode .signal-live { margin: 0; padding: 3px 0; min-height: 0; font-size: 12px; line-height: 1.4; color: #596b75; }
+.signals-focus-mode .signal-live:empty { display: none; }
 .signals-focus-mode .signal-layout { display: block; }
 .signals-focus-mode .signal-saved-tools { margin-top: 24px; }
-.signals-focus-mode .signal-focus-journey { color: #23363c; font-size: 16px; line-height: 1.7; }
-.signals-focus-mode .signal-focus-scope { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
-.signals-focus-mode .signal-focus-scope h1 { margin: 4px 0 0; font-size: 23px; line-height: 1.4; }
-.signals-focus-mode .signal-focus-scope h1 span { display: block; font-size: 17px; font-weight: 500; margin-top: 4px; }
-.signals-focus-mode .signal-focus-scope .signal-field { width: min(420px, 45%); font-size: 13px; margin: 0; }
-.signals-focus-mode .signal-focus-scope select { font-size: 14px; background: #fff; }
-.signals-focus-mode .signal-focus-context { display: flex; flex-wrap: wrap; gap: 5px 16px; font-size: 13px; color: #596970; margin: 16px 0 22px; }
-.signals-focus-mode .signal-focus-context > :first-child { font-weight: 700; color: #315750; }
-.signals-focus-mode .signal-focus-layout { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 28px; align-items: start; }
-.signals-focus-mode .signal-focus-list { min-width: 0; }
-.signals-focus-mode .signal-focus-list-heading { display: flex; gap: 10px; justify-content: space-between; align-items: baseline; }
-.signals-focus-mode .signal-focus-list-heading h2 { font-size: 20px; margin: 0; }
-.signals-focus-mode .signal-focus-list-heading > span { font-size: 12px; color: #607078; }
-.signals-focus-mode .signal-focus-caution { color: #76552b; background: #fcf6eb; border-left: 3px solid #c3964f; padding: 10px 12px; font-size: 14px; }
-.signals-focus-mode .signal-focus-candidate { display: block; width: 100%; text-align: left; background: white; border: 1px solid #d7dfe0; border-radius: 12px; margin-top: 14px; padding: 16px; color: inherit; line-height: 1.6; cursor: pointer; }
-.signals-focus-mode .signal-focus-candidate:hover { border-color: #3e7b71; box-shadow: 0 3px 14px #254d4710; }
-.signals-focus-mode .signal-focus-candidate[aria-pressed='true'] { border-color: #18685d; box-shadow: inset 4px 0 #18685d; background: #f7fbf9; }
-.signals-focus-mode .signal-focus-candidate-top { display: flex; justify-content: space-between; font-size: 12px; color: #53696c; }
-.signals-focus-mode .signal-focus-candidate-body { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+.signals-focus-mode .signal-focus-journey { color: #20343e; font-size: 16px; line-height: 1.7; }
+.signals-focus-mode .signal-focus-journey .signal-eyebrow { color: #14675e; letter-spacing: .025em; }
+.signals-focus-mode .signal-focus-scope { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 390px); align-items: center; gap: 16px 28px; padding: 13px 0; border-bottom: 1px solid #d8e2e6; background: #f8fafb; box-shadow: 28px 0 #f8fafb, -28px 0 #f8fafb; }
+.signals-focus-mode .signal-focus-scope:has(> .signal-focus-context) { grid-template-columns: minmax(250px, 1fr) minmax(280px, 1.25fr) minmax(280px, 1fr); }
+.signals-focus-mode .signal-focus-scope-title { min-width: 0; }
+.signals-focus-mode .signal-focus-scope h1 { margin: 4px 0 0; font-size: 21px; line-height: 1.5; }
+.signals-focus-mode .signal-focus-scope h1 span { display: inline; font-size: 19px; font-weight: 600; margin-left: 12px; }
+.signals-focus-mode .signal-focus-scope h1 span::before { content: '/'; color: #8a9aa3; font-weight: 400; margin-right: 12px; }
+.signals-focus-mode .signal-focus-scope .signal-field { min-width: 0; margin: 0; font-size: 13px; color: #14675e; gap: 6px; }
+.signals-focus-mode .signal-focus-scope select { min-height: 40px; padding: 7px 10px; border-radius: 6px; font-size: 14px; background: #fff; }
+.signals-focus-mode .signal-focus-scope .signal-field .signal-subtle { font-size: 12px; font-weight: 400; line-height: 1.5; }
+.signals-focus-mode .signal-focus-context { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: #596b75; margin: 0; padding: 12px 0; }
+.signals-focus-mode .signal-focus-context > :first-child { font-weight: 700; color: #14675e; }
+.signals-focus-mode .signal-focus-scope > .signal-focus-context { align-content: center; border-left: 1px solid #d8e2e6; padding: 0 0 0 24px; }
+.signals-focus-mode .signal-focus-layout { display: grid; grid-template-columns: clamp(300px, 28vw, 400px) minmax(0, 1fr); align-items: stretch; }
+.signals-focus-mode .signal-focus-list { min-width: 0; padding-top: 22px; border-right: 1px solid #d8e2e6; }
+.signals-focus-mode .signal-focus-list-heading { display: flex; flex-wrap: wrap; gap: 2px 10px; justify-content: space-between; align-items: baseline; padding: 0 18px 14px 0; }
+.signals-focus-mode .signal-focus-list-heading h2 { font-size: 16px; margin: 0; }
+.signals-focus-mode .signal-focus-list-heading > span { font-size: 12px; color: #596b75; }
+.signals-focus-mode .signal-focus-list > .signal-subtle { padding-right: 18px; margin: 0 0 12px; font-size: 13px; }
+.signals-focus-mode .signal-focus-list > .signal-details { padding: 16px 18px 16px 0; margin-top: 0; border-top: 0; font-size: 13px; }
+.signals-focus-mode .signal-focus-caution { color: #705020; background: #fcf7ed; border-left: 3px solid #b78b42; padding: 10px 12px; font-size: 14px; line-height: 1.7; }
+.signals-focus-mode .signal-focus-list > .signal-focus-caution { margin: 0 14px 12px 0; }
+.signals-focus-mode .signal-focus-candidate { display: block; position: relative; width: 100%; min-height: 158px; text-align: left; background: #fff; border: 0; border-top: 1px solid #d8e2e6; border-radius: 0; margin: 0; padding: 18px 16px 18px 12px; color: inherit; font: inherit; line-height: 1.6; cursor: pointer; }
+.signals-focus-mode .signal-focus-candidate:last-of-type { border-bottom: 1px solid #d8e2e6; }
+.signals-focus-mode .signal-focus-candidate:hover { background: #f7faf9; }
+.signals-focus-mode .signal-focus-candidate[aria-pressed='true'] { background: #eff7f5; box-shadow: inset 4px 0 #146d62; }
+.signals-focus-mode .signal-focus-candidate-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; margin-left: 82px; font-size: 12px; color: #596b75; }
+.signals-focus-mode .signal-focus-candidate-top > :first-child { font-weight: 600; }
+.signals-focus-mode .signal-focus-candidate-body { display: flex; align-items: start; gap: 16px; margin-top: 6px; }
 .signals-focus-mode .signal-focus-candidate-body > span { flex: 1; min-width: 0; }
 .signals-focus-mode .signal-focus-candidate-body strong { font-size: 17px; display: block; line-height: 1.5; }
-.signals-focus-mode .signal-focus-candidate-body > span > span { display: block; font-size: 13px; margin-top: 7px; color: #52686a; }
-.signals-focus-mode .signal-focus-candidate-reason { display: block; margin-top: 12px; font-size: 14px; }
-.signals-focus-mode .signal-focus-candidate-reason b { display: block; font-size: 12px; color: #607078; }
-.signals-focus-mode .signal-focus-excerpt-pair, .signals-focus-mode .signal-focus-excerpt-text { display: block; margin-top: 8px; overflow-wrap: anywhere; line-height: 1.75; }
-.signals-focus-mode .signal-focus-excerpt-pair > span { display: flex; gap: 8px; align-items: baseline; margin-top: 6px; }
-.signals-focus-mode .signal-focus-excerpt-pair i { flex: 0 0 18px; font-style: normal; font-weight: 700; color: #52686a; }
+.signals-focus-mode .signal-focus-candidate-body > span > span { display: block; font-size: 14px; margin-top: 8px; color: #596b75; }
+.signals-focus-mode .signal-focus-candidate-body .signal-focus-candidate-summary { font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.signals-focus-mode .signal-focus-candidate-body .signal-focus-no-image { flex: 0 0 66px; font-size: 12px; }
+.signals-focus-mode .signal-focus-candidate-reason { display: block; margin: 12px 0 0 82px; font-size: 14px; }
+.signals-focus-mode .signal-focus-candidate-reason b { display: block; font-size: 12px; color: #596b75; }
+.signals-focus-mode .signal-focus-excerpt-pair, .signals-focus-mode .signal-focus-excerpt-text { display: block; margin-top: 6px; overflow-wrap: anywhere; line-height: 1.75; }
+.signals-focus-mode .signal-focus-excerpt-pair > span { display: flex; gap: 8px; align-items: baseline; margin-top: 4px; }
+.signals-focus-mode .signal-focus-excerpt-pair i { flex: 0 0 18px; font-style: normal; font-weight: 700; color: #39635c; }
 .signals-focus-mode .signal-focus-excerpt-pair > span > span { min-width: 0; }
-.signals-focus-mode .signal-focus-candidate-link { display: block; margin-top: 13px; color: #176b5d; font-size: 14px; font-weight: 700; }
+.signals-focus-mode .signal-focus-candidate-link { display: block; margin: 10px 0 0 82px; color: #146d62; font-size: 13px; font-weight: 700; }
 .signals-focus-mode .signal-focus-candidate-guide { display: block; margin-top: 12px; padding-top: 10px; border-top: 1px solid #e5e9e8; overflow-wrap: anywhere; }
-.signals-focus-mode .signal-focus-candidate-guide b { display: block; font-size: 12px; color: #607078; }
+.signals-focus-mode .signal-focus-candidate-guide b { display: block; font-size: 12px; color: #596b75; }
 .signals-focus-mode .signal-focus-candidate-guide > span { font-size: 14px; font-weight: 600; }
-.signals-focus-mode .signal-focus-check-question { padding: 12px; background: #f6faf8; border-left: 3px solid #9bb9b0; }
-.signals-focus-mode .signal-confirmation-guide { margin: 16px 0 28px; padding: 18px; border: 1px solid #b6cdc5; border-radius: 10px; background: #f6faf8; min-width: 0; overflow-wrap: anywhere; }
+.signals-focus-mode .signal-focus-detail { min-width: 0; padding: 22px 0 24px 28px; background: #fff; border: 0; border-radius: 0; scroll-margin-top: 16px; }
+.signals-focus-mode .signal-focus-detail-meta { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.signals-focus-mode .signal-focus-detail-heading { flex: 1; min-width: 0; }
+.signals-focus-mode .signal-focus-detail-heading h2 { font-size: clamp(23px, 2.1vw, 30px); line-height: 1.4; margin: 6px 0; letter-spacing: -.02em; }
+.signals-focus-mode .signal-focus-detail-heading p { font-size: 16px; color: #596b75; margin: 6px 0 16px; }
+.signals-focus-mode .signal-focus-quality-status { max-width: 255px; margin: 18px 0 8px; text-align: right; font-size: 13px; line-height: 1.65; color: #596b75; }
+.signals-focus-mode .signal-focus-quality-status > :is(strong, span) { display: block; }
+.signals-focus-mode .signal-focus-quality-status[data-held='true'] { color: #705020; }
+.signals-focus-mode .signal-focus-quality-details { margin: 4px 0 0; font-size: 13px; color: #596b75; }
+.signals-focus-mode .signal-focus-quality-details > summary { cursor: pointer; width: fit-content; min-height: 32px; padding: 4px 0; }
+.signals-focus-mode .signal-focus-quality-status .signal-focus-quality-details > summary { margin-left: auto; }
+.signals-focus-mode .signal-focus-quality-details > p { margin-top: 6px; text-align: left; }
+.signals-focus-mode .signal-focus-back { display: none; margin: 0 0 14px; }
+.signals-focus-mode .signal-focus-steps { display: flex; gap: 3px; margin: 0 0 18px; }
+.signals-focus-mode .signal-focus-steps button { display: flex; align-items: center; justify-content: flex-start; gap: 10px; flex: 1; min-width: 0; min-height: 48px; padding: 10px 14px; border: 0; border-radius: 4px; background: #f0f4f5; color: #596b75; font-weight: 600; font-size: 15px; line-height: 1.5; text-align: left; cursor: pointer; }
+.signals-focus-mode .signal-focus-steps button > span { font-size: 14px; font-variant-numeric: tabular-nums; }
+.signals-focus-mode .signal-focus-steps button:hover { background: #e4eeeb; }
+.signals-focus-mode .signal-focus-steps button[aria-current] { color: #fff; background: #146d62; }
+.signals-focus-mode .signal-focus-step { padding-top: 0; }
+.signals-focus-mode .signal-focus-step > h3 { font-size: 18px; margin: 0 0 14px; }
+.signals-focus-mode .signal-focus-drawings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.signals-focus-mode .signal-focus-drawing { margin: 0; min-width: 0; position: relative; border: 1px solid #d8e2e6; border-radius: 6px; background: #fff; overflow: hidden; }
+.signals-focus-mode .signal-focus-drawing figcaption { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 15px; line-height: 1.5; border-bottom: 1px solid #e4ebee; padding: 10px 12px; background: #f5f9fb; }
+.signals-focus-mode .signal-focus-drawing img { display: block; width: 100%; height: clamp(280px, 36vh, 430px); object-fit: contain; padding: 12px; background: #fff; }
+.signals-focus-mode .signal-focus-drawing > p { font-size: 13px; line-height: 1.5; color: #596b75; margin: 0; padding: 8px 12px 10px; }
+.signals-focus-mode .signal-focus-drawing small { display: block; margin-top: 3px; font-size: 12px; }
+.signals-focus-mode .signal-focus-drawing.is-compact { flex: 0 0 66px; margin-top: -25px; border-radius: 3px; }
+.signals-focus-mode .signal-focus-drawing.is-compact img { height: 104px; width: 64px; padding: 5px; }
+.signals-focus-mode .signal-focus-image-loading { position: absolute; top: 50px; }
+.signals-focus-mode .signal-focus-no-image { font-size: 12px; }
+.signals-focus-mode .signal-focus-workbench-action { display: flex; justify-content: flex-end; margin: 12px 0; }
+.signals-focus-mode .signal-focus-workbench-action .signal-drawing-comparison { width: 100%; margin: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.signals-focus-mode .signal-focus-workbench-action .signal-drawing-focus-start { display: contents; margin: 0; }
+.signals-focus-mode .signal-focus-workbench-action .signal-drawing-focus-card { display: flex; align-items: center; justify-content: space-between; flex: 1 1 220px; gap: 10px; padding: 9px 12px; min-height: 44px; border: 1px solid #d8e2e6; border-radius: 5px; background: #f8faf9; }
+.signals-focus-mode .signal-focus-workbench-action .signal-drawing-focus-card > span { font-size: 13px; }
+.signals-focus-mode .signal-focus-workbench-action .signal-drawing-focus-card > strong { font-size: 14px; line-height: 1.5; }
+.signals-focus-mode .signal-focus-workbench-action .signal-drawing-comparison > .signal-button { font-size: 14px; min-height: 44px; border-radius: 5px; padding: 9px 14px; }
+.signals-focus-mode .signal-focus-observation-summary { margin: 16px 0 8px; padding: 12px 16px; border-left: 4px solid #146d62; border-radius: 3px; background: #f3f7f7; font-size: 16px; }
+.signals-focus-mode .signal-focus-observation-summary h4 { margin: 0 0 6px; font-size: 16px; }
+.signals-focus-mode .signal-focus-observation-summary p { margin: 4px 0; }
+.signals-focus-mode .signal-focus-observation-summary .signal-subtle { font-size: 13px; }
+.signals-focus-mode .signal-focus-observation-summary[data-held='true'] { border-color: #b78b42; background: #fcf7ed; }
+.signals-focus-mode .signal-focus-observation-details { margin: 8px 0 18px; border-bottom: 1px solid #e2e8e9; padding-bottom: 10px; }
+.signals-focus-mode .signal-focus-observation-details > summary { min-height: 44px; padding: 10px 0; font-size: 14px; font-weight: 600; color: #49616c; cursor: pointer; }
+.signals-focus-mode .signal-focus-step > .signal-primary { display: block; width: fit-content; min-width: 245px; margin: 18px 0 0 auto; border-radius: 5px; box-shadow: none; }
+.signals-focus-mode .signal-focus-check-question { margin: 14px 0; padding: 12px; background: #f6faf8; border-left: 3px solid #9bb9b0; }
+.signals-focus-mode .signal-confirmation-guide { margin: 16px 0 28px; padding: 18px; border: 1px solid #b6cdc5; border-radius: 6px; background: #f6faf8; min-width: 0; overflow-wrap: anywhere; }
 .signals-focus-mode .signal-confirmation-guide h4 { font-size: 18px; margin: 6px 0; }
 .signals-focus-mode .signal-guide-literal { margin: 16px 0; padding: 12px; background: #fff; border: 1px solid #dce4e1; }
 .signals-focus-mode .signal-guide-literal dl, .signals-focus-mode .signal-guide-decisions { margin: 10px 0; }
@@ -49,81 +108,106 @@
 .signals-focus-mode .signal-reference-quotes { border-top: 1px solid #dce4e1; margin-top: 22px; padding-top: 16px; min-width: 0; overflow-wrap: anywhere; }
 .signals-focus-mode .signal-reference-dates { padding: 12px; background: #f4f6f5; font-size: 14px; }
 .signals-focus-mode .signal-reference-dates p { margin: 6px 0; }
-.signals-focus-mode .signal-reference-quote { margin: 18px 0; padding: 14px; border: 1px solid #dce4e1; border-radius: 10px; }
+.signals-focus-mode .signal-reference-quote { margin: 18px 0; padding: 14px; border: 1px solid #dce4e1; border-radius: 6px; }
 .signals-focus-mode .signal-reference-quote h5 { margin: 8px 0; font-size: 16px; }
 .signals-focus-mode .signal-reference-quote blockquote { margin: 14px 0; padding-left: 12px; border-left: 3px solid #9bb9b0; white-space: pre-wrap; }
 .signals-focus-mode .signal-reference-date-list { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px 12px; font-size: 13px; }
 .signals-focus-mode .signal-reference-date-list dd { margin: 0; }
-.signals-focus-mode .signal-focus-detail { min-width: 0; background: #fff; border: 1px solid #dce2e1; border-radius: 16px; padding: 25px; }
-.signals-focus-mode .signal-focus-detail-heading h2 { font-size: 26px; line-height: 1.4; margin: 4px 0; }
-.signals-focus-mode .signal-focus-detail-heading p { font-size: 14px; color: #607078; margin: 6px 0 20px; }
-.signals-focus-mode .signal-focus-back { margin-bottom: 16px; }
-.signals-focus-mode .signal-focus-steps { display: flex; gap: 6px; border-bottom: 1px solid #dce4e2; padding-bottom: 12px; }
-.signals-focus-mode .signal-focus-steps button { display: flex; align-items: center; gap: 6px; background: #f4f6f5; color: #55666b; border: 0; border-radius: 7px; padding: 10px 9px; font-weight: 600; font-size: 14px; cursor: pointer; flex: 1; }
-.signals-focus-mode .signal-focus-steps button span { font-size: 12px; opacity: .8; }
-.signals-focus-mode .signal-focus-steps button[aria-current] { color: #fff; background: #176b5d; }
-.signals-focus-mode .signal-focus-step { padding-top: 18px; }
-.signals-focus-mode .signal-focus-step > h3 { font-size: 19px; margin: 0 0 16px; }
-.signals-focus-mode .signal-focus-drawings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.signals-focus-mode .signal-focus-drawing { margin: 0; min-width: 0; position: relative; }
-.signals-focus-mode .signal-focus-drawing figcaption { display: flex; gap: 10px; font-size: 13px; border-bottom: 1px solid #e5e9e8; padding-bottom: 8px; }
-.signals-focus-mode .signal-focus-drawing img { display: block; width: 100%; height: 300px; object-fit: contain; background: #fff; }
-.signals-focus-mode .signal-focus-drawing > p { font-size: 12px; line-height: 1.5; color: #596970; margin: 6px 0; }
-.signals-focus-mode .signal-focus-drawing small { display: block; margin-top: 3px; }
-.signals-focus-mode .signal-focus-drawing.is-compact { flex: 0 0 70px; }
-.signals-focus-mode .signal-focus-drawing.is-compact img { height: 84px; width: 70px; }
-.signals-focus-mode .signal-focus-image-loading { position: absolute; top: 35px; }
-.signals-focus-mode .signal-focus-no-image { font-size: 12px; }
-.signals-focus-mode .signal-focus-observation { margin: 20px 0; padding: 18px; border: 1px solid #d8e3df; border-radius: 10px; background: #f6faf8; }
+.signals-focus-mode .signal-focus-observation { margin: 16px 0; padding: 16px; border: 1px solid #d8e3df; border-radius: 6px; background: #f6faf8; }
 .signals-focus-mode .signal-focus-observation.is-held { background: #faf9f6; border-color: #e9e1d1; }
 .signals-focus-mode .signal-focus-observation h4 { font-size: 14px; margin: 0 0 8px; }
 .signals-focus-mode .signal-focus-observation p { margin: 8px 0; }
 .signals-focus-mode .signal-focus-source { padding: 16px 0 20px; border-bottom: 1px solid #dde5e2; overflow-wrap: anywhere; }
 .signals-focus-mode .signal-focus-source h4 { font-size: 16px; margin: 0; }
 .signals-focus-mode .signal-focus-source blockquote { margin: 14px 0; border-left: 3px solid #9bb9b0; padding: 5px 0 5px 14px; white-space: pre-wrap; }
-.signals-focus-mode .signal-focus-source a, .signals-focus-mode .signal-focus-saved a{ color: #176b5d; text-decoration: underline; text-underline-offset: 3px; }
-.signals-focus-mode .signal-focus-relation { border-radius: 10px; background: #f3f7f5; padding: 16px; margin-bottom: 20px; }
+.signals-focus-mode .signal-focus-source a, .signals-focus-mode .signal-focus-saved a { color: #146d62; text-decoration: underline; text-underline-offset: 3px; }
+.signals-focus-mode .signal-focus-relation { border-radius: 6px; background: #f3f7f5; padding: 16px; margin-bottom: 20px; }
 .signals-focus-mode .signal-focus-investigations { list-style: none; padding: 0; margin: 20px 0; }
-.signals-focus-mode .signal-focus-investigations li { border: 1px solid #dce4e1; border-radius: 10px; padding: 16px; margin-top: 12px; overflow-wrap: anywhere; }
-.signals-focus-mode .signal-focus-investigation-label { color: #176b5d; font-size: 13px; font-weight: 700; }
+.signals-focus-mode .signal-focus-investigations li { border: 1px solid #dce4e1; border-radius: 6px; padding: 16px; margin-top: 12px; overflow-wrap: anywhere; }
+.signals-focus-mode .signal-focus-investigation-label { color: #146d62; font-size: 13px; font-weight: 700; }
 .signals-focus-mode .signal-focus-investigations p { margin: 8px 0; line-height: 1.85; }
-.signals-focus-mode .signal-focus-observation-reference { display: inline; background: transparent; border: 0; padding: 0 2px; color: #176b5d; font: inherit; line-height: inherit; text-align: left; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; cursor: pointer; }
-.signals-focus-mode .signal-focus-original-text { font-size: 13px; color: #607078; margin-top: 12px; }
+.signals-focus-mode .signal-focus-observation-reference { display: inline; background: transparent; border: 0; padding: 0 2px; color: #146d62; font: inherit; line-height: inherit; text-align: left; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; cursor: pointer; }
+.signals-focus-mode .signal-focus-original-text { font-size: 13px; color: #596b75; margin-top: 12px; }
 .signals-focus-mode .signal-focus-original-text summary, .signals-focus-mode .signal-focus-run-investigations > summary { cursor: pointer; }
 .signals-focus-mode .signal-focus-original-text p { white-space: pre-wrap; }
 .signals-focus-mode .signal-focus-run-investigations { margin: 22px 0; border-top: 1px solid #dce4e1; padding-top: 16px; }
 .signals-focus-mode .signal-focus-run-investigations > summary { color: #315750; line-height: 1.75; }
 .signals-focus-mode .signal-focus-next-why { border-top: 1px solid #e0e5e3; padding-top: 18px; margin: 20px 0; }
-.signals-focus-mode .signal-focus-archive { border-top: 1px solid #e0e5e3; margin-top: 25px; padding-top: 16px; font-size: 14px; }
-.signals-focus-mode .signal-focus-archive summary { cursor: pointer; color: #506768; }
-.signals-focus-mode .signal-focus-saved { font-size: 13px; color: #607078; margin-top: 20px; }
-.signals-focus-mode .signal-focus-saved a { margin-left: 12px; }
-.signals-focus-mode .signal-focus-journey button:focus-visible, .signals-focus-mode .signal-focus-journey a:focus-visible{ outline: 3px solid #147766; outline-offset: 3px; }
+.signals-focus-mode .signal-focus-archive { border-top: 1px solid #e0e5e3; margin-top: 24px; padding-top: 14px; font-size: 14px; }
+.signals-focus-mode .signal-focus-archive summary { min-height: 44px; cursor: pointer; color: #49616c; }
+.signals-focus-mode .signal-focus-saved { border-top: 1px solid #d8e2e6; padding-top: 14px; font-size: 13px; color: #596b75; margin-top: 12px; }
+.signals-focus-mode .signal-focus-saved a { display: inline-block; margin-left: 12px; min-height: 32px; }
+.signals-focus-mode .signal-focus-journey :is(button, a, select, summary):focus-visible { outline: 3px solid #147766; outline-offset: 3px; }
+.signals-focus-mode .signal-focus-detail:focus-visible { outline-offset: -3px; }
 .signals-focus-mode .signal-focus-supplement { margin-top: 24px; border-top: 1px solid #dbe2df; padding-top: 16px; }
-.signals-focus-mode .signal-focus-supplement > summary { font-size: 14px; color: #53696c; cursor: pointer; }
+.signals-focus-mode .signal-focus-supplement > summary { min-height: 44px; font-size: 14px; color: #53696c; cursor: pointer; }
+@media (min-width: 801px) {
+  .signals-focus-mode .signal-focus-candidate[data-preview='true'] { background: #f2f8f6; box-shadow: inset 4px 0 #146d62; }
+}
+@media (max-width: 1190px) and (min-width: 801px) {
+  .signals-focus-mode .signal-main { padding-right: 22px; padding-left: 22px; }
+  .signals-focus-mode .signal-focus-scope { grid-template-columns: minmax(0, 1fr) minmax(280px, 1fr); }
+  .signals-focus-mode .signal-focus-scope:has(> .signal-focus-context) { grid-template-columns: minmax(0, 1fr) minmax(280px, 1fr); gap: 14px 24px; }
+  .signals-focus-mode .signal-focus-scope > .signal-focus-context { grid-column: 1 / -1; grid-row: 2; border-left: 0; padding-left: 0; }
+  .signals-focus-mode .signal-focus-detail { padding-left: 22px; }
+  .signals-focus-mode .signal-focus-detail-meta { display: block; }
+  .signals-focus-mode .signal-focus-quality-status { max-width: none; text-align: left; margin: -8px 0 10px; }
+  .signals-focus-mode .signal-focus-quality-status .signal-focus-quality-details > summary { margin-left: 0; }
+  .signals-focus-mode .signal-focus-steps button { font-size: 14px; gap: 7px; padding: 9px; }
+  .signals-focus-mode .signal-focus-drawings { gap: 14px; }
+}
 @media (max-width: 800px) {
-  .signals-focus-mode .signal-main { padding: 14px 14px 24px; }
-  .signals-focus-mode .signal-focus-scope { display: block; }
-  .signals-focus-mode .signal-focus-scope h1 { font-size: 21px; }
-  .signals-focus-mode .signal-focus-scope .signal-field { width: 100%; margin-top: 14px; }
+  .signals-focus-mode .signal-header { padding: 12px 16px; }
+  .signals-focus-mode .signal-header > div { font-size: 16px; gap: 9px; }
+  .signals-focus-mode .signal-header strong span { font-size: 13px; }
+  .signals-focus-mode .signal-main { padding: 0 16px 24px; }
+  .signals-focus-mode .signal-live { padding: 3px 0; font-size: 12px; }
+  .signals-focus-mode .signal-focus-scope, .signals-focus-mode .signal-focus-scope:has(> .signal-focus-context) { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 18px 0; box-shadow: 16px 0 #f8fafb, -16px 0 #f8fafb; }
+  .signals-focus-mode .signal-focus-scope h1 { font-size: 20px; }
+  .signals-focus-mode .signal-focus-scope h1 span { display: block; font-size: 16px; margin: 4px 0 0; }
+  .signals-focus-mode .signal-focus-scope h1 span::before { content: none; }
+  .signals-focus-mode .signal-focus-scope .signal-field { width: 100%; }
+  .signals-focus-mode .signal-focus-scope select { min-height: 44px; font-size: 16px; }
+  .signals-focus-mode .signal-focus-scope > .signal-focus-context { border-left: 0; border-top: 1px solid #e2e8eb; padding: 10px 0 0; }
   .signals-focus-mode .signal-focus-layout { display: block; }
   .signals-focus-mode .signal-focus-layout[data-open='false'] > .signal-focus-detail { display: none; }
   .signals-focus-mode .signal-focus-layout[data-open='true'] > .signal-focus-list { display: none; }
-  .signals-focus-mode .signal-focus-context { gap: 3px 12px; margin-bottom: 16px; }
-  .signals-focus-mode .signal-focus-detail { padding: 16px; }
-  .signals-focus-mode .signal-focus-detail-heading h2 { font-size: 23px; }
-  .signals-focus-mode .signal-focus-steps { gap: 4px; }
-  .signals-focus-mode .signal-focus-steps button { flex-direction: column; font-size: 12px; padding: 8px 4px; }
+  .signals-focus-mode .signal-focus-list { padding-top: 20px; border-right: 0; }
+  .signals-focus-mode .signal-focus-list-heading { padding-right: 0; }
+  .signals-focus-mode .signal-focus-context { gap: 4px 12px; font-size: 12px; }
+  .signals-focus-mode .signal-focus-candidate { padding-right: 6px; min-height: 146px; }
+  .signals-focus-mode .signal-focus-candidate-body strong { font-size: 18px; }
+  .signals-focus-mode .signal-focus-candidate-top { font-size: 13px; }
+  .signals-focus-mode .signal-focus-detail { padding: 16px 0 20px; }
+  .signals-focus-mode .signal-focus-detail-meta { display: block; }
+  .signals-focus-mode .signal-focus-detail-heading h2 { font-size: 24px; }
+  .signals-focus-mode .signal-focus-detail-heading p { font-size: 15px; margin-bottom: 12px; }
+  .signals-focus-mode .signal-focus-quality-status { max-width: none; text-align: left; margin: 0 0 8px; }
+  .signals-focus-mode .signal-focus-quality-details { margin: 4px 0 0; }
+  .signals-focus-mode .signal-focus-quality-status .signal-focus-quality-details > summary { margin-left: 0; }
+  .signals-focus-mode .signal-focus-back { display: block; }
+  .signals-focus-mode .signal-focus-steps { gap: 3px; margin-bottom: 14px; }
+  .signals-focus-mode .signal-focus-steps button { flex-direction: column; justify-content: center; gap: 3px; font-size: 13px; padding: 8px 5px; min-height: 66px; text-align: center; }
+  .signals-focus-mode .signal-focus-steps button > span { font-size: 13px; }
   .signals-focus-mode .signal-focus-drawings { gap: 10px; }
-  .signals-focus-mode .signal-focus-drawing img { height: 215px; }
-  .signals-focus-mode .signal-focus-candidate { padding: 16px; }
+  .signals-focus-mode .signal-focus-drawing figcaption { font-size: 13px; gap: 2px 6px; padding: 8px; }
+  .signals-focus-mode .signal-focus-drawing img { height: clamp(200px, 36vh, 320px); padding: 7px; }
+  .signals-focus-mode .signal-focus-drawing > p { font-size: 12px; padding: 8px; }
+  .signals-focus-mode .signal-focus-workbench-action .signal-drawing-comparison { justify-content: stretch; }
+  .signals-focus-mode .signal-focus-workbench-action .signal-drawing-focus-card { flex-basis: 100%; }
+  .signals-focus-mode .signal-focus-workbench-action .signal-drawing-comparison > .signal-button { width: 100%; }
+  .signals-focus-mode .signal-focus-observation-summary { padding: 12px; font-size: 15px; }
+  .signals-focus-mode .signal-focus-step > .signal-primary { width: 100%; min-width: 0; }
+  .signals-focus-mode .signal-focus-saved a { margin-left: 0; display: block; padding-top: 6px; }
 }
-@media (max-width: 380px) {
+@media (max-width: 360px) {
+  .signals-focus-mode .signal-main { padding-right: 12px; padding-left: 12px; }
   .signals-focus-mode .signal-focus-drawings { grid-template-columns: 1fr; }
-  .signals-focus-mode .signal-focus-drawing img { height: 260px; }
+  .signals-focus-mode .signal-focus-drawing img { height: 280px; }
+  .signals-focus-mode .signal-focus-steps button { font-size: 12px; }
 }
 @media print {
-  .signals-focus-mode .signal-focus-list, .signals-focus-mode .signal-focus-steps, .signals-focus-mode .signal-focus-back{ display: none; }
+  .signals-focus-mode .signal-focus-list, .signals-focus-mode .signal-focus-steps, .signals-focus-mode .signal-focus-back, .signals-focus-mode .signal-focus-workbench-action { display: none; }
   .signals-focus-mode .signal-focus-layout { display: block; }
-  .signals-focus-mode .signal-focus-detail { border: 0; }
+  .signals-focus-mode .signal-focus-detail { border: 0; padding: 0; }
 }

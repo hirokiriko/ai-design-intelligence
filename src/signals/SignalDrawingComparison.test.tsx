@@ -44,6 +44,13 @@ describe('saved drawing comparison', () => {
     expect(html).toContain('着目点 2');
     expect(html).not.toContain('着目点 1');
   });
+  it('can place just the comparison opener beside existing observation content', () => {
+    const focusPoints = [{ id: 'FIXTURE-focus-one', text: 'FIXTURE-保存観察。', mediaIds: media.map(item => item.id) }];
+    const html = renderToStaticMarkup(createElement(SignalDrawingComparison, { media, focusPoints, compactControls: true }));
+    expect(html).toContain('比較A・Bの図面を並べて拡大');
+    expect(html).not.toContain('signal-drawing-focus-start');
+    expect(html).not.toContain('<img');
+  });
   it('uses the saved selected comparison when the result also contains other drawings', () => {
     const run = structuredClone(fictionalRunV22);
     run.signal!.media.push({ ...run.signal!.media[0], id: 'FIXTURE-extra-media' });

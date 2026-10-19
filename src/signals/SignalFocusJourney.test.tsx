@@ -94,6 +94,72 @@ describe('selected saved observation journey', () => {
     expect(rendered).toContain('固定の確認ガイド · 保存AIの回答ではありません');
   });
 
+  it('marks held reasons in the candidate list when V1 alone fails for this exact run', () => {
+    const run = decodeRun(structuredClone(observationPlansFixture));
+    if (run.schemaVersion !== '2.6.0' || !run.signal) throw new Error('FIXTURE_WRONG_VERSION');
+    const reviewState: RunReviewState = { status: 'ready', review: { runId: run.id, schemaVersion: run.schemaVersion, promptVersion: run.versions.prompt, modelId: run.versions.model, reviewReference: 'FIXTURE-review', reviewedAt: null, failedChecks: ['V1'], ownerAcceptance: 'NOT_PERFORMED' } };
+    const node = tree(run, reviewState);
+    const list = find(node, item => item.type === 'aside')!;
+    const candidate = find(list, item => item.props.id === `kds_fixture_journey-candidate-${run.signal!.visualObservations[0].id}`)!;
+    expect(html(candidate)).toContain('注目理由は採用保留');
+    expect(html(list)).toContain('注目理由は品質未達のため採用保留です');
+    expect(html(list)).not.toContain('AI観察には誤りがあり');
+    reviewState.review!.runId = 'kds_fixture_other_run';
+    expect(html(find(tree(run, reviewState), item => item.type === 'aside'))).not.toContain('注目理由は採用保留');
+  });
+
+  it('abbreviates long candidate reasons while preserving literal reason and observation text in the disclosure', () => {
+    const run = decodeRun(structuredClone(observationPlansFixture));
+    if (run.schemaVersion !== '2.6.0' || !run.signal) throw new Error('FIXTURE_WRONG_VERSION');
+    const observation = run.signal.visualObservations[0];
+    const plan = run.signal.questionAnswer.observationPlans.find(item => item.observationId === observation.id)!;
+    plan.reason = 'FIXTURE-保存された注目理由🟦'.repeat(12) + 'FIXTURE-理由の末尾';
+    observation.observation = 'FIXTURE-原文の観察🟨'.repeat(20) + 'FIXTURE-観察の末尾';
+    const before = JSON.stringify(run);
+    const node = tree(run);
+    const candidate = html(find(node, item => item.props.id === `kds_fixture_journey-candidate-${observation.id}`));
+    expect(candidate).toContain('FIXTURE-保存された注目理由🟦');
+    expect(candidate).toContain('…');
+    expect(candidate).not.toContain('FIXTURE-理由の末尾');
+    const disclosure = find(node, item => item.props.className === 'signal-focus-observation-details')!;
+    expect(disclosure.props.open).toBeUndefined();
+    expect(html(disclosure)).toContain('data-print-evidence="true"');
+    expect(html(disclosure)).toContain(plan.reason);
+    expect(html(disclosure)).toContain(observation.observation);
+    expect(JSON.stringify(run)).toBe(before);
+  });
+
+  it('temporarily expands only print evidence and restores only disclosures opened for printing', () => {
+    const listeners = new Map<string, () => void>();
+    const addEventListener = vi.fn((name: string, listener: () => void) => { listeners.set(name, listener); });
+    const removeEventListener = vi.fn((name: string, listener: () => void) => { if (listeners.get(name) === listener) listeners.delete(name); });
+    vi.stubGlobal('window', { location: window.location, history: window.history, addEventListener, removeEventListener });
+    const node = tree();
+    const closedEvidence = { open: false }, alreadyOpenEvidence = { open: true }, unrelatedDisclosure = { open: false };
+    const querySelectorAll = vi.fn((selector: string) => selector === 'details[data-print-evidence]' ? [closedEvidence, alreadyOpenEvidence] : [closedEvidence, alreadyOpenEvidence, unrelatedDisclosure]);
+    hooks.refs[0].current = { querySelectorAll };
+    const cleanup = hooks.effects[1]()!;
+    expect(addEventListener).toHaveBeenCalledTimes(2);
+    expect(html(find(node, item => item.props.className === 'signal-focus-quality-details'))).toContain('data-print-evidence="true"');
+    listeners.get('beforeprint')!();
+    listeners.get('beforeprint')!();
+    expect(querySelectorAll).toHaveBeenCalledWith('details[data-print-evidence]');
+    expect(closedEvidence.open).toBe(true);
+    expect(alreadyOpenEvidence.open).toBe(true);
+    expect(unrelatedDisclosure.open).toBe(false);
+    listeners.get('afterprint')!();
+    expect(closedEvidence.open).toBe(false);
+    expect(alreadyOpenEvidence.open).toBe(true);
+    listeners.get('beforeprint')!();
+    expect(closedEvidence.open).toBe(true);
+    cleanup();
+    expect(closedEvidence.open).toBe(false);
+    expect(alreadyOpenEvidence.open).toBe(true);
+    expect(unrelatedDisclosure.open).toBe(false);
+    expect(removeEventListener).toHaveBeenCalledTimes(2);
+    expect(listeners.size).toBe(0);
+  });
+
   it('starts with real saved parts and media, not a marketing hero or a fabricated new event', () => {
     const rendered = html(tree());
     expect(rendered).toContain('まず、どこを見る？');

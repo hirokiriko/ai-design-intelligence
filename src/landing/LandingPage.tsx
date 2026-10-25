@@ -19,9 +19,14 @@ function PrimaryLink({ label = copy.primaryCta }: { label?: string }) {
 }
 
 function DrawingPreview() {
-  return <div className="lp-preview" aria-label="図面比較の画面イメージ">
+  return <div className="lp-preview" aria-label="根拠を確かめる画面の一部">
+    <div className="lp-preview-context" aria-label="Signalsの3つの視点">
+      <span><b>01</b> 俯瞰</span>
+      <span><b>02</b> 根拠の確認</span>
+      <span><b>03</b> 継続して追う</span>
+    </div>
     <div className="lp-preview-header">
-      <strong>図面を並べて、違いを確かめる</strong>
+      <strong>根拠を確かめる — 図面の比較</strong>
       <span>{copy.sampleLabel}</span>
     </div>
     <div className="lp-preview-body">
@@ -115,8 +120,9 @@ export default function LandingPage() {
     <main id="main">
       <section className="lp-hero lp-container" aria-labelledby="lp-hero-heading">
         <div className="lp-hero-copy">
-          <h1 id="lp-hero-heading">意匠の変化を、<br />次の検討へ。</h1>
-          <p className="lp-hero-deck">図面と公式資料をたどり、<br className="lp-desktop-break" />競合を見る視点を整理する。</p>
+          <p className="lp-hero-kicker">意匠から始める、競合動向のリサーチ</p>
+          <h1 id="lp-hero-heading">競合の動きを、<br />根拠から読み解く。</h1>
+          <p className="lp-hero-deck">企業・商品分野を見渡し、意匠・画像・企業公式情報を照合。<br className="lp-desktop-break" />注目する変化を、企画・開発に伝わる検討材料へ。</p>
           <div className="lp-hero-actions">
             <PrimaryLink />
             <a className="lp-text-link" href="#features">{copy.secondaryCta}<ArrowRightIcon size={18} aria-hidden="true" />
@@ -134,9 +140,9 @@ export default function LandingPage() {
 
       <section className="lp-section lp-container" id="features" aria-labelledby="lp-features-heading">
         <div className="lp-section-heading">
-          <p className="lp-eyebrow">THE QUESTION</p>
-          <h2 id="lp-features-heading">情報はある。<br />次に見るべき点は、まだ見えない。</h2>
-          <p className="lp-section-intro">新しい公報や製品情報を集めても、一覧と件数だけでは、企画の議論は進みにくいものです。<br className="lp-desktop-break" />KIRIKO Design Signalsは、意匠を起点に「どこを見るか」「何を確かめるか」をつなぎます。</p>
+          <p className="lp-eyebrow">01 — SIGNALSの強み</p>
+          <h2 id="lp-features-heading">広く捉え、深く確かめ、<br />変化を追い続ける。</h2>
+          <p className="lp-section-intro">ひとつの図面の比較にとどまらず、企業・商品分野の動きを見る。<br className="lp-desktop-break" />どこに注目し、何を根拠に確かめ、次に何を追うのかをつなぎます。</p>
         </div>
         <div className="lp-three-columns lp-challenges">{copy.challenges.map((item) => <article className="lp-column" key={item.number}>
           <span className="lp-step-number">{item.number}</span>
@@ -144,13 +150,65 @@ export default function LandingPage() {
           <p>{item.text}</p>
           <p className="lp-column-question">{item.question}</p>
         </article>)}</div>
+        <p className="lp-value-note">製品として目指す価値です。現在は開発・検証中で、利用できる企業・商品分野は収録範囲によります。</p>
+      </section>
+
+      <section className="lp-section lp-comparison-section" id="comparison" aria-labelledby="lp-comparison-heading">
+        <div className="lp-container">
+          <div className="lp-section-heading">
+            <p className="lp-eyebrow">02 — ふたつの製品の使い分け</p>
+            <h2 id="lp-comparison-heading">Signalsとワークベンチ。<br />仕事の目的で使い分ける。</h2>
+            <p className="lp-section-intro">KIRIKO Design Signalsと意匠調査ワークベンチ。<br className="lp-desktop-break" />共通する資料を扱っていても、出発点と、仕事の終わりに残したいものが異なります。</p>
+          </div>
+          <table className="lp-comparison-table" role="table">
+            <caption className="lp-visually-hidden">KIRIKO Design Signalsと意匠調査ワークベンチの目的・使い方の比較</caption>
+            <thead role="rowgroup">
+              <tr role="row">
+                <th id="lp-comparison-label" scope="col" role="columnheader">比較項目</th>
+                <th id="lp-signals-column" scope="col" role="columnheader"><span className="lp-product-number">01</span>KIRIKO Design Signals</th>
+                <th id="lp-workbench-column" scope="col" role="columnheader"><span className="lp-product-number">02</span>意匠調査ワークベンチ</th>
+              </tr>
+            </thead>
+            <tbody role="rowgroup">
+              {copy.comparisonRows.map((row, index) => (
+                <tr role="row" key={row.label}>
+                  <th id={`lp-comparison-row-${index}`} scope="row" role="rowheader">{row.label}</th>
+                  <td headers={`lp-signals-column lp-comparison-row-${index}`} role="cell"><span className="lp-mobile-column-label" aria-hidden="true">KIRIKO Design Signals</span>{row.signals}</td>
+                  <td headers={`lp-workbench-column lp-comparison-row-${index}`} role="cell"><span className="lp-mobile-column-label" aria-hidden="true">意匠調査ワークベンチ</span>{row.workbench}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="lp-product-choice">
+            <p><span>企業・商品分野を継続して追うなら</span><strong>Signals</strong></p>
+            <p><span>案件の調査記録を引き渡すなら</span><strong>意匠調査ワークベンチ</strong></p>
+          </div>
+        </div>
+      </section>
+
+      <section className="lp-system-section" id="system" aria-labelledby="lp-system-heading">
+        <div className="lp-container">
+          <div className="lp-section-heading">
+            <p className="lp-eyebrow">03 — システムの強み</p>
+            <h2 id="lp-system-heading">説明に使う情報だから、<br />たどれることを大切に。</h2>
+          </div>
+          <div className="lp-three-columns lp-system-columns">
+            {copy.systemStrengths.map((item) => (
+              <article className="lp-column" key={item.number}>
+                <span className="lp-step-number">{item.number}</span>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="lp-section lp-workflow lp-container" id="workflow" aria-labelledby="lp-workflow-heading">
         <div className="lp-section-heading">
           <p className="lp-eyebrow">FROM NOTICE TO EVIDENCE</p>
-          <h2 id="lp-workflow-heading">気づきから、根拠へ。</h2>
-          <p className="lp-section-intro">形を見比べ、記載を読み、残った問いを考える。<br />その行き来が、次の検討につながる視点をつくります。</p>
+          <h2 id="lp-workflow-heading">俯瞰から、照合、次の検討へ。</h2>
+          <p className="lp-section-intro">対象となる企業・商品分野を捉え、注目した動きを根拠から確かめる。<br />次に追う対象や、企画・開発へ伝える問いまでをひとつの流れで考えます。</p>
         </div>
         <div className="lp-three-columns">{copy.workflow.map((item) => <article className="lp-column lp-workflow-column" key={item.number}>
           <span className="lp-step-number">{item.number}</span>
@@ -166,11 +224,11 @@ export default function LandingPage() {
       <section className="lp-experience-section" id="experience" aria-labelledby="lp-experience-heading">
         <div className="lp-container lp-experience-grid">
           <div className="lp-experience-copy">
-            <p className="lp-eyebrow">TRY THE PERSPECTIVE</p>
+            <p className="lp-eyebrow">根拠を確かめる操作の一部</p>
             <h2 id="lp-experience-heading">ひとつの違いから、<br />検討を深める。</h2>
             <p>たとえば、二つのテーブルランプ。シェードの輪郭や部位のつながりに目を向けると、次に確かめたいことが生まれます。</p>
-            <p>図面・資料・次の問いを切り替えながら、気づきから調査へ進む流れを体験してください。</p>
-            <p className="lp-sample-note">{copy.sampleNote}</p>
+            <p>図面・資料・次の問いを切り替えながら、根拠を確かめる操作を体験してください。Signalsが扱う仕事のうち、図面を見比べる場面を紹介しています。</p>
+            <p className="lp-sample-note">{copy.sampleNote} このLPでは実データの取得・AI分析・結果の保存は実行しません。</p>
           </div>
           <div className="lp-experience-workspace">
             <div className="lp-workspace-top">
@@ -284,7 +342,7 @@ export default function LandingPage() {
         <div className="lp-section-heading">
           <p className="lp-eyebrow">FAQ</p>
           <h2 id="lp-faq-heading">検討を始める前に。</h2>
-          <p>使い方と、このページで<br className="lp-desktop-break" />お伝えできる範囲について。</p>
+          <p>Signalsの使い方と、<br className="lp-desktop-break" />このページでお伝えできる範囲について。</p>
         </div>
         <div className="lp-faq-list">{copy.faq.map((item) => <details className="lp-faq-item" key={item.question}>
           <summary>{item.question}<span className="lp-faq-indicator" aria-hidden="true">
@@ -301,7 +359,7 @@ export default function LandingPage() {
           <div>
             <p className="lp-eyebrow">NEXT ACTION</p>
             <h2 id="lp-final-heading">次の会議に、<br className="lp-mobile-break" />ひとつ深い問いを。</h2>
-            <p>何が変わったのか。なぜ気になるのか。<br />図面と公式資料をたどるところから、次の検討を始めませんか。</p>
+            <p>企業・商品分野の動きを、根拠のある検討材料へ。<br />KIRIKO Design Signalsが目指すリサーチの流れを、体験してみませんか。</p>
           </div>
           <PrimaryLink />
         </div>
@@ -313,6 +371,7 @@ export default function LandingPage() {
         <Brand />
         <nav aria-label="フッターナビゲーション">
           <a href="#features">特徴</a>
+          <a href="#comparison">製品の違い</a>
           <a href="#workflow">使い方</a>
           <a href="#faq">よくあるご質問</a>
         </nav>

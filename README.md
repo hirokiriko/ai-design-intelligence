@@ -12,6 +12,14 @@ Vite / React / TypeScript のSPAで、保存条件→差分→画像観察候補
 
 このbranchの技術仕様は[Signal UI実装](docs/architecture/signal-ui.md)を参照してください。目指す価値、実装、検証したデータ・モード、実際の公開版は別の状態です。最新の候補SHA・証拠・未達・公開状態は対応するGitHub IssueとPRで確認し、文書やビルドの存在を実資料での価値実証・公開完了とは扱いません。
 
+## 製品紹介LP
+
+`/lp/` に独立した製品紹介ページがあります。`pnpm install --frozen-lockfile` 後に `pnpm run dev` を起動し、表示されたローカルURLの末尾へ `/lp/` を付けて開きます。既存アプリの `/` と `VITE_APP_MODE` は変更しません。
+
+LPには、図面・資料・次の問いを切り替える架空サンプル、図面拡大、FAQ、ページ内ナビゲーションを用意しています。説明用の固定コンテンツであり、実AI・Backend・外部資料取得・フォーム送信は呼び出しません。図面はこのLP向けに生成した架空素材です。現在の開発状況と、専門判断を代替しないことをFAQで案内します。
+
+`pnpm run build` は既存アプリと `dist/lp/index.html` を同時に出力します。相対アセット参照を維持しているため、リポジトリ名配下の静的配置にも対応します。公開・Production反映は別承認です。
+
 ## 従来のstandard画面の方針（Phase 0）
 
 - Vite + React + TypeScript + Tailwind CSS

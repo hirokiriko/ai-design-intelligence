@@ -1,0 +1,129 @@
+.lp-value-flow-section, .lp-value-discussion-section { padding-block: 78px; }
+.lp-value-flow-section { background: #f7f5f0; border-top: 1px solid var(--lp-line); }
+.lp-value-heading > .lp-eyebrow { margin-bottom: 17px; }
+.lp-value-heading > p:last-child { max-width: 56em; margin-top: 21px; color: var(--lp-muted); font-size: 16px; line-height: 1.95; }
+.lp-value-diagram { min-width: 0; }
+.lp-value-flow-section .lp-value-diagram { margin-top: 35px; }
+.lp-value-diagram-image { width: 100%; height: auto; object-fit: contain; }
+.lp-value-diagram-caption { display: flex; align-items: center; justify-content: space-between; gap: 22px; margin-top: 14px; color: var(--lp-muted); font-size: 11px; line-height: 1.9; }
+.lp-value-diagram-enlarge { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 7px; min-height: 44px; padding: 8px 11px; border: 1px solid #bec3c4; border-radius: 0; color: var(--lp-ink); background: transparent; font-size: 12px !important; }
+.lp-value-diagram-enlarge:hover { border-color: var(--lp-ink); background: rgba(255, 255, 255, .45); }
+.lp-value-flow-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 29px; }
+.lp-value-flow-steps article { display: grid; grid-template-columns: 27px minmax(0, 1fr); gap: 9px 13px; padding-inline: 30px; border-left: 1px solid var(--lp-line); }
+.lp-value-flow-steps article:first-child { border-left: 0; padding-left: 0; }
+.lp-value-flow-steps article:last-child { padding-right: 0; }
+.lp-value-flow-steps article > span { padding-top: 6px; color: var(--lp-accent); font: 15px/1.5 Georgia, serif; }
+.lp-value-flow-steps h3 { font-family: var(--lp-serif); font-size: 24px; font-weight: 600; line-height: 1.6; }
+.lp-value-flow-steps article > p { grid-column: 2; color: var(--lp-muted); font-size: 15px; line-height: 1.95; }
+.lp-value-history-section { padding-block: 78px; background: var(--lp-navy); color: #fff; }
+.lp-value-history-layout { display: grid; grid-template-columns: minmax(0, .73fr) minmax(0, 1.27fr); gap: 58px; align-items: center; }
+.lp-value-history-copy > .lp-eyebrow { margin-bottom: 22px; color: #d5dce1; }
+.lp-value-history-copy h2 { font-size: 39px; }
+.lp-value-history-copy > p:not(.lp-eyebrow) { margin-top: 24px; color: #dbe1e5; font-size: 16px; line-height: 2; }
+.lp-value-history-visual { min-width: 0; }
+.lp-value-history-section .lp-value-diagram-caption { color: #c8d0d6; }
+.lp-value-history-section .lp-value-diagram-enlarge { color: #fff; border-color: #7c8a94; }
+.lp-value-history-section .lp-value-diagram-enlarge:hover { background: #293b4a; border-color: #d5dce1; }
+.lp-value-history-summary { margin-top: 21px; padding-top: 20px; border-top: 1px solid #485965; }
+.lp-value-history-summary strong { font-family: var(--lp-serif); font-size: 20px; font-weight: 500; line-height: 1.8; }
+.lp-value-history-summary p { margin-top: 8px; color: #c8d0d6; font-size: 14px; }
+.lp-value-mobile-break { display: none; }
+.lp-discussion-paper { margin-top: 36px; padding: 35px 39px 28px; background: #fff; border: 1px solid #d7d9d5; }
+.lp-discussion-paper-header { display: flex; align-items: end; justify-content: space-between; gap: 30px; padding-bottom: 23px; border-bottom: 2px solid var(--lp-navy); }
+.lp-discussion-paper-category { color: var(--lp-accent); font-size: 11px; font-weight: 600; letter-spacing: .08em; }
+.lp-discussion-paper-header h3 { margin-top: 9px; font-family: var(--lp-serif); font-size: 28px; font-weight: 600; line-height: 1.7; }
+.lp-discussion-paper-header > p { color: var(--lp-muted); font-size: 12px; line-height: 1.9; text-align: right; }
+.lp-discussion-topics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
+.lp-discussion-topic { min-width: 0; padding: 28px 28px 28px 0; border-bottom: 1px solid var(--lp-line); }
+.lp-discussion-topic:nth-child(even) { padding: 28px 0 28px 28px; border-left: 1px solid var(--lp-line); }
+.lp-discussion-topic dt { display: flex; align-items: baseline; gap: 15px; font-size: 18px; font-weight: 650; }
+.lp-discussion-topic dt > span { color: var(--lp-accent); font: 14px/1.5 Georgia, serif; }
+.lp-discussion-topic dd { margin: 15px 0 0 0; color: var(--lp-muted); font-size: 15px; line-height: 1.95; }
+.lp-discussion-topic dd a { text-decoration: underline; text-underline-offset: 4px; color: var(--lp-accent); }
+.lp-discussion-topic dd strong { font-size: 15px; color: var(--lp-ink); font-weight: 650; }
+.lp-discussion-topic dd > p { margin-top: 9px; }
+.lp-discussion-editorial-note { margin-top: 20px !important; color: var(--lp-muted); font-size: 11px; line-height: 1.95; }
+.lp-discussion-roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 30px; }
+.lp-discussion-roles > div { display: flex; align-items: center; gap: 17px; padding-inline: 30px; border-left: 1px solid var(--lp-line); }
+.lp-discussion-roles > div:first-child { padding-left: 0; border-left: 0; }
+.lp-discussion-roles > div:last-child { padding-right: 0; }
+.lp-discussion-roles svg { flex-shrink: 0; color: var(--lp-accent); }
+.lp-discussion-roles p { font-size: 14px; }
+.lp-discussion-roles strong, .lp-discussion-roles span { display: block; }
+.lp-discussion-roles strong { margin-bottom: 3px; font-size: 17px; }
+.lp-discussion-roles span { color: var(--lp-muted); }
+.lp-discussion-contact { margin-top: 27px; }
+.lp-value-dialog { width: min(1350px, calc(100vw - 48px)); max-width: none; max-height: calc(100dvh - 48px); padding: 27px; border: 1px solid var(--lp-line); border-radius: 0; background: #fff; color: var(--lp-ink); font-family: inherit; }
+.lp-value-dialog::backdrop { background: rgba(19, 35, 50, .76); }
+.lp-value-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 25px; }
+.lp-root .lp-value-dialog-header h2 { font-size: 25px; }
+.lp-value-dialog-header .lp-button { min-height: 44px; padding: 9px 17px; font-size: 13px; flex-shrink: 0; }
+.lp-value-dialog-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 19px; font-size: 13px; }
+.lp-value-dialog-tools > span { margin-right: 7px; }
+.lp-value-zoom { min-width: 63px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--lp-line); border-radius: 0; color: var(--lp-muted); background: #fff; font-size: 13px !important; }
+.lp-value-zoom[aria-pressed="true"] { color: var(--lp-navy); border-color: var(--lp-navy); background: #edf0f2; }
+.lp-value-dialog-viewport { width: 100%; max-height: 65dvh; overflow: auto; margin-top: 19px; border: 1px solid var(--lp-line); background: #fff; }
+.lp-root .lp-value-dialog-viewport img { max-width: none; height: auto; }
+.lp-root .lp-value-dialog-viewport img[data-fit="true"] { max-height: 65dvh; object-fit: contain; }
+.lp-value-dialog-note { margin-top: 14px !important; color: var(--lp-muted); font-size: 11px; line-height: 1.9; }
+@media (max-width: 1100px) {
+  .lp-value-history-layout { gap: 35px; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+  .lp-value-history-copy h2 { font-size: 34px; }
+  .lp-value-flow-steps article { padding-inline: 20px; }
+  .lp-discussion-paper { padding-inline: 29px; }
+  .lp-discussion-paper-header h3 { font-size: 24px; }
+  .lp-discussion-roles > div { padding-inline: 21px; gap: 13px; }
+}
+@media (max-width: 850px) {
+  .lp-value-history-layout { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .lp-value-history-copy { max-width: 650px; }
+  .lp-value-history-copy > p:not(.lp-eyebrow) { margin-top: 19px; }
+  .lp-discussion-paper-header { display: block; }
+  .lp-discussion-paper-header > p { margin-top: 13px; text-align: left; }
+  .lp-discussion-roles > div { align-items: start; }
+}
+@media (max-width: 700px) {
+  .lp-value-flow-section, .lp-value-history-section, .lp-value-discussion-section { padding-block: 54px; }
+  .lp-value-heading > .lp-eyebrow { margin-bottom: 14px; font-size: 10px; }
+  .lp-value-heading > p:last-child { margin-top: 19px; font-size: 15px; }
+  .lp-value-mobile-break { display: block; }
+  .lp-value-flow-section .lp-value-diagram { margin-top: 25px; }
+  .lp-value-diagram-caption { display: block; margin-top: 11px; font-size: 11px; }
+  .lp-value-diagram-enlarge { margin-top: 10px; font-size: 11px !important; }
+  .lp-value-flow-steps { display: block; margin-top: 23px; }
+  .lp-value-flow-steps article, .lp-value-flow-steps article:first-child, .lp-value-flow-steps article:last-child { padding: 21px 0; border-left: 0; border-top: 1px solid var(--lp-line); gap: 7px 12px; }
+  .lp-value-flow-steps article:last-child { padding-bottom: 0; }
+  .lp-value-flow-steps h3 { font-size: 23px; }
+  .lp-value-flow-steps article > p { font-size: 14px; }
+  .lp-value-history-copy h2 { font-size: 29px; }
+  .lp-value-history-copy > .lp-eyebrow { margin-bottom: 17px; font-size: 10px; }
+  .lp-value-history-copy > p:not(.lp-eyebrow) { font-size: 15px; }
+  .lp-value-history-summary { margin-top: 18px; padding-top: 17px; }
+  .lp-value-history-summary strong { font-size: 18px; }
+  .lp-value-history-summary p { font-size: 13px; }
+  .lp-discussion-paper { margin-top: 27px; padding: 24px 19px 21px; }
+  .lp-discussion-paper-header { padding-bottom: 20px; }
+  .lp-discussion-paper-header h3 { font-size: 22px; }
+  .lp-discussion-paper-header > p { font-size: 11px; }
+  .lp-discussion-topics { display: block; }
+  .lp-discussion-topic, .lp-discussion-topic:nth-child(even) { padding: 24px 0; border-left: 0; }
+  .lp-discussion-topic dt { gap: 13px; font-size: 17px; }
+  .lp-discussion-topic dd { margin-top: 13px; font-size: 14px; }
+  .lp-discussion-topic dd strong { font-size: 14px; }
+  .lp-discussion-editorial-note { margin-top: 17px !important; font-size: 11px; }
+  .lp-discussion-roles { display: block; margin-top: 22px; }
+  .lp-discussion-roles > div, .lp-discussion-roles > div:first-child, .lp-discussion-roles > div:last-child { padding: 17px 0; gap: 18px; border-left: 0; border-bottom: 1px solid var(--lp-line); }
+  .lp-discussion-roles p { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 17px; }
+  .lp-discussion-roles strong { margin: 0; font-size: 16px; }
+  .lp-discussion-roles span { font-size: 14px; }
+  .lp-discussion-contact { margin-top: 21px; font-size: 14px; }
+  .lp-value-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); padding: 17px; }
+  .lp-value-dialog-header { align-items: start; gap: 15px; }
+  .lp-root .lp-value-dialog-header h2 { font-size: 20px; }
+  .lp-value-dialog-header .lp-button { padding-inline: 12px; font-size: 12px; }
+  .lp-value-dialog-tools { gap: 6px; font-size: 12px; }
+  .lp-value-dialog-tools > span { margin-right: 3px; }
+  .lp-value-zoom { min-width: 50px; padding-inline: 8px; }
+  .lp-value-dialog-viewport { max-height: 58dvh; margin-top: 16px; }
+  .lp-root .lp-value-dialog-viewport img[data-fit="true"] { max-height: 58dvh; }
+}

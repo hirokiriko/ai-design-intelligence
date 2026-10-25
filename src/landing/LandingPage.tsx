@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { ArrowRightIcon, ArrowUpRightIcon, MinusIcon, PlusIcon } from '@phosphor-icons/react';
 import ContactSection from './ContactSection';
+import { DiscussionMaterial, ResearchFlowDiagram, ResearchHistoryDiagram } from './ValueDiagrams';
 import { experienceTabs, landingContent as copy, type ExperienceTab } from './content';
 import { drawingSources } from './drawingSources';
 import './landing.css';
@@ -125,7 +126,7 @@ export default function LandingPage() {
               <p className="lp-hero-deck">{copy.hero.lead}</p>
               <div className="lp-hero-actions">
                 <PrimaryLink />
-                <a className="lp-text-link" href="#experience">{copy.secondaryCta}<ArrowRightIcon size={18} aria-hidden="true" />
+                <a className="lp-text-link" href="#features">{copy.secondaryCta}<ArrowRightIcon size={18} aria-hidden="true" />
                 </a>
               </div>
               <p className="lp-hero-status">開発・検証中。対象・収録範囲に応じて活用をご相談ください。</p>
@@ -133,6 +134,8 @@ export default function LandingPage() {
             <DrawingPreview />
           </div>
         </section>
+
+        <ResearchFlowDiagram />
 
         <section className="lp-section lp-pain-section lp-container" aria-labelledby="lp-pain-heading">
           <div className="lp-section-heading lp-heading-split">
@@ -233,51 +236,11 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="lp-section lp-container" id="features" aria-labelledby="lp-features-heading">
-          <div className="lp-section-heading">
-            <p className="lp-eyebrow">THREE STRENGTHS</p>
-            <h2 id="lp-features-heading">広く捉え、深く確かめ、<br />変化を追い続ける。</h2>
-            <p className="lp-section-intro">ひとつの図面の比較から、企業・商品分野の動きを見る仕事へ。<br className="lp-desktop-break" />俯瞰・照合・継続調査を、ひとつの流れでつなぎます。</p>
-          </div>
-          <div className="lp-three-columns lp-challenges">{copy.challenges.map((item) => <article className="lp-column" key={item.number}>
-            <span className="lp-step-number">{item.number}</span>
-            <h3>{item.title}</h3>
-            <p>{item.text}</p>
-            <p className="lp-column-question">{item.question}</p>
-          </article>)}</div>
-          <p className="lp-value-note">製品として目指す価値です。現在は開発・検証中で、利用できる企業・商品分野は収録範囲によります。</p>
-        </section>
 
-        <section className="lp-system-section" id="system" aria-labelledby="lp-system-heading">
-          <div className="lp-container">
-            <div className="lp-section-heading">
-              <p className="lp-eyebrow">BUILT FOR TRACEABILITY</p>
-              <h2 id="lp-system-heading">説明に使う情報だから、<br />たどれることを大切に。</h2>
-            </div>
-            <div className="lp-three-columns lp-system-columns">{copy.systemStrengths.map((item) => <article className="lp-column" key={item.number}>
-              <span className="lp-step-number">{item.number}</span>
-              <h3>{item.title}</h3>
-              <p>{item.text}</p>
-            </article>)}</div>
-          </div>
-        </section>
 
-        <section className="lp-section lp-container" id="use-cases" aria-labelledby="lp-use-cases-heading">
-          <div className="lp-section-heading">
-            <p className="lp-eyebrow">FOR YOUR TEAM</p>
-            <h2 id="lp-use-cases-heading">知財の調査を、<br />企画・開発の対話へ。</h2>
-            <p className="lp-section-intro">同じ図面と出典を見ながら、立場に応じた問いを立てる。<br />調査担当者の気づきを、チームの検討材料へつなげます。</p>
-          </div>
-          <div className="lp-three-columns lp-use-cases">{copy.roles.map((role) => <article className="lp-column" key={role.title}>
-            <h3>{role.title}</h3>
-            <p className="lp-role-subtitle">{role.subtitle}</p>
-            <p>{role.text}</p>
-            <div className="lp-role-questions">
-              <h4>検討の問いの例</h4>
-              <ul>{role.questions.map((question) => <li key={question}>{question}</li>)}</ul>
-            </div>
-          </article>)}</div>
-        </section>
+        <ResearchHistoryDiagram />
+
+        <DiscussionMaterial />
 
         <section className="lp-section lp-comparison-section" id="comparison" aria-labelledby="lp-comparison-heading">
           <div className="lp-container">
@@ -338,7 +301,7 @@ export default function LandingPage() {
         <div className="lp-footer-top">
           <Brand />
           <nav aria-label="フッターナビゲーション">
-            <a href="#features">3つの強み</a>
+            <a href="#features">仕組みと強み</a>
             <a href="#experience">原図の確認</a>
             <a href="#comparison">製品の違い</a>
             <a href="#contact">お問い合わせ</a>

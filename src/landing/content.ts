@@ -1,7 +1,7 @@
 export const landingContent = {
   brand: 'Design Signals',
   primaryCta: '活用について相談する',
-  secondaryCta: '仕事の流れを見る',
+  secondaryCta: '図で見る、調査の流れ',
   hero: {
     eyebrow: '意匠と企業公式情報から始める、競合動向のリサーチ',
     titleLines: ['競合の動きを、', '企画に届く根拠へ。'],
@@ -11,7 +11,7 @@ export const landingContent = {
   sampleLabel: '公開意匠公報の原図・引用',
   sampleNote: '特許庁の登録意匠公報から、原図を確認する操作と観点を紹介します。掲載図面は同日出願の別意匠であり、製品の新旧を示すものではありません。',
   navigation: [
-    { href: '#features', label: '3つの強み' },
+    { href: '#features', label: '仕組みと強み' },
     { href: '#experience', label: '実務での使い方' },
     { href: '#comparison', label: '製品の違い' },
     { href: '#faq', label: 'よくあるご質問' },
